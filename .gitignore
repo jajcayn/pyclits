@@ -1,5 +1,6 @@
 # Compiled python modules.
 *.pyc
+*.pyxbldc
 
 # Setuptools distribution folder.
 /dist/

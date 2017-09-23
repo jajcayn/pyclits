@@ -1,0 +1,13 @@
+Data in this folder are publicly available at following sites:
+
+- NCEP/NCAR Reanalysis 1 [air.mon.mean.sig995.nc] -- https://www.esrl.noaa.gov/psd/data/gridded/data.ncep.reanalysis.surface.html
+
+- NINO3.4 index [nino34raw.txt] -- https://www.esrl.noaa.gov/psd/gcos_wgsp/Timeseries/Nino34/
+
+- Global Land and Ocean temperature anomalies [NOAA-NCDC.csv] -- https://www.ncdc.noaa.gov/cag/time-series/global
+
+- CMIP5 recommended RCP3PD concentrations [RCP3PD_MIDYR_CONC.DAT] -- http://tntcat.iiasa.ac.at:8787/RcpDb/dsd?Action=htmlpage&page=download
+
+- ERSST v4 sea surface temperature data [sst.mnmean.v4.nc] -- https://www.esrl.noaa.gov/psd/data/gridded/data.noaa.ersst.v4.html
+
+- Prague surface air temperature station data [TG_STAID000027.txt] -- http://eca.knmi.nl/dailydata/customquery.php

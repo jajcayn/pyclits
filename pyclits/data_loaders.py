@@ -6,7 +6,8 @@ created on Sep 22, 2017
 
 
 from geofield import DataField
-from datetime import date
+from datetime import date, datetime
+from os.path import split
 
 
 def load_station_data(filename, start_date, end_date, anom, to_monthly = False, dataset = 'ECA-station', offset = 1):
@@ -15,13 +16,8 @@ def load_station_data(filename, start_date, end_date, anom, to_monthly = False, 
     """
     
     print("[%s] Loading station data..." % (str(datetime.now())))
-    path, name = split(filename)
-    if path != '':
-        path += "/"
-        g = DataField(data_folder = path)
-    else:
-        g = DataField()
-    g.load_station_data(name, dataset, print_prog = False, offset_in_file = offset)
+    g = DataField()
+    g.load_station_data(filename, dataset, print_prog = False, offset_in_file = offset)
     print("** loaded")
     g.select_date(start_date, end_date)
     if anom:
@@ -44,13 +40,8 @@ def load_NCEP_data_monthly(filename, varname, start_date, end_date, lats, lons, 
     """
 
     print("[%s] Loading monthly NCEP/NCAR data..." % str(datetime.now()))
-    path, name = split(filename)
-    if path != '':
-        path += "/"
-        g = DataField(data_folder = path)
-    else:
-        g = DataField()
-    g.load(name, varname, dataset = 'NCEP', print_prog = False)
+    g = DataField()
+    g.load(filename, varname, dataset = 'NCEP', print_prog = False)
     print("** loaded")
     g.select_date(start_date, end_date)
     g.select_lat_lon(lats, lons)
@@ -174,13 +165,8 @@ def load_ECA_D_data_daily(filename, varname, start_date, end_date, lats, lons, a
         logger = logger_function
 
     logger("Loading daily ECA&D data...")
-    path, name = split(filename)
-    if path != '':
-        path += "/"
-        g = DataField(data_folder = path)
-    else:
-        g = DataField()
-    g.load(name, varname, dataset = 'ECA-reanalysis', print_prog = False)
+    g = DataField()
+    g.load(filename, varname, dataset = 'ECA-reanalysis', print_prog = False)
     logger("** loaded")
     g.select_date(start_date, end_date)
     g.select_lat_lon(lats, lons)

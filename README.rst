@@ -31,8 +31,10 @@ Dependencies
 * [scikit-learn](https://github.com/scikit-learn/scikit-learn)  
 * [cython](https://github.com/cython/cython)  
 * [matplotlib](https://github.com/matplotlib/matplotlib)  
-* [netcdf4-python](https://github.com/Unidata/netcdf4-python)  
+* [netCDF4](https://github.com/Unidata/netcdf4-python)  
 * [basemap toolkit](https://github.com/matplotlib/basemap)  
+
+(All of them are installed via pip automatically, except basemap, since it is not on PyPI. Basemap still can be installed via pip using ``pip install git+https://github.com/matplotlib/basemap.git``)
 
 
 Contributing

@@ -23,7 +23,7 @@ setup(name = "pyclits",
         "License :: OSI Approved :: MIT License"
     ],
     keywords = "time series analysis climate data",
-    url = "",
+    url = "https://github.com/jajcayn/pyclits",
     author = "Nikola Jajcay",
     author_email = "jajcay@cs.cas.cz",
     license = "MIT",
@@ -31,11 +31,10 @@ setup(name = "pyclits",
     install_requires = [
         "numpy",
         "scipy",
-        "sklearn",
+        "scikit-learn",
         "cython",
         "matplotlib",
-        "basemap",
-        "netcdf4-python"
+        "netCDF4"
     ],
     include_package_data = True,
     zip_safe = False)
