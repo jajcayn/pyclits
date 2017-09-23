@@ -4,6 +4,7 @@ pyCliTS
 What is pyCliTS?
 --------------------
 Python Climate Time Series package is open-source python package for easy manipulation with climatic geo-spatial time series such as the reanalysis or CMIP5 outputs, which are usually distributed as netCDF4 files. The package includes functions for:  
+
 * manipulating the data [temporal and spatial slicing, interpolating, subtracting the climatological cycle = anomalising, normalising, filtering, subsampling, etc.] 
 * computing continuous complex wavelet transform [CCWT]
 * constructing spatio-temporal surrogate data using Monte-Carlo approach [Fourier transform surrogates, amplitude adjusted FT, iterative amplitude adjusted FT, autoregressive surrogates using the VAR(p) model, multifractal surrogates] 
@@ -21,15 +22,17 @@ Dependencies
 ------------
 ``pyclits`` relies on the following open source packages  
 **Required**:
+
 * [numpy](https://github.com/numpy/numpy)
 * [scipy](https://github.com/scipy/scipy)
 
 **Recommended**:
-* [scikit-learn](https://github.com/scikit-learn/scikit-learn)
-* [cython](https://github.com/cython/cython)
-* [matplotlib](https://github.com/matplotlib/matplotlib)
-* [netcdf4-python](https://github.com/Unidata/netcdf4-python)
-* [basemap toolkit](https://github.com/matplotlib/basemap)
+
+* [scikit-learn](https://github.com/scikit-learn/scikit-learn)  
+* [cython](https://github.com/cython/cython)  
+* [matplotlib](https://github.com/matplotlib/matplotlib)  
+* [netcdf4-python](https://github.com/Unidata/netcdf4-python)  
+* [basemap toolkit](https://github.com/matplotlib/basemap)  
 
 
 Contributing
