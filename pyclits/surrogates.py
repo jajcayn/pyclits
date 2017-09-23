@@ -115,6 +115,7 @@ def holm_test(p_vals, sig_level, Nsurr, Nhyp = None):
     if left at None, len(p_vals) will be used.
     NOTE: if Nhyp < len(p_vals), the p_vals tail will be chopped off so that len(p_val) = Nhyp.
           Then only will the test be run.
+          
     Written by Martin Vejmelka -- https://github.com/vejmelkam/ndw-climate/blob/master/src/multi_stats.py 
     """
     
@@ -632,8 +633,7 @@ class SurrogateField(DataField):
         Constructs multifractal surrogates (independent shuffling of the scale-specific coefficients,
         preserving so-called multifractal structure - hierarchical process exhibiting information flow
         from large to small scales)
-        written according to: Palus, M. (2008): Bootstraping multifractals: Surrogate data from random 
-        cascades on wavelet dyadic trees. Phys. Rev. Letters, 101.
+        written according to: Palus, M., Phys. Rev. Letters, 101, 2008.
         """
 
         import pywt

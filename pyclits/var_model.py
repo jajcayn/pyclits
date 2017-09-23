@@ -5,6 +5,8 @@ Created on Fri Mar  2 13:59:39 2012
 @author: Martin Vejmelka -- https://github.com/vejmelkam/ndw-climate --
 
 Programmed according to Neumaier and Schneider and heavily inspired by ARFIT toolkit.
+
+Minor changes by Nikola Jajcay
 """
 
 import numpy as np
@@ -257,12 +259,3 @@ class VARModel:
             
         # what remains are the residuals
         return res
-
-
-    def compute_covariance_matrix(self):
-        """
-        Compute the covariance matrix analytically.  This will only work for really sparse
-        processes, otherwise a lot of memory will be consumed.
-        """
-        pass
-        

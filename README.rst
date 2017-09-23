@@ -35,7 +35,7 @@ Dependencies
 * `netCDF4 <https://github.com/Unidata/netcdf4-python>`_  
 * `basemap toolkit <https://github.com/matplotlib/basemap>`_  
 
-(All of them are installed via pip automatically, except basemap, since it is not on PyPI. Basemap still can be installed via pip using ``pip install git+https://github.com/matplotlib/basemap.git``)
+(All of them are installed via pip automatically when installing this package, except basemap, since it is not on PyPI. Basemap still can be installed via pip using ``pip install git+https://github.com/matplotlib/basemap.git``)
 
 
 Contributing

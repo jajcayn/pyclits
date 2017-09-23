@@ -4,10 +4,13 @@ created on Aug 21, 2016
 @author: Nikola Jajcay, jajcay(at)cs.cas.cz
 
 last update on Sep 22, 2017
+
+Based on Kondrashov D., Kravtsov S., Robertson A. W. and Ghil M., J. Climate, 18, 2005.
 """
 
 
-from geofield import DataField, cross_correlation, kdensity_estimate
+from geofield import DataField
+from functions import cross_correlation, kdensity_estimate
 import numpy as np
 import scipy.stats as sts
 

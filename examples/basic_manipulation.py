@@ -17,6 +17,19 @@ temp = clt.data_loaders.load_NCEP_data_monthly("example_data/air.mon.mean.sig995
 # start and end dates are clear, lats and lons are either tuples of which latitudes and longitudes we want to load,
 #   None means do not cut anything. This is single level data, so level None and anom is whether we want to anomalise.
 
+# The structure of geofield is as follows:
+print temp.data.shape # this is of shape (time x lats x lons); numpy array
+print temp.lats.shape # this is array of latitudes
+print temp.lons.shape # this is array of longitudes
+print temp.time.shape # this of array of ordinal dates (1 is 1 Jan of year 1)
+
+# for temporal mean per grid point do
+print np.mean(temp.data, axis = 0) # shape will be (lats, lons)
+# for spatial mean do
+print np.mean(temp.data, axis = (1,2)) # shape will be (time,)
+# for weighted mean [weighted by cosine of latitude] do
+print np.mean(temp.data * temp.latitude_cos_weights(), axis = (1,2)) # shape will be (time,)
+
 # cut the data only 1950 - 2010, exclusive end date
 temp.select_date(date(1950, 1, 1), date(2011, 1, 1), exclusive = True)
 
@@ -36,6 +49,8 @@ prague_from_ncep = temp.data[:, prg_la, prg_lo].copy()
 # load Prague station data
 prg = clt.data_loaders.load_station_data("example_data/TG_STAID000027.txt", date(1950, 1, 1), date(2011, 1, 1),
     anom = False, to_monthly = False)
+print prg.data.shape # station data has shape of (time,); lats and lons fields are empty
+print prg.time.shape # same as before -- array of ordinal dates
 # this is daily data so make in monthly to match resolution of NCEP, when means is True, makes monthly means, 
 #   False would make monthly sums, e.g. for precipitation
 prg.get_monthly_data(means = True)

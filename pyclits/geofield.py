@@ -10,79 +10,12 @@ last update on Sep 22, 2017
 import numpy as np
 from datetime import date, timedelta, datetime
 from dateutil.relativedelta import relativedelta
+from functions import nandetrend
 import csv
 from os.path import split
 import os
 
-
         
-def cross_correlation(a, b, max_lag):
-    """
-    Cross correlation with lag.
-    When computing cross-correlation, the first parameter, a, is
-    in 'future' with positive lag and in 'past' with negative lag.
-    """
-
-    a = (a - np.mean(a)) / (np.std(a, ddof = 1) * (len(a) - 1))
-    b = (b - np.mean(b)) / np.std(b, ddof = 1)
-    cor = np.correlate(a, b, 'full')
-
-    return cor[len(cor)//2 - max_lag : len(cor)//2 + max_lag+1]
-
-
-
-def kdensity_estimate(a, kernel = 'gaussian', bandwidth = 1.0):
-    """
-    Estimates kernel density. Uses sklearn.
-    kernels: 'gaussian', 'tophat', 'epanechnikov', 'exponential', 'linear', 'cosine'
-    """
-
-    from sklearn.neighbors import KernelDensity
-    a = a[:, None]
-    x = np.linspace(a.min(), a.max(), 100)[:, None]
-    kde = KernelDensity(kernel = kernel, bandwidth = bandwidth).fit(a)
-    logkde = kde.score_samples(x)
-
-    return np.squeeze(x), np.exp(logkde)
-
-
-
-def nandetrend(arr, axis = 0):
-    """
-    Removes the linear trend along the axis, ignoring Nans.
-    """
-    a = arr.copy()
-    rnk = len(a.shape)
-    # determine axis
-    if axis < 0:
-        axis += rnk # axis -1 means along last dimension
-    
-    # reshape that axis is 1. dimension and other dimensions are enrolled into 2. dimensions
-    newdims = np.r_[axis, 0:axis, axis + 1:rnk]
-    newdata = np.reshape(np.transpose(a, tuple(newdims)), (a.shape[axis], np.prod(a.shape, axis = 0) // a.shape[axis]))
-    newdata = newdata.copy()
-    
-    # compute linear fit as least squared residuals
-    x = np.arange(0, a.shape[axis], 1)
-    A = np.vstack([x, np.ones(len(x))]).T
-    m, c = np.linalg.lstsq(A, newdata)[0]
-    
-    # remove the trend from the data along 1. axis
-    for i in range(a.shape[axis]):
-        newdata[i, ...] = newdata[i, ...] - (m*x[i] + c)
-    
-    # reshape back to original shape
-    tdshape = np.take(a.shape, newdims, 0)
-    ret = np.reshape(newdata, tuple(tdshape))
-    vals = list(range(1,rnk))
-    olddims = vals[:axis] + [0] + vals[axis:]
-    ret = np.transpose(ret, tuple(olddims))
-    
-    # return detrended data and linear coefficient
-    
-    return ret, m, c
-        
-
 
 class DataField:
     """
