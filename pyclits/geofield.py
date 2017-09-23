@@ -1341,8 +1341,21 @@ class DataField:
             return np.squeeze(d)
 
 
+    @staticmethod
+    def _interp_spatial(a):
+        """
+        Helper function for spatial interpolation.
+        """
 
-    def interpolate_spatial_nans(self, method = 'cubic', apply_to_data = True):
+        import scipy.interpolate as si
+
+        t, d, points, msk, grid_lat, grid_lon, method = a
+        new_data = si.griddata(points, d[~msk], (grid_lat, grid_lon), method = method)
+
+        return t, new_data
+
+
+    def interpolate_spatial_nans(self, method = 'cubic', apply_to_data = True, pool = None):
         """
         Interpolates data with spatial NaNs in them.
         Method is one of the following:
@@ -1365,9 +1378,14 @@ class DataField:
                     points = np.zeros((grid_lat[~msk].shape[0], 2))
                     points[:, 0] = grid_lat[~msk]
                     points[:, 1] = grid_lon[~msk]
-                    for t in range(self.time.shape[0]):
-                        d = self.data[t, lvl, ...].copy()
-                        new_data[t, lvl, ...] = si.griddata(points, d[~msk], (grid_lat, grid_lon), method = method)
+                    args = [(t, self.data[t, lvl, ...], points, msk, grid_lat, grid_lon, method) for t in range(self.time.shape[0])]
+                    if pool is None:
+                        job_res = map(self._interp_spatial, args)
+                    else:
+                        job_res = pool.map(self._interp_spatial, args)
+                    
+                    for t, i_data in job_res:
+                        new_data[t, lvl, ...] = i_data
 
                 new_data = np.squeeze(new_data)
 

@@ -33,7 +33,8 @@ setup(name = "pyclits",
         "scikit-learn",
         "cython",
         "matplotlib",
-        "netCDF4"
+        "netCDF4",
+        "pathos"
     ],
     include_package_data = True,
     zip_safe = False)
