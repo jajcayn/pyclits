@@ -20,7 +20,8 @@ Documentation
 
 Dependencies
 ------------
-``pyclits`` relies on the following open source packages  
+``pyclits`` relies on the following open source packages    
+
 **Required**:
 
 * `numpy <https://github.com/numpy/numpy>`_
