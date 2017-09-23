@@ -23,7 +23,7 @@ Dependencies
 ``pyclits`` relies on the following open source packages  
 **Required**:
 
-* `numpy <https://github.com/numpy/numpy>`
+* `numpy <https://github.com/numpy/numpy>`_
 * [scipy](https://github.com/scipy/scipy)
 
 **Recommended**:
