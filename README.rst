@@ -24,15 +24,15 @@ Dependencies
 **Required**:
 
 * `numpy <https://github.com/numpy/numpy>`_
-* [scipy](https://github.com/scipy/scipy)
+* `scipy <https://github.com/scipy/scipy>`_
 
 **Recommended**:
 
-[scikit-learn](https://github.com/scikit-learn/scikit-learn)  
-[cython](https://github.com/cython/cython)  
-[matplotlib](https://github.com/matplotlib/matplotlib)  
-[netCDF4](https://github.com/Unidata/netcdf4-python)  
-[basemap toolkit](https://github.com/matplotlib/basemap)  
+* `sklearn <https://github.com/scikit-learn/scikit-learn>`_  
+* `cython <https://github.com/cython/cython>`_  
+* `matplotlib <https://github.com/matplotlib/matplotlib>`_  
+* `netCDF4 <https://github.com/Unidata/netcdf4-python>`_  
+* `basemap toolkit <https://github.com/matplotlib/basemap>`_  
 
 (All of them are installed via pip automatically, except basemap, since it is not on PyPI. Basemap still can be installed via pip using ``pip install git+https://github.com/matplotlib/basemap.git``)
 
