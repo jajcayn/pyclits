@@ -34,6 +34,7 @@ Dependencies
 * `matplotlib <https://github.com/matplotlib/matplotlib>`_  
 * `netCDF4 <https://github.com/Unidata/netcdf4-python>`_  
 * `basemap toolkit <https://github.com/matplotlib/basemap>`_ 
+* `pywavelets <https://github.com/PyWavelets/pywt>`_
 * `pathos multiprocessing <https://github.com/uqfoundation/pathos>`_ (for improved multiprocessing capabilities) 
 
 (All of them are installed via pip automatically when installing this package, except basemap, since it is not on PyPI. Basemap still can be installed via pip using ``pip install git+https://github.com/matplotlib/basemap.git``)

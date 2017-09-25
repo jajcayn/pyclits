@@ -38,7 +38,7 @@ def kdensity_estimate(a, kernel = 'gaussian', bandwidth = 1.0):
 
 
 
-def nandetrend(arr, axis = 0):
+def detrend_with_return(arr, axis = 0):
     """
     Removes the linear trend along the axis, ignoring Nans.
     """

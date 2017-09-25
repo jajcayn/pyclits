@@ -10,7 +10,7 @@ last update on Sep 22, 2017
 import numpy as np
 from datetime import date, timedelta, datetime
 from dateutil.relativedelta import relativedelta
-from functions import nandetrend
+from functions import detrend_with_return
 import csv
 from os.path import split
 import os
@@ -1653,14 +1653,14 @@ class DataField:
                         continue
                     seasonal_mean[sel_data, ...] = np.nanmean(d[sel_avg, ...], axis = 0)
                     self.data[sel_data, ...] -= seasonal_mean[sel_data, ...]
-                    seasonal_var[sel_data, ...] = np.nanstd(d[sel_data, ...], axis = 0, ddof = 1)
+                    seasonal_var[sel_data, ...] = np.nanstd(d[sel_avg, ...], axis = 0, ddof = 1)
                     if np.any(seasonal_var[sel_data, ...] == 0.0) and self.verbose:
                         print('**WARNING: some zero standard deviations found for date %d.%d' % (di, mi))
                         seasonal_var[seasonal_var == 0.0] = 1.0
                     self.data[sel_data, ...] /= seasonal_var[sel_data, ...]
             if detrend:
                 data_copy = self.data.copy()
-                self.data, _, _ = nandetrend(self.data, axis = 0)
+                self.data, _, _ = detrend_with_return(self.data, axis = 0)
                 trend = data_copy - self.data
             else:
                 trend = None
@@ -1681,7 +1681,7 @@ class DataField:
                 self.data[sel_data, ...] /= seasonal_var[sel_data, ...]
             if detrend:
                 data_copy = self.data.copy()
-                self.data, _, _ = nandetrend(self.data, axis = 0)
+                self.data, _, _ = detrend_with_return(self.data, axis = 0)
                 trend = data_copy - self.data
             else:
                 trend = None

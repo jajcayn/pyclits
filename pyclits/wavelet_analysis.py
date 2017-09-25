@@ -114,7 +114,7 @@ def continous_wavelet(X, dt, pad = False, wavelet = morlet, **kwargs):
     else:
         s0 = 2 * dt
     if 'j1' in kwargs:
-        j1 = kwargs['j1']
+        j1 = np.int(kwargs['j1'])
     else:
         j1 = np.fix(np.log(len(X)*dt/s0) / np.log(2)) / dj
     if 'k0' in kwargs:

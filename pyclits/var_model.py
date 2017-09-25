@@ -49,7 +49,7 @@ class VARModel:
         
     def order(self):
         """Return model order."""
-        return self.A.shape[1] / self.A.shape[0] if self.A != None else 0
+        return self.A.shape[1] / self.A.shape[0] if np.any(self.A != None) else 0
     
     
     def dimension(self):

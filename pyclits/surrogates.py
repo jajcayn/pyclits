@@ -702,9 +702,12 @@ class SurrogateField(DataField):
                 if r[1] is not None and r[1].order() > max_ord:
                     max_ord = r[1].order()
             num_tm_s = num_tm - max_ord
-            
-            self.model_grid = np.zeros((np.prod(orig_shape[1:]),), dtype = np.object)
-            self.residuals = np.zeros((num_tm_s, np.prod(orig_shape[1:])), dtype = np.float64)
+            if orig_shape is None:
+                self.model_grid = np.zeros((1,), dtype = np.object)
+                self.residuals = np.zeros((num_tm_s, 1), dtype = np.float64)
+            else:
+                self.model_grid = np.zeros((np.prod(orig_shape[1:]),), dtype = np.object)
+                self.residuals = np.zeros((num_tm_s, np.prod(orig_shape[1:])), dtype = np.float64)
     
             for i, v, r in job_results:
                 self.model_grid[i] = v
@@ -750,7 +753,7 @@ class SurrogateField(DataField):
             else:
                 orig_shape = None
                 self.original_data = self.original_data[:, np.newaxis]
-                self.model_grid = self.model_grid[:, np.newaxis]
+                # self.model_grid = self.model_grid[:, np.newaxis]
                 self.residuals = self.residuals[:, np.newaxis]
             num_tm_s = self.time.shape[0] - self.max_ord
             

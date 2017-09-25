@@ -34,7 +34,8 @@ setup(name = "pyclits",
         "cython",
         "matplotlib",
         "netCDF4",
-        "pathos"
+        "pathos",
+        "pywavelets"
     ],
     include_package_data = True,
     zip_safe = False)

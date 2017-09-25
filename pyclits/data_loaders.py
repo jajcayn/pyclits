@@ -8,6 +8,7 @@ created on Sep 22, 2017
 from geofield import DataField
 from datetime import date, datetime
 from os.path import split
+import numpy as np
 
 
 def load_station_data(filename, start_date, end_date, anom, to_monthly = False, dataset = 'ECA-station', offset = 1):
