@@ -14,7 +14,10 @@ import numpy as np
 prg = clt.data_loaders.load_station_data("example_data/TG_STAID000027.txt", date(1770, 1, 1), date(2016, 1, 1),
     anom = False, to_monthly = False)
 # lets use 65536 data points, because MF surrogates needs 2^n data points
-prg.get_data_of_precise_length(length = '65k', end_date = date(2016, 1, 1), apply_to_data = True)
+#   for this we'll use our convenience function, argument length is either integer with length or string as '65k'
+#   where this should be power of 2, so '2k', '4k', '16k' and so on.. we'll either define start_date or end_date
+#   in this case, we want 65k of data, preferably the last 65k of data
+prg.get_data_of_precise_length(length = '65k', end_date = prg.get_date_from_ndx(-1), apply_to_data = True)
 # print shape
 print prg.shape()
 
@@ -105,7 +108,10 @@ plt.legend()
 plt.xlim([0, 12])
 plt.xlabel('frequency [1/year]')
 
+# in the following, we also try some functions from functions module
 # lets plot auto-correlation function! [with max lag of 100 days]
+#   autocorrelation is just cross-correlation of some time series with itself, lets use max lag of 100 days
+#   since this is autocorrelation, the plot is symmetric around 0 lag, so lets focus on right half of the plot
 plt.subplot(222)
 plt.title("Autocorrelations")
 cross_corr = clt.functions.cross_correlation(prg.data, prg.data, max_lag = 100)
@@ -130,6 +136,7 @@ plt.xlabel("lag [days]")
 plt.legend()
 
 # finaly, lets estimate and plot PDF
+#   for this we'll use the kdensity_estimate function and we'll assume Gaussian shape
 plt.subplot(224)
 plt.title("Histograms and PDF estimates")
 plt.hist(prg.data, bins = 20, fc = 'C0', ec = 'C0', alpha = 0.3, normed = True)
@@ -155,8 +162,66 @@ plt.legend()
 
 plt.show()
 
+# nice! now lets try spatio-temporal and we'll see that this is no problem with our surrogate class!
+# lets load some spatio-temporal dataset, e.g. SSTs, even NaNs are no problem for SurrogateField
+sst = clt.geofield.DataField()
+sst.load(filename = "example_data/sst.mnmean.nc", variable_name = "sst", dataset = "NCEP")
+sst.select_lat_lon(lats = [-40,40], lons = None)
+sst.select_date(date(1900, 1, 1), sst.get_date_from_ndx(-1), exclusive = False)
+sst.anomalise(base_period = [date(1981,1,1), date(2010,12,31)])
+print sst.shape()
 
-# # # lets load some spatio-temporal dataset, e.g. SSTs
-# # sst = clt.geofield.DataField()
-# # sst.load(filename = "example_data/sst.mnmean.nc", variable_name = "sst", dataset = "NCEP")
+# lets get_seasonality and create surrogate field, this time no detrend [SSTs exhibit almost no trend anyway]
+sst_mean, sst_var, _ = sst.get_seasonality(detrend = False, base_period = [date(1981,1,1), date(2010,12,31)])
+sst_surr = clt.surrogates.SurrogateField()
+sst_surr.copy_field(sst)
+sst.return_seasonality(sst_mean, sst_var, None)
 
+# if you see numpy warning about mean of empty slices, thats OK
+# lets e.g. compare PCA components!
+# since surrogate generation supports multi-threading, lets make use of it!
+import pathos.multiprocessing as mp
+pool = mp.ProcessingPool(5)
+eofs_data, pcs_data, var_data = sst.pca_components(n_comps = 3)
+
+# if preserve correlations is True, this will create multivariate surrogates
+sst_surr.construct_fourier_surrogates(algorithm = 'FT', preserve_corrs = True, pool = pool)
+sst_surr.add_seasonality(sst_mean, sst_var, None)
+eofs_FTm, pcs_FTm, var_FTm = sst_surr.pca_components(n_comps = 3)
+
+# preserve correlations False means each time series will be treated as separate, hence univariate surrogates
+sst_surr.construct_fourier_surrogates(algorithm = 'FT', preserve_corrs = False, pool = pool)
+sst_surr.add_seasonality(sst_mean, sst_var, None)
+eofs_FTu, pcs_FTu, var_FTu = sst_surr.pca_components(n_comps = 3)
+
+# plot and compare first three PCA components of multivariate and univariate corrs
+for i in range(3):
+    plt.subplot(3,3,3*i+1)
+    sst.quick_render(field_to_plot = eofs_data[i, ...], tit = "DATA - EOF %d -- %.2f%%" % (i+1, var_data[i]*100.), 
+        subplot = True)
+    plt.subplot(3,3,3*i+2)
+    sst.quick_render(field_to_plot = eofs_FTm[i, ...], tit = "FT muvar - EOF %d -- %.2f%%" % (i+1, var_FTm[i]*100.), 
+        subplot = True)
+    plt.subplot(3,3,3*i+3)
+    sst.quick_render(field_to_plot = eofs_FTu[i, ...], tit = "FT univar - EOF %d -- %.2f%%" % (i+1, var_FTu[i]*100.), 
+        subplot = True)
+
+plt.show()
+
+# now we see the effect of preserving correlations.. univariate are just mess, while multivariate has the same
+#   spatial structure
+
+# finally, lets try AR(p) surrogates, so lets estimate order p of AR process per grid point and plot
+sst_surr.prepare_AR_surrogates(pool = pool, order_range = [1,30])
+pool.close()
+pool.join()
+
+orders = np.zeros(sst.get_spatial_dims())
+for la in range(sst.lats.shape[0]):
+    for lo in range(sst.lons.shape[0]):
+        if sst_surr.model_grid[la, lo] is not None:
+            orders[la, lo] = sst_surr.model_grid[la, lo].order()
+        else:
+            orders[la, lo] = np.nan
+
+sst_surr.quick_render(field_to_plot = orders, tit = "order of AR(p)")

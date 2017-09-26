@@ -486,6 +486,9 @@ class SurrogateField(DataField):
         else:
             self.lats = None
         self.time = field.time.copy()
+        self.nans = field.nans
+        if field.data_mask is not None:
+            self.data_mask = field.data_mask.copy()
         
         
         

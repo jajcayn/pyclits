@@ -87,7 +87,7 @@ class ssa_class():
         For simplicity of computing reconstructed components, the 
         PC time series have full length of N, not N-M+1.
 
-        According to Groth & Ghil (2011), Physical Review E, 84(3).
+        According to Groth & Ghil, Physical Review E, 84(3), 2011.
 
         Return as eigenvalues (M*D), eigenvectors (M*D x M*D), 
         principal components (N x M*D) and recontructed components (N x D x M).
@@ -134,7 +134,7 @@ class ssa_class():
         Computes the rotation matrix T.
         S is number of eigenvectors entering the rotation
 
-        Adapted from Portes & Aguirre (2016), Physical Review E, 93(5).
+        Adapted from Portes & Aguirre, Physical Review E, 93(5), 2016.
 
         Returns rotation matrix T.
         """
@@ -170,7 +170,7 @@ class ssa_class():
         Computes the rotation matrix T.
         S is number of eigenvectors entering the rotation
 
-        Adapted from Portes & Aguirre (2016), Physical Review E, 93(5).
+        Adapted from Portes & Aguirre, Physical Review E, 93(5), 2016.
 
         Returns rotation matrix T.
         """
@@ -200,7 +200,7 @@ class ssa_class():
         S is number of eigenvectors entering the rotation.
         If structured is True, applies structured varimax rotation, if False applies basic orthomax.
         
-        According to Portes & Aguirre (2016), Physical Review E, 93(5).
+        According to Portes & Aguirre, Physical Review E, 93(5), 2016.
 
         Returns as M-SSA, but rotated.
         """
@@ -308,7 +308,7 @@ class ssa_class():
         plot (True | False) - whether to plot data vs. surr. eigenvalues (for visual inspection) - recommended!
         return_eigvals (True | False) - whether to return all surrogate eigenvalues, for further inspection
 
-        According to Groth & Ghil (2015), Journal of Climate, 28(19). 
+        According to Groth & Ghil, Journal of Climate, 28(19), 2015.
         """
 
         if method not in ['data', 'separately', 'ensemble', 'rotation', 'rank-def']:
