@@ -6,6 +6,7 @@ Examples for pyCliTS -- https://github.com/jajcayn/pyclits
 import pyclits as clt
 from datetime import date
 import matplotlib
+# change for your favourite backend
 matplotlib.use('TKAgg')
 import matplotlib.pyplot as plt
 import numpy as np

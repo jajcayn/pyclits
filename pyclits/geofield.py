@@ -4,7 +4,7 @@ created on Jan 29, 2014
 @author: Nikola Jajcay, jajcay(at)cs.cas.cz
 based on class by Martin Vejmelka -- https://github.com/vejmelkam/ndw-climate --
 
-last update on Sep 22, 2017
+last update on Sep 26, 2017
 """
 
 import numpy as np
@@ -1508,7 +1508,7 @@ class DataField:
             d -= pca_mean  
 
             U, s, V = svd(d, False, True, True)
-            exp_var = (s ** 2) / self.time.shape[0]
+            exp_var = (s ** 2) / (self.time.shape[0] - 1)
             exp_var /= np.sum(exp_var)
             eofs = V[:n_comps]
             pcs = U[:, :n_comps]
@@ -1580,10 +1580,10 @@ class DataField:
             day_avg, mon_avg, _ = self.extract_day_month_year()
             self.time = t.copy()
             day_data, mon_data, _ = self.extract_day_month_year()
+            d = d[ndx, ...]
             for mi in range(1,13):
                 mon_mask_avg = (mon_avg == mi)
                 mon_mask_data = (mon_data == mi)
-                d = d[ndx, ...]
                 for di in range(1,32):
                     sel_avg = np.logical_and(mon_mask_avg, day_avg == di)
                     sel_data = np.logical_and(mon_mask_data, day_data == di)

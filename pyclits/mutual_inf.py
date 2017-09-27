@@ -46,6 +46,8 @@ def get_time_series_condition(ts, tau = 1, reversed = False, dim_of_condition = 
     n = master.shape[0] - tau - n_eta*eta
     if eta is None:
         eta = 0
+    else:
+        eta = int(eta)
 
     x = master[n_eta*eta : -tau] # "now"
     if x.shape[0] != n:
