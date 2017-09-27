@@ -12,7 +12,7 @@ matplotlib.use('TKAgg')
 import matplotlib.pyplot as plt
 import numpy as np
 
-## WARNING runs approximately 45min, depending on the machine [mine: 5threads on quadcore 2.2GHz i7]
+## WARNING runs approximately 45min, depending on your machine [I'm running it with 5 threads on quadcore 2.2GHz i7]
 
 # lets compute mutual information between NINO3.4 index and global SST
 # load SSTs
@@ -43,9 +43,10 @@ def _compute_MI(a):
 
 # beforehand we need to filter out NaNs... this function will return field as time x space [enrolled in one dimension]
 #   and without NaNs, and mask with nans which we will use later to reconstruct former shape of the field [with NaNs]
+NUM_WORKERS = 5
 sst_flat, nan_mask = sst.filter_out_NaNs()
 mutual_inf = np.zeros((sst_flat.shape[1],))
-pool = mp.ProcessingPool(5)
+pool = mp.ProcessingPool(NUM_WORKERS)
 # lets build our argumnet to the function -- we need to keep track of grid point number
 args = [(i, sst_flat[:, i], nino34.data) for i in range(mutual_inf.shape[0])]
 result = pool.map(_compute_MI, args)

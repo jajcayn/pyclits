@@ -24,12 +24,13 @@ print np.any(np.isnan(sst.data)) # print True, so we've got NaNs in the data..
 #   interpolate spatial NaNs.. with SST dataset that makes no sense, but sometimes it might help..]
 #     over the land, with 
 
+NUM_WORKERS = 5 # how many threads you want to initialize
 print sst.check_NaNs_only_spatial() # this prints True, so we are lucky, NaNs are only spatial.. 
 # lets cut the field so we dont spend too much time on interpolation
 sst.select_date(date(1950,1,1), date(2010,1,1))
 # lets check how the field looks like and lets try interpolate spatial nans
 import pathos.multiprocessing as mp
-pool = mp.ProcessingPool(5)
+pool = mp.ProcessingPool(NUM_WORKERS)
 interp = sst.interpolate_spatial_nans(method = 'cubic', apply_to_data = False, pool = pool)
 pool.close()
 pool.join()

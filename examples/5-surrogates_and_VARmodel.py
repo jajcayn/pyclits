@@ -181,8 +181,9 @@ sst.return_seasonality(sst_mean, sst_var, None)
 # if you see numpy warning about mean of empty slices, thats OK
 # lets e.g. compare PCA components!
 # since surrogate generation supports multi-threading, lets make use of it!
+NUM_WORKERS = 5 # how many workers you want to initialize
 import pathos.multiprocessing as mp
-pool = mp.ProcessingPool(5)
+pool = mp.ProcessingPool(NUM_WORKERS)
 eofs_data, pcs_data, var_data = sst.pca_components(n_comps = 3)
 
 # if preserve correlations is True, this will create multivariate surrogates

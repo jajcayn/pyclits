@@ -61,6 +61,7 @@ plt.show()
 
 # we can of course do wavelet on spatio-temporal data!
 # lets import pool and allow for some multi-threading
+NUM_WORKERS = 5 # how many threads we want to initialize
 import pathos.multiprocessing as mp
 
 # load NCEP/NCAR reanlysis data for NH
@@ -68,7 +69,7 @@ temp = clt.data_loaders.load_NCEP_data_monthly("example_data/air.mon.mean.sig995
     end_date = date(2017, 1, 1), lats = [0, 80], lons = None, level = None, anom = False)
 
 # lets compare annual amplitudes around the globe!
-pool = mp.ProcessingPool(5) # compute on 5 workers
+pool = mp.ProcessingPool(NUM_WORKERS) # compute on 5 workers
 temp.wavelet(period = 1, period_unit = 'y', cut = 4, cut_data = True, cut_time = True, 
     regress_amp_to_data = True, pool = pool)
 pool.close() # lets be fair and close and join the pool after we're done
