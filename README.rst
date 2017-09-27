@@ -17,7 +17,7 @@ Uses fast numpy, scipy and scikit-learn libraries and offers multi-thread comput
 
 Documentation
 -------------
-Instead of proper documentation [I plan to add it later though!], I created a few examples on how to work with basic class ``DataField`` and other functions. These can be found in examples folder. This folder includes some climate data, which are publicly available for download, just for your convenience, I included them here. 
+Instead of proper documentation [I plan to add it later though!], I created a few examples on how to work with basic class ``DataField``, ``SurrogateField``, ``SSA`` and other functions. These can be found in examples folder. The folder also contain climate data to work on, all of them are publicly available and inside example_data folder, you can find disclaimer with links to the datasets.
 
 
 Dependencies
