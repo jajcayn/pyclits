@@ -432,7 +432,7 @@ class ssa_class():
         """
         Performs Enhanced Monte Carlo SSA.
 
-        According to Palus & Novotna (2004), Nonlinear Processes in Geophys., 11(5/6).
+        According to Palus & Novotna, Nonlinear Processes in Geophys., 11(5/6), 2004.
         """
 
         # get the ensamble of surrogate data
