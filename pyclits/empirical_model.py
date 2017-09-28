@@ -269,20 +269,25 @@ class EmpiricalModel(DataField):
 
 
 
-    def train_model(self, harmonic_pred = 'first', quad = False, delay_model = False):
+    def train_model(self, harmonic_pred = 'first', quad = False, delay_model = False, regressor = 'partialLSQ'):
         """
         Train the model.
         harmonic_pred could have values 'first', 'all', 'none'
         if quad, train quadratic model, else linear
-        if delay_model, the linear part of the model will be consider DDE with sigmoid type of response,
+        if delay_model, the linear part of the model will be considered DDE with sigmoid type of response,
         inspired by DDE model of ENSO (Ghil) - delayed feedback.
+        regression will be one of
+            'partialLSQ' - for partial least squares
+            'linear' - for basic linear regressor [sklearn]
+            'ridge' - fir ridge regressor [sklearn]
+            'bayes_ridge' - for Bayesian ridge regressor [sklearn]
         """
 
         self.harmonic_pred = harmonic_pred
         self.quad = quad
 
         if self.verbose:
-            print("now training %d-level model..." % self.no_levels)
+            print("now training %d-level model using %s regressor..." % (self.no_levels, regressor))
 
         pcs = self.input_pcs.copy()
 
@@ -369,19 +374,27 @@ class EmpiricalModel(DataField):
                                 xsin, xcos]
 
                 # regularize and regress
-                from sklearn import linear_model as lm
-                # regressor = lm.LinearRegression(fit_intercept = True)
-                # regressor = lm.Ridge(fit_intercept = True, alpha = .5)
-                # regressor = lm.Lasso(fit_intercept = True, alpha = .1) # blows up
-                # regressor = lm.ElasticNet(fit_intercept = True, alpha = 0.1) # blows up
-                self.regressor = lm.BayesianRidge(fit_intercept = True)
-                x -= np.mean(x, axis = 0)
-                ux,sx,vx = np.linalg.svd(x, False)
-                optimal = min(ux.shape[1], 25)
-                self.regressor.fit(x, y[:, k])
-                b_aux = np.append(self.regressor.coef_, self.regressor.intercept_)
-                residuals[level][:, k] = y[:, k] - self.regressor.predict(x)
-                # b_aux, residuals[level][:, k] = _partial_least_squares(x, y[:, k], ux, sx, vx.T, optimal, True)
+                if regressor != 'partialLSQ':
+                    from sklearn import linear_model as lm
+                    if regressor == 'bayes_ridge':
+                        self.regressor = lm.BayesianRidge(fit_intercept = True)
+                    elif regressor == 'linear':
+                        self.regressor = lm.LinearRegression(fit_intercept = True)
+                    elif regressor == 'ridge':
+                        self.regressor = lm.Ridge(fit_intercept = True, alpha = .5)
+                    else:
+                        raise Exception("Unknown regressor, please check documentation!")
+
+                    self.regressor.fit(x, y[:, k])
+                    b_aux = np.append(self.regressor.coef_, self.regressor.intercept_)
+                    residuals[level][:, k] = y[:, k] - self.regressor.predict(x)
+                
+                elif regressor == 'partialLSQ':
+                    
+                    x -= np.mean(x, axis = 0)
+                    ux,sx,vx = np.linalg.svd(x, False)
+                    optimal = min(ux.shape[1], 25)  
+                    b_aux, residuals[level][:, k] = _partial_least_squares(x, y[:, k], ux, sx, vx.T, optimal, True)
 
                 # store results
                 fit_mat[level][:, k] = b_aux
@@ -551,6 +564,7 @@ class EmpiricalModel(DataField):
         del args
         if n_workers > 1:
             pool.close()
+            pool.join()
 
         self.integration_results = np.zeros((n_realizations, pcs.shape[1], self.int_length))
         self.num_exploding = np.zeros((n_realizations,))
@@ -706,12 +720,12 @@ class EmpiricalModel(DataField):
                     n_PCs = 1
                     n_samples = 100
                     if not self.combined:
-                        ndx = np.argsort(np.sum(np.power(self.pcs[:, :n_PCs] - xx[k-1, :n_PCs], 2), axis = 1))
+                        ndx = np.argsort(np.sum(np.power(self.pcs[:, :n_PCs] - xx[0][k-1, :n_PCs], 2), axis = 1))
                         Q = np.cov(self.last_level_res[ndx[:n_samples], :], rowvar = 0)
                         self.rr = np.linalg.cholesky(Q).T
                     elif self.combined:
-                        ndx1 = np.argsort(np.sum(np.power(self.pcs[:, :n_PCs] - xx[k-1, :n_PCs], 2), axis = 1))
-                        ndx2 = np.argsort(np.sum(np.power(self.pcs[:, self.no_input_ts:self.no_input_ts+n_PCs] - xx[k-1, self.no_input_ts:self.no_input_ts+n_PCs], 2), axis = 1))
+                        ndx1 = np.argsort(np.sum(np.power(self.pcs[:, :n_PCs] - xx[0][k-1, :n_PCs], 2), axis = 1))
+                        ndx2 = np.argsort(np.sum(np.power(self.pcs[:, self.no_input_ts:self.no_input_ts+n_PCs] - xx[0][k-1, self.no_input_ts:self.no_input_ts+n_PCs], 2), axis = 1))
                         res1 = self.last_level_res[ndx1[:n_samples], :]
                         res2 = self.last_level_res[ndx2[:n_samples], :]
                         Q = np.cov(np.concatenate((res1, res2), axis = 0), rowvar = 0)
