@@ -262,7 +262,7 @@ class DataField:
         """
 
         date_split = time_string.split('-')
-        y = date_split[0][-4:]
+        y = ("%04d" % int(date_split[0][-4:]))
         m = ("%02d" % int(date_split[1]))
         d = ("%02d" % int(date_split[2][:2]))
 
@@ -2098,7 +2098,7 @@ class DataField:
     def quick_render(self, t = 0, lvl = 0, mean = False, field_to_plot = None, station_data = False, tit = None, 
                         symm = False, whole_world = True, log = None, fname = None, plot_station_points = False, 
                         colormesh = False, cmap = None, vminmax = None, levels = 40, cbar_label = None, 
-                        subplot = False):
+                        subplot = False, extend = 'neither'):
         """
         Simple plot of the geo data using the Robinson projection for whole world
         or Mercator projection for local plots.
@@ -2237,14 +2237,15 @@ class DataField:
         cmap = plt.get_cmap(cmap) if cmap is not None else plt.get_cmap('viridis')
         if log is not None:
             levels = np.logspace(np.log10(min)/np.log10(log), np.log10(max)/np.log10(log), levels+1)
-            cs = m.contourf(x, y, data, norm = colors.LogNorm(vmin = min, vmax = max), levels = levels, cmap = cmap)
+            cs = m.contourf(x, y, data, norm = colors.LogNorm(vmin = min, vmax = max), levels = levels, cmap = cmap, 
+                extend = extend)
         else:
             levels = np.linspace(min, max, levels+1)
             if colormesh:
                 data = np.ma.array(data, mask = np.isnan(data))
                 cs = m.pcolormesh(x, y, data, vmin = levels[0], vmax = levels[-1], cmap = cmap)
             else:
-                cs = m.contourf(x, y, data, levels = levels, cmap = cmap)
+                cs = m.contourf(x, y, data, levels = levels, cmap = cmap, extend = extend)
 
         # draw stations if station data
         if station_data and plot_station_points:
