@@ -130,6 +130,8 @@ class DataField:
                 self.data = data
             self.lons = d.variables['longitude'][:]
             self.lats = d.variables['latitude'][:]
+            if 'level' in d.variables.keys():
+                self.level = d.variables['level'][:]
             self.time = d.variables['time'][:] # hours since 1900-01-01 00:00
             self.time = self.time / 24.0 + date.toordinal(date(1900, 1, 1))
             self.var_name = variable_name
