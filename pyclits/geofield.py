@@ -650,6 +650,7 @@ class DataField:
         
         if self.data.ndim > 3:
             self.data = self.data[:, level, ...]
+            self.level = self.level[level]
         else:
             raise Exception('Slicing level in single-level data.')
         
