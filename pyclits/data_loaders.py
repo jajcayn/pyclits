@@ -204,7 +204,10 @@ def load_NCEP_data_daily(filename, varname, start_date, end_date, lats, lons, le
         Ndays += len(g.time)
         glist.append(g)
         
-    data = np.zeros((Ndays, len(glist[0].lats), len(glist[0].lons)))
+    if glist[0].data.ndim == 3:
+        data = np.zeros((Ndays, len(glist[0].lats), len(glist[0].lons)))
+    else:
+        data = np.zeros((Ndays, len(glist[0].level), len(glist[0].lats), len(glist[0].lons)))
     time = np.zeros((Ndays,))
     n = 0
     for g in glist:

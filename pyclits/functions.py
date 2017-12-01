@@ -113,15 +113,23 @@ def partial_corr(a):
     return val, pval
 
 
-def get_haar_flucs(ts, min_dt = 2, run_backwards = True):
+def get_haar_flucs(ts, min_dt = 2, run_backwards = True, spacings = [2, 4, 8, 16], rms = True):
     """
     Computes Haar fluctuations of the data -- scaling.
     if run_backwards is True, the function runs twice, the second time with reversed time seres,
       this is used for better statistics
+    spacings either None for linear even sampling [takes too long]
+        or sequence as e.g. [2, 4, 8, 16] where first 1/n time series will be spaced with 2 steps,
+        next 1/n with 4 steps and so on..
+    rms boolean whether to run RMS Haar or absolute Haar
     """
     min_dt = min_dt
     max_dt = ts.shape[0]
-    dts = np.arange(min_dt, max_dt, 2) # only even as we are dividing the interval into two
+    if spacings is None:
+        dts = np.arange(min_dt, max_dt, 2) # only even as we are dividing the interval into two
+    else:
+        dts = np.concatenate([np.arange(i*int(np.ceil(max_dt//len(spacings) / 2) * 2), (i+1)*int(np.ceil(max_dt//len(spacings) / 2) * 2), sp) for sp, i in zip(spacings, range(len(spacings)))])
+        dts = dts[1:] # dts starts with index 0, we need to start with 2
     runs = 2 if run_backwards else 1
     haar = np.zeros((dts.shape[0], runs), dtype = np.float32)
     for run in range(runs):
@@ -129,7 +137,7 @@ def get_haar_flucs(ts, min_dt = 2, run_backwards = True):
             ts = ts[::-1]
         for i in range(dts.shape[0]):
             # split index every dt
-            split_ndx = list(np.arange(dts[i], max_dt, dts[i]))
+            split_ndx = list(np.arange(dts[i], dts[-1], dts[i]))
             # split array, result is array with shape [x,dt]
             if ts.shape[0] % dts[i] == 0:
                 splitted = np.array(np.split(ts, split_ndx))
@@ -141,7 +149,13 @@ def get_haar_flucs(ts, min_dt = 2, run_backwards = True):
             # average parts over second axis [the dt/2 one]
             means = np.mean(splitted, axis = 1)
             # compute Haar squared with C = 2
-            haars = (2*means[:, 1] - 2*means[:, 0])**2
+            haars = (2*means[:, 1] - 2*means[:, 0])
+            if rms:
+                haars = haars**2
+            else:
+                haars = np.abs(haars)
             haar[i, run] = np.mean(haars)
-        
-    return dts, np.mean(np.sqrt(haar), axis = 1)
+    if rms:
+        return dts, np.mean(np.sqrt(haar), axis = 1)
+    else:
+        return dts, np.mean(haar, axis = 1)

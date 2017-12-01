@@ -217,6 +217,8 @@ class DataField:
                         date_since = self._parse_time_units(d.variables[key].units)
                         if "hours" in d.variables[key].units:
                             self.time = self.time / 24.0 + date.toordinal(date_since)
+                        elif "seconds" in d.variables[key].units:
+                            self.time = self.time / 86400. + date.toordinal(date_since)
                         elif "days" in d.variables[key].units:
                             self.time += date.toordinal(date_since)
                         elif "months" in d.variables[key].units:
