@@ -137,7 +137,7 @@ def get_haar_flucs(ts, min_dt = 2, run_backwards = True, spacings = [2, 4, 8, 16
             ts = ts[::-1]
         for i in range(dts.shape[0]):
             # split index every dt
-            split_ndx = list(np.arange(dts[i], dts[-1], dts[i]))
+            split_ndx = list(np.arange(dts[i], max_dt, dts[i]))
             # split array, result is array with shape [x,dt]
             if ts.shape[0] % dts[i] == 0:
                 splitted = np.array(np.split(ts, split_ndx))
