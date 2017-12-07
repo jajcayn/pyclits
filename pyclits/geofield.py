@@ -2193,7 +2193,7 @@ class DataField:
                 llons = lons_stations.tolist()
             llons.append(360)
             lons = np.array(llons)
-            m = Basemap(projection = 'robin', lon_0 = 0, resolution = 'c')
+            m = Basemap(projection = 'robin', lon_0 = 0, resolution = 'l')
             
             end_lon_shift = np.sort(lons - 180.)
             end_lon_shift = end_lon_shift[end_lon_shift >= 0.]
@@ -2201,6 +2201,9 @@ class DataField:
 
             m.drawparallels(np.arange(-90, 90, 30), linewidth = 1.2, labels = [1,0,0,0], color = "#222222", size = size_parallels)
             m.drawmeridians(np.arange(-180, 180, 60), linewidth = 1.2, labels = [0,0,0,1], color = "#222222", size = size_parallels)
+
+            m.drawcoastlines(linewidth = 1.6, color = "#333333")
+            m.drawcountries(linewidth = 1.1, color = "#333333")
 
         else:
             if not station_data:
@@ -2216,7 +2219,7 @@ class DataField:
             m = Basemap(projection = 'merc',
                     llcrnrlat = lats[0], urcrnrlat = lats[-1],
                     llcrnrlon = lons[0], urcrnrlon = lons[-1],
-                    resolution = 'i')
+                    resolution = 'h')
 
             # parallels and meridians to plot
             draw_lats = np.arange(np.around(lats[0]/5, decimals = 0)*5, np.around(lats[-1]/5, decimals = 0)*5, 10)
@@ -2224,9 +2227,8 @@ class DataField:
             m.drawparallels(draw_lats, linewidth = 1.2, labels = [1,0,0,0], color = "#222222", size = size_parallels)
             m.drawmeridians(draw_lons, linewidth = 1.2, labels = [0,0,0,1], color = "#222222", size = size_parallels)
             
-
-        m.drawcoastlines(linewidth = 2, color = "#333333")
-        m.drawcountries(linewidth = 1.5, color = "#333333")
+            m.drawcoastlines(linewidth = 1., color = "#333333")
+            m.drawcountries(linewidth = 0.7, color = "#333333")
     
         x, y = m(*np.meshgrid(lons, lats))
         
