@@ -839,7 +839,7 @@ class DataField:
         yearly_data = []
         yearly_time = []
 
-        day, mon, year = self.extract_day_month_year()
+        _, _, year = self.extract_day_month_year()
 
         for y in range(year[0], year[-1]+1, 1):
             year_ndx = np.where(year == y)[0]
@@ -1326,7 +1326,7 @@ class DataField:
 
         for i in range(d.shape[-2]):
             for j in range(d.shape[-1]):
-                avg_mask = np.array([[mask for kk in range(d.shape[1])] for ll in range(d.shape[0])])
+                avg_mask = np.array([[mask for _ in range(d.shape[1])] for _ in range(d.shape[0])])
                 d[:, :, i, j] = np.average(self.data, axis = (2, 3), weights = avg_mask)
                 mask = np.roll(mask, 1, axis = 1)
             # return mask to correct y position
@@ -2219,7 +2219,7 @@ class DataField:
             m = Basemap(projection = 'merc',
                     llcrnrlat = lats[0], urcrnrlat = lats[-1],
                     llcrnrlon = lons[0], urcrnrlon = lons[-1],
-                    resolution = 'h')
+                    resolution = 'i')
 
             # parallels and meridians to plot
             draw_lats = np.arange(np.around(lats[0]/5, decimals = 0)*5, np.around(lats[-1]/5, decimals = 0)*5, 10)
