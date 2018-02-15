@@ -97,7 +97,7 @@ class ssa_class():
         self.C, aug_x = self._get_cov_matrix(self.X)
 
         # eigendecomposition
-        u, lam, e = np.linalg.svd(self.C, compute_uv = True) # diag(lambda) = E.T * C * E, lambda are eigenvalues, cols of E are eigenvectors
+        _, lam, e = np.linalg.svd(self.C, compute_uv = True) # diag(lambda) = E.T * C * E, lambda are eigenvalues, cols of E are eigenvectors
         e = e.T
         assert np.allclose(np.diag(lam), np.dot(e.T, np.dot(self.C, e)))
         
@@ -141,7 +141,7 @@ class ssa_class():
 
         Ascaled = (self.lam[:self.S]**2) * self.e[:, :self.S]
 
-        p, k = Ascaled.shape
+        _, k = Ascaled.shape
         T, d = np.eye(k), 0
 
         vec_i = np.array(self.M*[1]).reshape((1, self.M))
@@ -150,7 +150,7 @@ class ssa_class():
         M = I_d - (gamma/self.d) * np.ones((self.d, self.d))
         IMI = np.dot(I_d_md.T, np.dot(M, I_d_md))
 
-        for i in range(q):
+        for _ in range(q):
             d_old = d
             B = np.dot(Ascaled, T)
             G = np.dot(Ascaled.T, B * np.dot(IMI, B**2))
@@ -180,7 +180,7 @@ class ssa_class():
         p, k = Ascaled.shape
         R, d = np.eye(k), 0
 
-        for i in range(q):
+        for _ in range(q):
             d_old = d
             Lambda = np.dot(Ascaled, R)
             u, s, vh = np.linalg.svd(np.dot(Ascaled.T, np.asarray(Lambda)**3 - (gamma/p) * np.dot(Lambda, np.diag(np.diag(np.dot(Lambda.T,Lambda))))))
@@ -424,7 +424,7 @@ class ssa_class():
         if not return_eigvals:
             return num_sign
         else:
-            return num, eigvals_surrs
+            return num_sign, eigvals_surrs
 
 
 
