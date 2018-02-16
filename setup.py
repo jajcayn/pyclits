@@ -11,7 +11,7 @@ def readme():
         return f.read()
 
 setup(name = "pyclits",
-    version = "0.1",
+    version = "0.2",
     description = "Python Climate Time Series package",
     long_description = readme(),
     classifiers = [

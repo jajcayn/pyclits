@@ -22,7 +22,7 @@ Instead of proper documentation [I plan to add it later though!], I created a fe
 
 Dependencies
 ------------
-``pyclits`` relies on the following open source packages    
+``pyclits`` relies on the following open source packages
 
 **Required**:
 
@@ -45,6 +45,12 @@ Dependencies
 Contributing
 ------------
 All contributions are welcome! Just drop me an email or pull request.
+
+
+Versions
+--------
+* 0.1: initial version
+* 0.2: various minor bug fixes, added VARIMAX rotation as optional parameter in pca_components() method of DataField
 
 
 License information

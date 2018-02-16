@@ -15,7 +15,7 @@ import csv
 from os.path import split
 import os
 
-        
+
 
 class DataField:
     """
@@ -23,12 +23,12 @@ class DataField:
     3-dimensional - two spatial and one temporal dimension. The fields for station data contains
     temporal dimension and location specification.
     """
-    
-    def __init__(self, data_folder = '', data = None, lons = None, lats = None, time = None, verbose = False):
+
+    def __init__(self, data_folder='', data=None, lons=None, lats=None, time=None, verbose=False):
         """
         Initializes either an empty data set or with given values.
         """
-        
+
         self.data_folder = data_folder
         self.data = data
         self.lons = lons
@@ -67,13 +67,13 @@ class DataField:
             return self.data.shape
         else:
             raise Exception("DataField is empty.")
-        
-        
-        
+
+
+
     def __getitem__(self, key):
         """
         getitem representation.
-        """        
+        """
 
         if self.data is not None:
             return self.data[key]
@@ -82,7 +82,7 @@ class DataField:
 
 
 
-    def load(self, filename = None, variable_name = None, dataset = 'ECA-reanalysis', print_prog = True):
+    def load(self, filename=None, variable_name=None, dataset='ECA-reanalysis', print_prog=True):
         """
         Loads geophysical data from netCDF file for reanalysis or from text file for station data.
         Now supports following datasets: (dataset - keyword passed to function)
@@ -92,11 +92,11 @@ class DataField:
         """
 
         from netCDF4 import Dataset
-        
+
         if dataset == 'ECA-reanalysis':
             d = Dataset(self.data_folder + filename, 'r')
             v = d.variables[variable_name]
-            
+
             data = v[:] # masked array - only land data, not ocean/sea
             self.data = data.data.copy() # get only data, not mask
             self.data[data.mask] = np.nan # filled masked values with NaNs
@@ -115,15 +115,15 @@ class DataField:
                 print("Default temporal sampling in the data is %.2f day(s)" % (np.nanmean(np.diff(self.time))))
                 if np.any(np.isnan(self.data)):
                     print("The data contains NaNs! All methods are compatible with NaNs, just to let you know!")
-            
-            d.close()     
-                    
+
+            d.close()
+
         elif dataset == 'ERA':
             d = Dataset(self.data_folder + filename, 'r')
             v = d.variables[variable_name]
 
             data = v[:]
-            if isinstance(data, np.ma.masked_array):             
+            if isinstance(data, np.ma.masked_array):
                 self.data = data.data.copy() # get only data, not mask
                 self.data[data.mask] = np.nan # filled masked values with NaNs
             else:
@@ -145,15 +145,15 @@ class DataField:
                 print("Default temporal sampling in the data is %.2f day(s)" % (np.nanmean(np.diff(self.time))))
                 if np.any(np.isnan(self.data)):
                     print("The data contains NaNs! All methods are compatible with NaNs, just to let you know!")
-            
+
             d.close()
-            
+
         elif dataset == 'NCEP':
             d = Dataset(self.data_folder + filename, 'r')
             v = d.variables[variable_name]
-            
+
             data = v[:] # masked array - only land data, not ocean/sea
-            if isinstance(data, np.ma.masked_array):             
+            if isinstance(data, np.ma.masked_array):
                 self.data = data.data.copy() # get only data, not mask
                 self.data[data.mask] = np.nan # filled masked values with NaNs
             else:
@@ -173,7 +173,7 @@ class DataField:
             elif "months" in d.variables['time'].units:
                 from dateutil.relativedelta import relativedelta
                 for t in range(self.time.shape[0]):
-                    self.time[t] = date.toordinal(date_since + relativedelta(months = +int(self.time[t])))
+                    self.time[t] = date.toordinal(date_since + relativedelta(months=+int(self.time[t])))
             self.var_name = variable_name
             if np.any(np.isnan(self.data)):
                 self.nans = True
@@ -185,7 +185,7 @@ class DataField:
                 print("Default temporal sampling in the data is %.2f day(s)" % (np.nanmean(np.diff(self.time))))
                 if np.any(np.isnan(self.data)):
                     print("The data contains NaNs! All methods are compatible with NaNs, just to let you know!")
-            
+
             d.close()
 
         elif dataset == 'arbitrary':
@@ -193,7 +193,7 @@ class DataField:
             v = d.variables[variable_name]
 
             data = v[:] # masked array - only land data, not ocean/sea
-            if isinstance(data, np.ma.masked_array):             
+            if isinstance(data, np.ma.masked_array):
                 self.data = data.data.copy() # get only data, not mask
                 self.data[data.mask] = np.nan # filled masked values with NaNs
                 self.data_mask = data.mask.copy()
@@ -239,7 +239,7 @@ class DataField:
                 print("Default temporal sampling in the data is %.2f day(s)" % (np.nanmean(np.diff(self.time))))
                 if np.any(np.isnan(self.data)):
                     print("The data contains NaNs! All methods are compatible with NaNs, just to let you know!")
-            
+
             d.close()
 
         else:
@@ -271,21 +271,21 @@ class DataField:
         d = ("%02d" % int(date_split[2][:2]))
 
         return datetime.strptime("%s-%s-%s" % (y, m, d), '%Y-%m-%d')
-            
-            
-            
-    def load_station_data(self, filename, dataset = 'ECA-station', print_prog = True, offset_in_file = 0):
+
+
+
+    def load_station_data(self, filename, dataset='ECA-station', print_prog=True, offset_in_file=0):
         """
         Loads station data, usually from text file. Uses numpy.loadtxt reader.
         """
-        
+
         if dataset == 'Klem_day':
             raw_data = np.loadtxt(self.data_folder + filename) # first column is continous year and second is actual data
             self.data = np.array(raw_data[:, 1])
             time = []
-            
+
             # use time iterator to go through the dates
-            y = int(np.modf(raw_data[0, 0])[1]) 
+            y = int(np.modf(raw_data[0, 0])[1])
             if np.modf(raw_data[0, 0])[0] == 0:
                 start_date = date(y, 1, 1)
             delta = timedelta(days = 1)
@@ -297,7 +297,7 @@ class DataField:
             self.location = 'Praha-Klementinum, Czech Republic'
             print("Station data from %s saved to structure. Shape of the data is %s" % (self.location, str(self.data.shape)))
             print("Time stamp saved to structure as ordinal values where Jan 1 of year 1 is 1")
-            
+
         if dataset == 'ECA-station':
             with open(self.data_folder + filename, 'rb') as f:
                 time = []
@@ -334,19 +334,19 @@ class DataField:
                 print("Time stamp saved to structure as ordinal values where Jan 1 of year 1 is 1")
             if self.missing.shape[0] != 0 and self.verbose:
                 print("** WARNING: There were some missing values! To be precise, %d missing values were found!" % (self.missing.shape[0]))
-                  
-                  
-                  
+
+
+
     def copy_data(self):
         """
         Returns the copy of data.
-        """              
-        
+        """
+
         return self.data.copy()
 
 
 
-    def copy(self, temporal_ndx = None):
+    def copy(self, temporal_ndx=None):
         """
         Returns a copy of DataField with data, lats, lons and time fields.
         If temporal_ndx is not None, copies only selected temporal part of data.
@@ -377,21 +377,21 @@ class DataField:
             copied.cos_weights = self.cos_weights
         if self.data_mask is not None:
             copied.data_mask = self.data_mask
-        
+
         copied.nans = self.nans
 
-        return copied   
-                                            
-                    
-                    
-    def select_date(self, date_from, date_to, apply_to_data = True, exclusive = True):
+        return copied
+
+
+
+    def select_date(self, date_from, date_to, apply_to_data=True, exclusive=True):
         """
         Selects the date range - date_from is inclusive, date_to is exclusive. Input is date(year, month, day).
         """
-        
+
         d_start = date_from.toordinal()
         d_to = date_to.toordinal()
-        
+
         if exclusive:
             ndx = np.logical_and(self.time >= d_start, self.time < d_to)
         else:
@@ -404,12 +404,12 @@ class DataField:
         if self.missing is not None:
             missing_ndx = np.logical_and(self.missing >= d_start, self.missing < d_to)
             self.missing = self.missing[missing_ndx] # slice missing if exists
-            
+
         return ndx
 
 
 
-    def get_sliding_window_indexes(self, window_length, window_shift, unit = 'm', return_half_dates = False):
+    def get_sliding_window_indexes(self, window_length, window_shift, unit='m', return_half_dates=False):
         """
         Returns list of indices for sliding window analysis.
         If return_half_dates is True, also returns dates in the middle of the interval for reference.
@@ -435,7 +435,7 @@ class DataField:
         window_start = self.get_date_from_ndx(0)
         window_end = window_start + length
         while window_end <= self.get_date_from_ndx(-1):
-            ndx = self.select_date(window_start, window_end, apply_to_data = False)
+            ndx = self.select_date(window_start, window_end, apply_to_data=False)
             ndxs.append(ndx)
             if return_half_dates:
                 half_dates.append(window_start + (window_end - window_start) / 2)
@@ -443,12 +443,12 @@ class DataField:
             window_end = window_start + length
 
         # add last
-        ndxs.append(self.select_date(window_start, window_end, apply_to_data = False))
+        ndxs.append(self.select_date(window_start, window_end, apply_to_data=False))
         if return_half_dates:
             half_dates.append(window_start + (self.get_date_from_ndx(-1) - window_start) / 2)
 
         if np.sum(ndxs[-1]) != np.sum(ndxs[-2]) and self.verbose:
-            print("**WARNING: last sliding window is shorter than others! (%d vs. %d in others)" 
+            print("**WARNING: last sliding window is shorter than others! (%d vs. %d in others)"
                 % (np.sum(ndxs[-1]), np.sum(ndxs[-2])))
 
         if return_half_dates:
@@ -458,11 +458,11 @@ class DataField:
 
 
 
-    def create_time_array(self, date_from, sampling = 'm'):
+    def create_time_array(self, date_from, sampling='m'):
         """
         Creates time array for already saved data in 'self.data'.
         From date_from to date_from + data length. date_from is inclusive.
-        Sampling: 
+        Sampling:
             'm' for monthly, could be just 'm' or '3m' as three-monthly
             'd' for daily
             'xh' where x = {1, 6, 12} for sub-daily.
@@ -471,16 +471,16 @@ class DataField:
         if 'm' in sampling:
             if 'm' != sampling:
                 n_months = int(sampling[:-1])
-                timedelta = relativedelta(months = +n_months)
+                timedelta = relativedelta(months=+n_months)
             elif 'm' == sampling:
-                timedelta = relativedelta(months = +1)
+                timedelta = relativedelta(months=+1)
         elif sampling == 'd':
-            timedelta = relativedelta(days = +1)
+            timedelta = relativedelta(days=+1)
         elif sampling in ['1h', '6h', '12h']:
             hourly_data = int(sampling[:-1])
-            timedelta = relativedelta(hours = +hourly_data)
+            timedelta = relativedelta(hours=+hourly_data)
         elif sampling == 'y':
-            timedelta = relativedelta(years = +1)
+            timedelta = relativedelta(years=+1)
         else:
             raise Exception("Unknown sampling.")
 
@@ -489,32 +489,32 @@ class DataField:
         for t in range(self.data.shape[0]):
             self.time[t] = d_now.toordinal()
             d_now += timedelta
-        
-    
-    
+
+
+
     def get_date_from_ndx(self, ndx):
         """
         Returns the date of the variable from given index.
         """
-        
+
         return date.fromordinal(np.int(self.time[ndx]))
-        
-        
-        
+
+
+
     def get_spatial_dims(self):
         """
         Returns the spatial dimensions of the data as list.
         """
-        
+
         return list(self.data.shape[-2:])
-        
-    
-        
+
+
+
     def find_date_ndx(self, date):
         """
         Returns index which corresponds to the date. Returns None if the date is not contained in the data.
         """
-        
+
         d = date.toordinal()
         pos = np.nonzero(self.time == d)
         if not np.all(np.isnan(pos)):
@@ -530,35 +530,35 @@ class DataField:
         """
 
         return [np.abs(self.lats - lat).argmin(), np.abs(self.lons - lon).argmin()]
-            
-            
-            
-    def select_months(self, months, apply_to_data = True):
+
+
+
+    def select_months(self, months, apply_to_data=True):
         """
         Subselects only certain months. Input as a list of months number.
         """
-        
+
         ndx = filter(lambda i: date.fromordinal(int(self.time[i])).month in months, range(len(self.time)))
-        
+
         if apply_to_data:
             self.time = self.time[ndx]
             self.data = self.data[ndx, ...]
-        
+
         return ndx
-        
-        
-        
+
+
+
     def select_lat_lon(self, lats, lons, apply_to_data = True):
         """
         Selects region in lat/lon. Input is for both [from, to], both are inclusive. If None, the dimension is not modified.
         """
-        
+
         if self.lats is not None and self.lons is not None:
             if lats is not None:
                 lat_ndx = np.nonzero(np.logical_and(self.lats >= lats[0], self.lats <= lats[1]))[0]
             else:
                 lat_ndx = np.arange(len(self.lats))
-                
+
             if lons is not None:
                 if lons[0] < lons[1]:
                     lon_ndx = np.nonzero(np.logical_and(self.lons >= lons[0], self.lons <= lons[1]))[0]
@@ -568,7 +568,7 @@ class DataField:
                     lon_ndx = np.array(l1 + l2)
             else:
                 lon_ndx = np.arange(len(self.lons))
-            
+
             if apply_to_data:
                 if self.data.ndim >= 3:
                     d = self.data.copy()
@@ -602,7 +602,7 @@ class DataField:
                     self.nans = True
                 else:
                     self.nans = False
-            
+
             return lat_ndx, lon_ndx
 
         else:
@@ -612,7 +612,7 @@ class DataField:
 
     def cut_lat_lon(self, lats_to_cut, lons_to_cut):
         """
-        Cuts region in lats/lons (puts NaNs in the selected regions). 
+        Cuts region in lats/lons (puts NaNs in the selected regions).
         Input is for both [from, to], both are inclusive. If None, the dimension is not modified.
         """
 
@@ -621,7 +621,7 @@ class DataField:
                 lat_ndx = np.nonzero(np.logical_and(self.lats >= lats_to_cut[0], self.lats <= lats_to_cut[1]))[0]
                 if lons_to_cut is None:
                     self.data[..., lat_ndx, :] = np.nan
-                
+
             if lons_to_cut is not None:
                 if lons_to_cut[0] < lons_to_cut[1]:
                     lon_ndx = np.nonzero(np.logical_and(self.lons >= lons_to_cut[0], self.lons <= lons_to_cut[1]))[0]
@@ -630,48 +630,48 @@ class DataField:
                     l2 = list(np.nonzero(np.logical_and(self.lons >= 0, self.lons <= lons_to_cut[1]))[0])
                     lon_ndx = np.array(l1 + l2)
                 if lats_to_cut is None:
-                    self.data[..., lon_ndx] = np.nan   
+                    self.data[..., lon_ndx] = np.nan
 
             if lats_to_cut is not None and lons_to_cut is not None:
-                
+
                 for lat in lat_ndx:
-                    for lon in lon_ndx: 
+                    for lon in lon_ndx:
                         self.data[..., lat, lon] = np.nan
 
         else:
             raise Exception('Slicing data with no spatial dimensions, probably station data.')
-            
-            
-            
+
+
+
     def select_level(self, level):
         """
         Selects the proper level from the data. Input should be integer >= 0.
         """
-        
+
         if self.data.ndim > 3:
             self.data = self.data[:, level, ...]
             self.level = self.level[level]
         else:
             raise Exception('Slicing level in single-level data.')
-        
-        
-        
+
+
+
     def extract_day_month_year(self):
         """
         Extracts the self.time field into three fields containg days, months and years.
         """
-        
+
         n_days = len(self.time)
         days = np.zeros((n_days,), dtype = np.int)
         months = np.zeros((n_days,), dtype = np.int)
         years = np.zeros((n_days,), dtype = np.int)
-        
+
         for i,d in zip(range(n_days), self.time):
             dt = date.fromordinal(int(d))
             days[i] = dt.day
             months[i] = dt.month
             years[i] = dt.year
-            
+
         return days, months, years
 
 
@@ -680,7 +680,7 @@ class DataField:
         """
         Returns a grid with scaling weights based on cosine of latitude.
         """
-        
+
         if (np.all(self.cos_weights) is not None) and (self.cos_weights.shape == self.get_spatial_dims()):
             return self.cos_weights
 
@@ -691,38 +691,38 @@ class DataField:
         self.cos_weights = cos_weights
         return cos_weights
 
-        
-        
+
+
     def missing_day_month_year(self):
         """
         Extracts the self.missing field (if exists and is non-empty) into three fields containing days, months and years.
         """
-        
+
         if (self.missing is not None) and (self.missing.shape[0] != 0):
             n_days = len(self.missing)
             days = np.zeros((n_days,), dtype = np.int)
             months = np.zeros((n_days,), dtype = np.int)
             years = np.zeros((n_days,), dtype = np.int)
-            
+
             for i,d in zip(range(n_days), self.missing):
                 dt = date.fromordinal(int(d))
                 days[i] = dt.day
                 months[i] = dt.month
                 years[i] = dt.year
-                
+
             return days, months, years
-            
+
         else:
             raise Exception('Luckily for you, there is no missing values!')
-            
 
-            
+
+
     def flatten_field(self, f = None):
         """
         Reshape the field to 2dimensions such that axis 0 is temporal and axis 1 is spatial.
         If f is None, reshape the self.data field, else reshape the f field.
         Should only be used with single-level data.
-        """        
+        """
 
         if f is None:
             if self.data.ndim == 3:
@@ -762,16 +762,16 @@ class DataField:
                 return f
             else:
                 raise Exception('The field f is not flattened, is multi-level or is only temporal (e.g. station)!')
-                
-                
-                
+
+
+
     def get_data_of_precise_length(self, length = '16k', start_date = None, end_date = None, apply_to_data = False):
         """
         Selects the data such that the length of the time series is exactly length.
         If apply_to_data is True, it will replace the data and time, if False it will return them.
         If end_date is defined, it is exclusive.
         """
-        
+
         if isinstance(length, int):
             ln = length
         elif 'k' in length:
@@ -780,33 +780,33 @@ class DataField:
             ln = pow2list[np.where(order == pow2list/1000)[0][0]]
         else:
             raise Exception('Could not understand the length! Please type length as integer or as string like "16k".')
-        
+
         if start_date is not None and self.find_date_ndx(start_date) is None:
             start_date = self.get_date_from_ndx(0)
         if end_date is not None and self.find_date_ndx(end_date) is None:
             end_date = self.get_date_from_ndx(-1)
-        
+
         if end_date is None and start_date is not None:
             # from start date until length
             idx = self.find_date_ndx(start_date)
             data_temp = self.data[idx : idx + ln, ...].copy()
             time_temp = self.time[idx : idx + ln, ...].copy()
             idx_tuple = (idx, idx+ln)
-            
+
         elif start_date is None and end_date is not None:
             idx = self.find_date_ndx(end_date)
             data_temp = self.data[idx - ln + 1 : idx + 1, ...].copy()
             time_temp = self.time[idx - ln + 1 : idx + 1, ...].copy()
             idx_tuple = (idx - ln, idx)
-            
+
         else:
             raise Exception('You messed start / end date selection! Pick only one!')
-            
+
         if apply_to_data:
             self.data = data_temp.copy()
             self.time = time_temp.copy()
             return idx_tuple
-            
+
         else:
             return data_temp, time_temp, idx_tuple
 
@@ -816,7 +816,7 @@ class DataField:
         """
         Returns the index in data shifted by month.
         """
-        
+
         dt = date.fromordinal(np.int(self.time[current_idx]))
         if dt.month < 12:
             mi = dt.month + 1
@@ -824,7 +824,7 @@ class DataField:
         else:
             mi = 1
             y = dt.year + 1
-            
+
         return self.find_date_ndx(date(y, mi, dt.day))
 
 
@@ -857,17 +857,17 @@ class DataField:
 
         if ts is None:
             self.data = np.array(yearly_data)
-            self.time = np.array(yearly_time) 
+            self.time = np.array(yearly_time)
         else:
             return np.array(yearly_data)
-        
-            
-            
+
+
+
     def get_monthly_data(self, means = True):
         """
         Converts the daily data to monthly means or sums.
         """
-        
+
         delta = self.time[1] - self.time[0]
         if delta == 1:
             # daily data
@@ -899,20 +899,20 @@ class DataField:
                         monthly_data.append(np.nansum(self.data[start_idx : , ...], axis = 0))
                     monthly_time.append(self.time[start_idx])
             self.data = np.array(monthly_data)
-            self.time = np.array(monthly_time)                
+            self.time = np.array(monthly_time)
         elif abs(delta - 30) < 3.0:
             # monhtly data
             print('The data are already monthly values. Nothing happend.')
         else:
             raise Exception('Unknown temporal sampling in the field.')
-            
-            
-        
+
+
+
     def average_to_daily(self):
         """
         Averages the sub-daily values (e.g. ERA-40 basic sampling is 6 hours) into daily.
-        """        
-        
+        """
+
         delta = self.time[1] - self.time[0]
         if delta < 1:
             n_times = int(1 / delta)
@@ -922,10 +922,10 @@ class DataField:
             for i in range(d.shape[0]):
                 d[i, ...] = np.nanmean(self.data[n_times*i : n_times*i+(n_times-1), ...], axis = 0)
                 t[i] = self.time[n_times*i]
-                
+
             self.data = d
             self.time = t.astype(np.int)
-        
+
         else:
             raise Exception('No sub-daily values, you can average to daily only values with finer time sampling.')
 
@@ -983,7 +983,7 @@ class DataField:
             timedelta = relativedelta(years = +1)
         else:
             raise Exception("Unknown to_resolution.")
-        
+
         new_time = []
         first_date = self.get_date_from_ndx(0)
         last_day = self.get_date_from_ndx(-1)
@@ -996,13 +996,13 @@ class DataField:
         job_args = [ (i, j, self.time, self.data[:, i, j], new_time, kind) for i in range(num_lats) for j in range(num_lons) ]
 
         interp_data = np.zeros([new_time.shape[0]] + list(self.get_spatial_dims()))
-        
+
         if pool is None:
             job_result = map(self._interp_temporal, job_args)
         elif pool is not None:
             job_result = pool.map(self._interp_temporal, job_args)
         del job_args
-        
+
         for i, j, res in job_result:
             interp_data[:, i, j] = res
 
@@ -1051,7 +1051,7 @@ class DataField:
         Subsamples the data in the spatial sense to grid "lat_to" x "lon_to" in degress.
         Start is starting point for subsampling in degrees as [lat, lon]
         If average is True, the subsampling is due to averaging the data -- using SciPy's spline
-        interpolation on the rectangle. The interpolation is done for each time step and level 
+        interpolation on the rectangle. The interpolation is done for each time step and level
         independently.
         If average is False, the subsampling is just subsampling certain values.
         """
@@ -1105,7 +1105,7 @@ class DataField:
                             for lvl in range(self.data.shape[1]):
                                 int_scheme = RectBivariateSpline(self.lats, self.lons, self.data[t, lvl, ...])
                                 d[t, lvl, ...] = int_scheme(new_lats, new_lons)
-                        
+
                         if nan_flag:
                             # subsample mask to new grid
                             msk_temp = msk[start_lat_ndx::lat_ndx, :]
@@ -1151,7 +1151,7 @@ class DataField:
         else:
             d = np.zeros_like(ts)
             window = points//2
-        
+
         for i in range(d.shape[0]):
             if cut_edges:
                 d[i, ...] = np.nanmean(ts[i : i+points, ...], axis = 0)
@@ -1305,7 +1305,7 @@ class DataField:
 
         self.data = np.squeeze(self.data)
         self.filtered_data = np.squeeze(self.filtered_data) if cut is None else np.squeeze(self.filtered_data[to_cut:-to_cut, ...])
-        
+
 
 
     def spatial_filter(self, filter_weights = [1, 2, 1], use_to_data = False):
@@ -1314,7 +1314,7 @@ class DataField:
         If use_to_data is False, returns the data, otherwise rewrites the data in class.
         """
 
-        if self.data.ndim == 3: 
+        if self.data.ndim == 3:
             self.data = self.data[:, np.newaxis, :, :]
 
         mask = np.zeros(self.data.shape[-2:])
@@ -1388,7 +1388,7 @@ class DataField:
                         job_res = map(self._interp_spatial, args)
                     else:
                         job_res = pool.map(self._interp_spatial, args)
-                    
+
                     for t, i_data in job_res:
                         new_data[t, lvl, ...] = i_data
 
@@ -1479,15 +1479,16 @@ class DataField:
 
             else:
                 raise Exception("No mask given!")
-        
+
         else:
             print("No NaNs in the data, nothing happened!")
+
 
 
     @staticmethod
     def _rotate_varimax(U, rtol=np.finfo(np.float32).eps ** 0.5, gamma=1.0, maxiter=500):
         """
-        Helper function for rotating the matrix U according to VARIMAX scheme. 
+        Helper function for rotating the matrix U according to VARIMAX scheme.
         The implementation is based on MATLAB docs & code, algorithm is due to DN Lawley and AE Maxwell.
 
         Written by Martin Vejmelka -- https://github.com/vejmelkam/ndw-climate/blob/master/src/component_analysis.py
@@ -1498,7 +1499,7 @@ class DataField:
         n,m = U.shape
         Ur = U.copy(order='C')
         ColNorms = np.zeros((1, m))
-        
+
         dsum = 0.0
         for indx in range(maxiter):
             old_dsum = dsum
@@ -1512,14 +1513,15 @@ class DataField:
             np.dot(U, R, out=Ur)
             if abs(dsum - old_dsum) / dsum < rtol:
                 break
-            
+
         # flip signs of components, where max-abs in col is negative
         for i in range(m):
             if np.amax(Ur[:,i]) < -np.amin(Ur[:,i]):
                 Ur[:,i] *= -1.0
                 R[i,:] *= -1.0
-                
+
         return Ur, R, indx
+
 
 
     @staticmethod
@@ -1527,6 +1529,7 @@ class DataField:
         """
         Helper function for computing residual variance in orthomax PCA.
         """
+        
         import scipy.stats as sts
         rvar = 0.0
         for i in range(d.shape[1]):
@@ -1536,7 +1539,7 @@ class DataField:
 
 
 
-    def pca_components(self, n_comps, field = None, rotate_varimax=False):
+    def pca_components(self, n_comps, field=None, rotate_varimax=False):
         """
         Estimate the PCA (EOF) components of geo-data.
         Shoud be used on single-level data.
@@ -1561,7 +1564,7 @@ class DataField:
             pca_mean = np.mean(d, axis = 0)
             if field is None:
                 self.pca_mean = pca_mean
-            d -= pca_mean  
+            d -= pca_mean
 
             U, s, V = svd(d, False, True, True)
             exp_var = (s ** 2) / (self.time.shape[0] - 1)
@@ -1629,17 +1632,17 @@ class DataField:
         return recons
 
 
-        
+
     def anomalise(self, base_period = None, ts = None):
         """
         Removes the seasonal/yearly cycle from the data.
         If base_period is None, the seasonal cycle is relative to whole period,
         else base_period = (date, date) for climatology within period. Both dates are inclusive.
         """
-        
+
         delta = self.time[1] - self.time[0]
         seasonal_mean = np.zeros_like(self.data) if ts is None else np.zeros_like(ts)
-        
+
         if base_period is None:
             ndx = np.arange(self.time.shape[0])
         else:
@@ -1687,17 +1690,17 @@ class DataField:
             raise Exception('Unknown temporal sampling in the field.')
 
         return seasonal_mean
-            
-            
-            
+
+
+
     def get_seasonality(self, detrend = False, base_period = None):
         """
-        Removes the seasonality in both mean and std (detrending is optional) and 
+        Removes the seasonality in both mean and std (detrending is optional) and
         returns the seasonal mean and std arrays.
         If base_period is None, the seasonal cycle is relative to whole period,
         else base_period = (date, date) for climatology within period. Both dates are inclusive.
         """
-        
+
         delta = self.time[1] - self.time[0]
         seasonal_mean = np.zeros_like(self.data)
         seasonal_var = np.zeros_like(self.data)
@@ -1760,16 +1763,16 @@ class DataField:
                 trend = None
         else:
             raise Exception('Unknown temporal sampling in the field.')
-            
+
         return seasonal_mean, seasonal_var, trend
-        
-        
-        
+
+
+
     def return_seasonality(self, mean, var, trend):
         """
         Return the seasonality to the data.
         """
-        
+
         if trend is not None:
             self.data += trend
         self.data *= var
@@ -1779,14 +1782,14 @@ class DataField:
 
     def center_data(self, var = False, return_fields = False):
         """
-        Centers data time series to zero mean and unit variance (without respect for the seasons or temporal sampling). 
+        Centers data time series to zero mean and unit variance (without respect for the seasons or temporal sampling).
         """
 
         mean = np.nanmean(self.data, axis = 0)
         self.data -= mean
         if var:
             var = np.nanstd(self.data, axis = 0, ddof = 1)
-            self.data /= var 
+            self.data /= var
 
         if return_fields:
             return mean if var is False else (mean, var)
@@ -1845,7 +1848,7 @@ class DataField:
                 for t in range(phase.shape[0] - 1):
                     if np.abs(phase[t+1] - phase[t]) > 1:
                         phase[t+1: ] += 2 * np.pi
-            
+
             ret = [phase, amplitude]
             if flag:
                 ret.append(wave)
@@ -1866,7 +1869,7 @@ class DataField:
         """
 
         i, j, freq, data, window, flag, save_wave, cont_ph, cut = a
-        
+
         if not np.any(np.isnan(data)):
             half_length = int(np.floor(data.shape[0]/2))
             upper_bound = half_length + 1 if data.shape[0] & 0x1 else half_length
@@ -1887,7 +1890,7 @@ class DataField:
             upper_bound_window = half_window + 1 if window & 0x1 else half_window
             co = np.cos(np.arange(-half_window, upper_bound_window, 1) *freq)
             so = np.sin(np.arange(-half_window, upper_bound_window, 1) *freq)
-            
+
             for shift in range(0, data.shape[0] - window + 1):
                 y = data[shift:shift + window].copy()
                 y -= np.mean(y)
@@ -1923,7 +1926,7 @@ class DataField:
                 ret.append(z)
 
             return i, j, ret
-        
+
         else:
             if save_wave:
                 return i, j, [np.nan, np.nan]
@@ -1946,15 +1949,15 @@ class DataField:
 
 
 
-    def get_parametric_phase(self, period, window, period_unit = 'y', cut = 1, ts = None, pool = None, 
-                                    phase_fluct = False, save_wave = False, cut_time = False, 
+    def get_parametric_phase(self, period, window, period_unit = 'y', cut = 1, ts = None, pool = None,
+                                    phase_fluct = False, save_wave = False, cut_time = False,
                                     continuous_phase = False, cut_data = False):
         """
         Computes phase of analytic signal using parametric method.
         Period is frequency in years, or days.
         if ts is None, use self.data as input time series.
         cut is either None or number period to be cut from beginning and end of the time series in years
-        if phase_fluct if False, computes only phase, otherwise also phase fluctuations from stationary 
+        if phase_fluct if False, computes only phase, otherwise also phase fluctuations from stationary
             sinusoid and returns this instead of phase - used for phase fluctuations
         """
 
@@ -2020,13 +2023,13 @@ class DataField:
 
 
             job_args = [ (i, j, self.frequency, self.data[:, i, j].copy(), window, phase_fluct, save_wave, continuous_phase, to_cut) for i in range(num_lats) for j in range(num_lons) ]
-            
+
             if pool is None:
                 job_result = map(self._get_parametric_phase, job_args)
             elif pool is not None:
                 job_result = pool.map(self._get_parametric_phase, job_args)
             del job_args
-            
+
             for i, j, res in job_result:
                 self.phase[:, i, j] = res[0]
                 if save_wave:
@@ -2043,15 +2046,15 @@ class DataField:
             self.phase = np.squeeze(self.phase)# if cut is None else np.squeeze(self.phase[to_cut:-to_cut, ...])
             if save_wave:
                 self.wave = np.squeeze(self.wave)# if cut is None else np.squeeze(self.wave[to_cut:-to_cut, ...])
-            
+
         else:
             res = self._get_parametric_phase([0, 0, self.frequency, ts.copy(), window, phase_fluct, save_wave, continuous_phase, to_cut])[-1]
             return res
 
 
 
-    def wavelet(self, period, period_unit = 'y', cut = 1, ts = None, pool = None, save_wave = False, 
-                    regress_amp_to_data = False, k0 = 6., cut_time = False, continuous_phase = False, 
+    def wavelet(self, period, period_unit = 'y', cut = 1, ts = None, pool = None, save_wave = False,
+                    regress_amp_to_data = False, k0 = 6., cut_time = False, continuous_phase = False,
                     phase_fluct = False, cut_data = False):
         """
         Permforms wavelet transformation on data.
@@ -2128,13 +2131,13 @@ class DataField:
                 self.wave = np.zeros_like(self.data, dtype = np.complex64) if cut is None else np.zeros([self.data.shape[0] - 2*to_cut] + self.get_spatial_dims(), dtype = np.complex64)
 
             job_args = [ (i, j, s0, self.data[:, i, j], save_wave, regress_amp_to_data, k0, continuous_phase, to_cut) for i in range(num_lats) for j in range(num_lons) ]
-            
+
             if pool is None:
                 job_result = map(self._get_oscillatory_modes, job_args)
             elif pool is not None:
                 job_result = pool.map(self._get_oscillatory_modes, job_args)
             del job_args
-            
+
             for i, j, res in job_result:
                 self.phase[:, i, j] = res[0]
                 self.amplitude[:, i, j] = res[1]
@@ -2160,7 +2163,7 @@ class DataField:
             self.amplitude = np.squeeze(self.amplitude)
             if save_wave:
                 self.wave = np.squeeze(self.wave)
-        
+
         else:
             res = self._get_oscillatory_modes([0, 0, s0, ts, save_wave, regress_amp_to_data, k0, continuous_phase, to_cut])[-1]
             # add phase fluct!!!
@@ -2168,9 +2171,9 @@ class DataField:
 
 
 
-    def quick_render(self, t = 0, lvl = 0, mean = False, field_to_plot = None, station_data = False, tit = None, 
-                        symm = False, whole_world = True, log = None, fname = None, plot_station_points = False, 
-                        colormesh = False, cmap = None, vminmax = None, levels = 40, cbar_label = None, 
+    def quick_render(self, t = 0, lvl = 0, mean = False, field_to_plot = None, station_data = False, tit = None,
+                        symm = False, whole_world = True, log = None, fname = None, plot_station_points = False,
+                        colormesh = False, cmap = None, vminmax = None, levels = 40, cbar_label = None,
                         subplot = False, extend = 'neither'):
         """
         Simple plot of the geo data using the Robinson projection for whole world
@@ -2199,7 +2202,7 @@ class DataField:
             if mean:
                 field = np.mean(self.data, axis = 0)
                 title = ("%s: temporal mean" % (self.var_name.upper()))
-        
+
         elif self.data.ndim == 4:
             field = self.data[t, lvl, ...]
             title = ("%s at %d level: %d. point -- %s" % (self.var_name.upper(), lvl, t, self.get_date_from_ndx(t)))
@@ -2262,7 +2265,7 @@ class DataField:
             llons.append(360)
             lons = np.array(llons)
             m = Basemap(projection = 'robin', lon_0 = 0, resolution = 'l')
-            
+
             end_lon_shift = np.sort(lons - 180.)
             end_lon_shift = end_lon_shift[end_lon_shift >= 0.]
             data, lons = shiftgrid(end_lon_shift[0] + 180., data, lons, start = False)
@@ -2294,12 +2297,12 @@ class DataField:
             draw_lons = np.arange(np.around(lons[0]/5, decimals = 0)*5, np.around(lons[-1]/5, decimals = 0)*5, 20)
             m.drawparallels(draw_lats, linewidth = 1.2, labels = [1,0,0,0], color = "#222222", size = size_parallels)
             m.drawmeridians(draw_lons, linewidth = 1.2, labels = [0,0,0,1], color = "#222222", size = size_parallels)
-            
+
             m.drawcoastlines(linewidth = 1., color = "#333333")
             m.drawcountries(linewidth = 0.7, color = "#333333")
-    
+
         x, y = m(*np.meshgrid(lons, lats))
-        
+
         max = np.nanmax(data) if vminmax is None else vminmax[1]
         min = np.nanmin(data) if vminmax is None else vminmax[0]
         if symm:
@@ -2312,7 +2315,7 @@ class DataField:
         cmap = plt.get_cmap(cmap) if cmap is not None else plt.get_cmap('viridis')
         if log is not None:
             levels = np.logspace(np.log10(min)/np.log10(log), np.log10(max)/np.log10(log), levels+1)
-            cs = m.contourf(x, y, data, norm = colors.LogNorm(vmin = min, vmax = max), levels = levels, cmap = cmap, 
+            cs = m.contourf(x, y, data, norm = colors.LogNorm(vmin = min, vmax = max), levels = levels, cmap = cmap,
                 extend = extend)
         else:
             levels = np.linspace(min, max, levels+1)
@@ -2327,7 +2330,7 @@ class DataField:
             for lat, lon in zip(self.lats, self.lons):
                 x, y = m(lon, lat)
                 m.plot(x, y, 'ko', markersize = 3)
-        
+
         # colorbar
         cbar = plt.colorbar(cs, ticks = levels[::4], pad = 0.07, shrink = 0.8, fraction = 0.05)
         cbar.ax.set_yticklabels(np.around(levels[::4], decimals = 2), size = size_parallels)
