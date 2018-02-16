@@ -627,7 +627,7 @@ class DataField:
                     lon_ndx = np.nonzero(np.logical_and(self.lons >= lons_to_cut[0], self.lons <= lons_to_cut[1]))[0]
                 elif lons_to_cut[0] > lons_to_cut[1]:
                     l1 = list(np.nonzero(np.logical_and(self.lons >= lons_to_cut[0], self.lons <= 360))[0])
-                    l2 = list(np.nonzero(np.logical_and(self.lons_to_cut >= 0, self.lons <= lons_to_cut[1]))[0])
+                    l2 = list(np.nonzero(np.logical_and(self.lons >= 0, self.lons <= lons_to_cut[1]))[0])
                     lon_ndx = np.array(l1 + l2)
                 if lats_to_cut is None:
                     self.data[..., lon_ndx] = np.nan   
@@ -1484,8 +1484,59 @@ class DataField:
             print("No NaNs in the data, nothing happened!")
 
 
+    @staticmethod
+    def _rotate_varimax(U, rtol=np.finfo(np.float32).eps ** 0.5, gamma=1.0, maxiter=500):
+        """
+        Helper function for rotating the matrix U according to VARIMAX scheme. 
+        The implementation is based on MATLAB docs & code, algorithm is due to DN Lawley and AE Maxwell.
 
-    def pca_components(self, n_comps, field = None):
+        Written by Martin Vejmelka -- https://github.com/vejmelkam/ndw-climate/blob/master/src/component_analysis.py
+        """
+
+        from scipy.linalg import svd
+
+        n,m = U.shape
+        Ur = U.copy(order='C')
+        ColNorms = np.zeros((1, m))
+        
+        dsum = 0.0
+        for indx in range(maxiter):
+            old_dsum = dsum
+            np.sum(Ur**2, axis=0, out=ColNorms[0,:])
+            C = n * Ur**3
+            if gamma > 0.0:
+                C -= gamma * Ur * ColNorms  # numpy will broadcast on rows
+            L, d, Mt = svd(np.dot(Ur.T, C), False, True, True)
+            R = np.dot(L, Mt)
+            dsum = np.sum(d)
+            np.dot(U, R, out=Ur)
+            if abs(dsum - old_dsum) / dsum < rtol:
+                break
+            
+        # flip signs of components, where max-abs in col is negative
+        for i in range(m):
+            if np.amax(Ur[:,i]) < -np.amin(Ur[:,i]):
+                Ur[:,i] *= -1.0
+                R[i,:] *= -1.0
+                
+        return Ur, R, indx
+
+
+    @staticmethod
+    def _residual_var(d, pc):
+        """
+        Helper function for computing residual variance in orthomax PCA.
+        """
+        import scipy.stats as sts
+        rvar = 0.0
+        for i in range(d.shape[1]):
+            sl, inter, _, _, _ = sts.linregress(pc, d[:, i])
+            rvar += np.var(d[:, i] - (sl * pc + inter))
+        return rvar
+
+
+
+    def pca_components(self, n_comps, field = None, rotate_varimax=False):
         """
         Estimate the PCA (EOF) components of geo-data.
         Shoud be used on single-level data.
@@ -1516,9 +1567,26 @@ class DataField:
             exp_var = (s ** 2) / (self.time.shape[0] - 1)
             exp_var /= np.sum(exp_var)
             eofs = V[:n_comps]
-            pcs = U[:, :n_comps]
             var = exp_var[:n_comps]
-            pcs *= s[:n_comps]
+            pcs = U[:, :n_comps]
+            if rotate_varimax:
+                eofs, T, _ = self._rotate_varimax(eofs.T)
+                rot = np.matrix(T)
+                S2 = np.dot(np.dot(np.transpose(rot), np.matrix(np.diag(var))), rot)
+                expvar = np.diag(S2)
+                pcs = np.array(np.dot(np.transpose(rot), np.diag(s[:n_comps])) * pcs.T)
+                # var
+                total_var = np.sum(np.var(d, axis=0))
+                reg_expvar = np.zeros(expvar.shape)
+                for i in range(n_comps):
+                    reg_expvar[i] = total_var - self._residual_var(d, pcs[i, :])
+                # reorder according to expvar
+                nord = np.argsort(expvar)[::-1]
+                eofs = eofs[:, nord].T
+                expvar = expvar[nord]
+                reg_expvar = reg_expvar[nord]
+                pcs = pcs[nord, :].T
+                var = reg_expvar / total_var
 
             if self.nans:
                 eofs = self.return_NaNs_to_data(field = eofs)
