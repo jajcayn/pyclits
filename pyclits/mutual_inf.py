@@ -9,7 +9,8 @@ last update on Sep 22, 2017
 import numpy as np
 
 
-def get_time_series_condition(ts, tau = 1, reversed = False, dim_of_condition = 1, eta = 0, close_condition = False, phase_diff = False):
+def get_time_series_condition(ts, tau=1, reversed=False, dim_of_condition=1, eta=0, 
+        close_condition=False, phase_diff=False, add_cond = None):
     """
     Returns time series for CMI as list in the sense
         I(x; y | z), where x = x(t); y = y(t+tau) | z = [y(t), y(t-eta), y(t-2eta), ...] up to dim_of_condition
@@ -20,6 +21,9 @@ def get_time_series_condition(ts, tau = 1, reversed = False, dim_of_condition = 
         z = [y(t+tau-1), y(t+tau-1-eta), y(t+tau-1-2eta), ...] up to dim_of_condition,
     so the conditions are closer in temporal sense to the slave time series.
     If phase_diff is True, as y, the phase differences (future - first cond.) will be used (use only with phase data, not raw).
+    add_cond if None, is time series of shape [x, len] where x is number of additional time series to be put into the
+        condition as of 'now', thus without any backward lag. These additional conditions are NOT counted in the dimension
+        of condition parameter.
     """
 
     if isinstance(ts, list) and len(ts) > 1:
@@ -36,6 +40,10 @@ def get_time_series_condition(ts, tau = 1, reversed = False, dim_of_condition = 
         slave = ts[0, :].copy() if reversed else ts[1, :].copy()
     else:
         raise Exception("Input not understood. Use either list of 1D arrays or 2 x length array.")
+
+    if add_cond is not None:
+        add_cond = np.atleast_2d(add_cond)
+        assert add_cond.shape[1] == master.shape[0]
 
     if dim_of_condition > 4:
         print("** WARNING -- for %d dimensional condition the estimation might be biased." % (dim_of_condition))
@@ -67,6 +75,13 @@ def get_time_series_condition(ts, tau = 1, reversed = False, dim_of_condition = 
             raise Exception("Something went wrong! Check input data.")
         z.append(cond)
 
+    if add_cond is not None:
+        for condextra in range(add_cond.shape[0]):
+            extra_cond = add_cond[condextra, n_eta*eta : -tau] # "now"
+            if extra_cond.shape[0] != n:
+                raise Exception("Something went wrong! Check input data.")
+            z.append(extra_cond) 
+
     if phase_diff:
         y = y - z[0]
         y[y < -np.pi] += 2*np.pi
@@ -75,7 +90,7 @@ def get_time_series_condition(ts, tau = 1, reversed = False, dim_of_condition = 
 
 
 
-def mutual_information(x, y, algorithm = 'EQQ', bins = 8, log2 = True):
+def mutual_information(x, y, algorithm='EQQ', bins=8, log2=True):
     """
     Computes mutual information between two time series x and y as
         I(x; y) = sum( p(x,y) * log( p(x,y) / p(x)p(y) ),
