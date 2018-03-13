@@ -10,7 +10,7 @@ import numpy as np
 
 
 def get_time_series_condition(ts, tau=1, reversed=False, dim_of_condition=1, eta=0, 
-        close_condition=False, phase_diff=False, add_cond = None):
+        close_condition=False, phase_diff=False, add_cond=None):
     """
     Returns time series for CMI as list in the sense
         I(x; y | z), where x = x(t); y = y(t+tau) | z = [y(t), y(t-eta), y(t-2eta), ...] up to dim_of_condition
@@ -77,7 +77,10 @@ def get_time_series_condition(ts, tau=1, reversed=False, dim_of_condition=1, eta
 
     if add_cond is not None:
         for condextra in range(add_cond.shape[0]):
-            extra_cond = add_cond[condextra, n_eta*eta : -tau] # "now"
+            if close_condition:
+                extra_cond = add_cond[condextra, n_eta*eta+tau-1 : -1]
+            else:
+                extra_cond = add_cond[condextra, n_eta*eta : -tau] # "now"
             if extra_cond.shape[0] != n:
                 raise Exception("Something went wrong! Check input data.")
             z.append(extra_cond) 
