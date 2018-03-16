@@ -499,10 +499,10 @@ class SurrogateField(DataField):
         """
         
         if self.data is not None:
-            if trend is not None:
-                self.data += trend
             self.data *= var
             self.data += mean
+            if trend is not None:
+                self.data += trend
         else:
             raise Exception("Surrogate data has not been created yet.")
             
@@ -515,10 +515,10 @@ class SurrogateField(DataField):
         """        
         
         if self.data is not None:
-            self.data -= mean
-            self.data /= var
             if trend is not None:
                 self.data -= trend
+            self.data -= mean
+            self.data /= var
         else:
             raise Exception("Surrogate data has not been created yet.")
 

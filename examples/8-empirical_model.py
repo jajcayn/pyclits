@@ -25,12 +25,12 @@ enso_model.load_geo_data(fname = "example_data/sst.mnmean.nc", varname = "sst", 
 # this is done by filtering time series with 50-year moving average and then subtracting first 5 EOFs of this low-frequency
 #   time series; no_comps is number of low-frequency EOFs you wish to subtract, this can be None, in that case
 #   the number of subtracted EOFs would be such they would explain 99% of low-frequency variability
-# enso_model.remove_low_freq_variability(mean_over = 50, cos_weights = True, no_comps = 5)
+enso_model.remove_low_freq_variability(mean_over = 50, cos_weights = True, no_comps = 5)
 
 # this function prepares the input -- this model is trained in the EOF space.. we will use first 30 EOFs [no_input_ts],
 #   then cosweight the data and do the PCA.. sel is None, but you can use it to select some PCA, e.g. you wish to
 #   build your model on PCs 1, 3, 5, 6, 7 then the sel would be [0,2,4,5,6], in that case, you could omit no_input_ts
-enso_model.prepare_input(anom = True, no_input_ts = 30, cos_weights = True, sel = None)
+enso_model.prepare_input(anom = True, no_input_ts = 100, cos_weights = True, sel = None)
 
 # now we train model -- we want only linear model, but with harmonic predictor [that is our model will be dx = Ax + b]
 #   and matrix A will be trained seasonally, so 12 different matrices for 12 months, as a regressor we'll use partial
@@ -46,7 +46,8 @@ enso_model.train_model(harmonic_pred = 'first', quad = False, delay_model = Fals
 #   model and use their cov. matrix] or finally, seasonal noise [this will fit 5 harmonics on annual cycle and use
 #   seasonally changing covariance matrices] -- lets try seasonal also with conditioning
 enso_model.integrate_model(30, int_length = None, sigma = 1., n_workers = 5, diagnostics = True, 
-    noise_type = ['cond', 'seasonal'])
+    # noise_type = ['cond', 'seasonal'])
+    noise_type='white')
 # in the diagnostic plots are always plotted data [black] and 2.5 and 97.5 percentile of distribution from realizations
 
 # finally lets reconstruct our 3D field... if lats and/or lons are not None, will cut only this area of original data one
@@ -75,7 +76,7 @@ for i in range(enso_model.reconstructions.shape[0]):
     plt.plot(enso_model.reconstructions[i, :], color = 'gray', linewidth = 0.2)
 plt.xticks(np.arange(0, nino34.time.shape[0], 10*12), np.arange(nino34.get_date_from_ndx(0).year, 
     nino34.get_date_from_ndx(-1).year+1, 10), rotation = 30)
-plt.ylabel("SST [$^\circ$C]")
+plt.ylabel(r"SST [$^\circ$C]")
 
 plt.subplot(212)
 f, pxx = ss.welch(nino34.data, 1./2.628e+6, 'flattop', 1024, scaling = 'spectrum')

@@ -1713,6 +1713,11 @@ class DataField:
         t = self.time.copy()
         self.time = self.time[ndx]
 
+        if detrend:
+            data_copy = self.data.copy()
+            self.data, _, _ = detrend_with_return(self.data, axis = 0)
+            trend = data_copy - self.data
+
         if delta == 1:
             # daily data
             day_avg, mon_avg, _ = self.extract_day_month_year()
@@ -1734,10 +1739,6 @@ class DataField:
                         print('**WARNING: some zero standard deviations found for date %d.%d' % (di, mi))
                         seasonal_var[seasonal_var == 0.0] = 1.0
                     self.data[sel_data, ...] /= seasonal_var[sel_data, ...]
-            if detrend:
-                data_copy = self.data.copy()
-                self.data, _, _ = detrend_with_return(self.data, axis = 0)
-                trend = data_copy - self.data
             else:
                 trend = None
         elif abs(delta - 30) < 3.0:
@@ -1755,10 +1756,6 @@ class DataField:
                 self.data[sel_data, ...] -= seasonal_mean[sel_data, ...]
                 seasonal_var[sel_data, ...] = np.nanstd(d[sel_avg, ...], axis = 0, ddof = 1)
                 self.data[sel_data, ...] /= seasonal_var[sel_data, ...]
-            if detrend:
-                data_copy = self.data.copy()
-                self.data, _, _ = detrend_with_return(self.data, axis = 0)
-                trend = data_copy - self.data
             else:
                 trend = None
         else:
@@ -1773,10 +1770,10 @@ class DataField:
         Return the seasonality to the data.
         """
 
-        if trend is not None:
-            self.data += trend
         self.data *= var
         self.data += mean
+        if trend is not None:
+            self.data += trend
 
 
 
