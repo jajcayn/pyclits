@@ -2252,15 +2252,15 @@ class DataField:
 
         # set up projections
         if whole_world:
+            if not station_data:
+                llons = self.lons.tolist()
+            else:
+                llons = lons_stations.tolist()
             m = Basemap(projection = 'robin', lon_0 = 0, resolution = 'l')
-            if np.any(lons < 0.):
+            if np.any(llons < 0.):
                 data = np.zeros((field.shape[0], field.shape[1] + 1))
                 data[:, :-1] = field
                 data[:, -1] = data[:, 0]
-                if not station_data:
-                    llons = self.lons.tolist()
-                else:
-                    llons = lons_stations.tolist()
                 llons.append(360.)
                 lons = np.array(llons)
                 end_lon_shift = np.sort(lons - 180.)
