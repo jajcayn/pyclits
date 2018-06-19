@@ -2259,13 +2259,11 @@ class DataField:
                 llons = self.lons.tolist()
             else:
                 llons = lons_stations.tolist()
-            llons.append(360)
             lons = np.array(llons)
             m = Basemap(projection = 'robin', lon_0 = 0, resolution = 'l')
-            if np.any(lons < 0.):
-                end_lon_shift = np.sort(lons - 180.)
-                end_lon_shift = end_lon_shift[end_lon_shift >= 0.]
-                data, lons = shiftgrid(end_lon_shift[0] + 180., data, lons, start = False)
+            end_lon_shift = np.sort(lons - 180.)
+            end_lon_shift = end_lon_shift[end_lon_shift >= 0.]
+            data, lons = shiftgrid(end_lon_shift[0] + 180., data, lons, start = False)
 
             m.drawparallels(np.arange(-90, 90, 30), linewidth = 1.2, labels = [1,0,0,0], color = "#222222", size = size_parallels)
             m.drawmeridians(np.arange(-180, 180, 60), linewidth = 1.2, labels = [0,0,0,1], color = "#222222", size = size_parallels)
