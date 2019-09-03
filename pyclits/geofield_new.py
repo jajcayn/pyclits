@@ -29,6 +29,7 @@ class DataField:
         self._rename_coords("lo", "lons")
         self._rename_coords("time", "time")
         # transpose - make time dim always first
+        # TODO finish transpose - deal with levels
 
     def _rename_coords(self, substring, new_name):
         """
@@ -91,11 +92,14 @@ class DataField:
         :param inplace: whether to make operation in-place or return
         :type inplace: bool
         """
+        assert isinstance(
+            months, (list, tuple)
+        ), f"Months must be an iterable, got {type(months)}"
+
         months_index = filter(
             lambda x: self.data.time[x].dt.month.values in months,
             range(len(self.time)),
         )
-
         selected_data = self.data.isel(time=list(months_index))
 
         if inplace:
