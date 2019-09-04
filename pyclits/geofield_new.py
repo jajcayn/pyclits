@@ -70,15 +70,15 @@ class DataField:
 
     @property
     def time(self):
-        return self.data.time
+        return self.data.time.values
 
     @property
     def lats(self):
-        return self.data.lats
+        return self.data.lats.values
 
     @property
     def lons(self):
-        return self.data.lons
+        return self.data.lons.values
 
     def save(self, filename):
         """
@@ -87,6 +87,11 @@ class DataField:
         :param filename: filename for nc file
         :type filename: str
         """
+        # harmonize missing and fill_values for saving
+        self.data.variable.encoding[
+            "missing_value"
+        ] = self.data.variable.encoding["_FillValue"]
+
         if not filename.endswith(".nc"):
             filename += ".nc"
 
