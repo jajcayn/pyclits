@@ -80,6 +80,18 @@ class DataField:
     def lons(self):
         return self.data.lons
 
+    def save(self, filename):
+        """
+        Save DataField as nc file.
+
+        :param filename: filename for nc file
+        :type filename: str
+        """
+        if not filename.endswith(".nc"):
+            filename += ".nc"
+
+        self.data.to_netcdf(filename)
+
     def select_date(self, date_from, date_to, inplace=True):
         """
         Selects date range. Both ends are inclusive.
