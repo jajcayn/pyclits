@@ -224,6 +224,12 @@ class TestDataField(TestHelperTempSave):
             filename,
         )
 
+    def test_deseasonalise(self):
+        df = self.load_df()
+        mean, std = df.deseasonalise(standardise=True, inplace=True)
+
+        # TODO finish test
+
 
 if __name__ == "__main__":
     unittest.main()

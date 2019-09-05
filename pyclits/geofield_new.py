@@ -332,7 +332,7 @@ class DataField:
         :return: seasonal mean and std
         :rtype: xr.DataArray, xr.DataArray
         """
-        inferred_freq = pd.infer_freq(self.time.values)
+        inferred_freq = pd.infer_freq(self.time)
         if base_period is None:
             base_period = [None, None]
 
