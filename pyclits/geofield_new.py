@@ -52,6 +52,7 @@ class DataField:
         self.data = self.data.sortby(self.data.lats)
         self.data = self.data.sortby(self.data.lons)
         self.data = self.data.sortby(self.data.time)
+        # TODO solve lons: should be 0-360 deg east, print warning if not
 
     def _rename_coords(self, substring, new_name):
         """
@@ -80,6 +81,10 @@ class DataField:
     def lons(self):
         return self.data.lons.values
 
+    @property
+    def spatial_dims(self):
+        return (self.lats.shape[0], self.lons.shape[0])
+
     def save(self, filename):
         """
         Save DataField as nc file.
@@ -88,9 +93,12 @@ class DataField:
         :type filename: str
         """
         # harmonize missing and fill_values for saving
-        self.data.variable.encoding[
-            "missing_value"
-        ] = self.data.variable.encoding["_FillValue"]
+        try:
+            self.data.variable.encoding[
+                "missing_value"
+            ] = self.data.variable.encoding["_FillValue"]
+        except KeyError:
+            pass
 
         if not filename.endswith(".nc"):
             filename += ".nc"
@@ -120,7 +128,7 @@ class DataField:
         if inplace:
             self.data = selected_data
         else:
-            return selected_data
+            return DataField(data=selected_data)
 
     def select_months(self, months, inplace=True):
         """
@@ -144,7 +152,7 @@ class DataField:
         if inplace:
             self.data = selected_data
         else:
-            return selected_data
+            return DataField(data=selected_data)
 
     def select_lat_lon(self, lats=None, lons=None, inplace=True):
         """
@@ -160,27 +168,34 @@ class DataField:
         selected_data = self.data.copy()
         if lats is not None:
             assert len(lats) == 2, f"Need two lats, got {lats}"
-            selected_data = selected_data(lats=slice(lats[0], lats[1]))
+            selected_data = selected_data.sel(lats=slice(lats[0], lats[1]))
 
         if lons is not None:
             assert len(lons) == 2, f"Need two lons, got {lons}"
-            selected_data = selected_data(lons=slice(lons[0], lons[1]))
+            if lons[1] >= lons[0]:
+                # simple select
+                selected_data = selected_data.sel(lons=slice(lons[0], lons[1]))
+            elif lons[1] < lons[0]:
+                # so we are selecting through prime meridian
+                selected_data1 = selected_data.sel(lons=slice(lons[0], 360.0))
+                selected_data2 = selected_data.sel(lons=slice(0.0, lons[1]))
+                selected_data = xr.concat(
+                    [selected_data1, selected_data2], dim="lons"
+                )
 
         if inplace:
             self.data = selected_data
         else:
-            return selected_data
+            return DataField(data=selected_data)
 
     @property
     def cos_weights(self):
         """
         Returns a grid with scaling weights based on cosine of latitude.
         """
-        cos_weights = np.zeros((self.lats.shape[0], self.lons.shape[0]))
+        cos_weights = np.zeros(self.spatial_dims)
         for ndx in range(self.lats.shape[0]):
-            cos_weights[ndx, :] = (
-                np.cos(self.lats[ndx] * np.pi / 180.0) ** 0.5
-            ).values
+            cos_weights[ndx, :] = np.cos(self.lats[ndx] * np.pi / 180.0) ** 0.5
 
         return cos_weights
 
@@ -202,7 +217,7 @@ class DataField:
         if inplace:
             self.data = resampled
         else:
-            return resampled
+            return DataField(data=resampled)
 
     def spatial_resample(self, d_lat, d_lon, method="linear", inplace=True):
         """
@@ -223,10 +238,12 @@ class DataField:
             method=method,
         )
 
+        # TODO deal with lons through prime meridian
+
         if inplace:
             self.data = resampled
         else:
-            return resampled
+            return DataField(data=resampled)
 
     def deseasonalise(self, base_period=None, standardise=False, inplace=True):
         """
@@ -276,7 +293,11 @@ class DataField:
             self.data = stand_anomalies
             return climatology_mean, climatology_std
         else:
-            return stand_anomalies, climatology_mean, climatology_std
+            return (
+                DataField(data=stand_anomalies),
+                climatology_mean,
+                climatology_std,
+            )
 
     def anomalise(self, base_period=None, inplace=True):
         """
