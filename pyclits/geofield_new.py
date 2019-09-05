@@ -48,11 +48,13 @@ class DataField:
         self._rename_coords("la", "lats")
         self._rename_coords("lo", "lons")
         self._rename_coords("time", "time")
-        # sort by coordinates: min -> max
+        # sort by lats and time, NOT lons
         self.data = self.data.sortby(self.data.lats)
-        self.data = self.data.sortby(self.data.lons)
         self.data = self.data.sortby(self.data.time)
-        # TODO solve lons: should be 0-360 deg east, print warning if not
+
+        if np.any(self.data.lons.values < 0.0):
+            print("**WARNING: found negative longitude, shifting to 0-360")
+            self.data = self.shift_lons_to_all_east_notation(self.data)
 
     def _rename_coords(self, substring, new_name):
         """
@@ -68,6 +70,69 @@ class DataField:
                 old_name = coord
                 break
         self.data = self.data.rename({old_name: new_name})
+
+    @staticmethod
+    def _update_coord_attributes(old_coord, new_coord, new_units=None):
+        """
+        Update coordinate attributes after shifting, resampling, etc.
+
+        :param old_coord: old coordinate with attributes
+        :type old_coord: xr.DataArray
+        :param new_coord: new coordinate to fill attributes to
+        :type new_coord: xr.DataArray
+        :param new_units: new unit name if desired
+        :type new_units: str|None
+        :return: coordinate with attributes
+        :rtype: xr.DataArray
+        """
+        new_attrs = old_coord.attrs
+        # change range if present in attributes
+        if "actual_range" in new_attrs:
+            new_attrs["actual_range"] = [
+                new_coord.values.min(),
+                new_coord.values.max(),
+            ]
+        if "units" in new_attrs and new_units is not None:
+            new_attrs["units"] = new_units
+
+        new_coord.attrs = new_attrs
+        return new_coord
+
+    def shift_lons_to_minus_notation(self, dataarray):
+        """
+        Shift longitude coordinate to minus notation, i.e. -180E -- 179E.
+        Longitudes less than 0 are considered W.
+
+        :param dataarray: geospatial field with longitudes as coordinates
+        :type dataarray: xr.DataArray|xr.Dataset
+        :return: field with shifted coords to -180 -- 179
+        :rtype: xr.DataArray|xr.Dataset
+        """
+        shifted = dataarray.assign_coords(
+            lons=((dataarray.lons + 180) % 360) - 180
+        )
+
+        shifted["lons"] = self._update_coord_attributes(
+            dataarray.lons, shifted.lons, new_units="degrees_east_west"
+        )
+        return shifted
+
+    def shift_lons_to_all_east_notation(self, dataarray):
+        """
+        Shift longitude coordinate to 0-360 notation. Longitudes > 180 are
+        considered W.
+
+        :param dataarray: geospatial field with longitudes as coordinates
+        :type dataarray: xr.DataArray|xr.Dataset
+        :return: field with shifted coords to 0 - 360
+        :rtype: xr.DataArray|xr.Dataset
+        """
+        shifted = dataarray.assign_coords(lons=(dataarray.lons + 360) % 360)
+
+        shifted["lons"] = self._update_coord_attributes(
+            dataarray.lons, shifted.lons, new_units="degrees_east"
+        )
+        return shifted
 
     @property
     def time(self):
@@ -172,16 +237,15 @@ class DataField:
 
         if lons is not None:
             assert len(lons) == 2, f"Need two lons, got {lons}"
-            if lons[1] >= lons[0]:
-                # simple select
-                selected_data = selected_data.sel(lons=slice(lons[0], lons[1]))
-            elif lons[1] < lons[0]:
-                # so we are selecting through prime meridian
-                selected_data1 = selected_data.sel(lons=slice(lons[0], 360.0))
-                selected_data2 = selected_data.sel(lons=slice(0.0, lons[1]))
-                selected_data = xr.concat(
-                    [selected_data1, selected_data2], dim="lons"
-                )
+            # shift to -180 -- 179 (xarray only selects on monotically
+            # increasing coordinates)
+            shifted = self.shift_lons_to_minus_notation(selected_data)
+            # shift user passed lons to -180 -- 179
+            lons = [((lon + 180) % 360 - 180) for lon in lons]
+            # select
+            selected_data = shifted.sel(lons=slice(lons[0], lons[1]))
+            # shift back
+            selected_data = self.shift_lons_to_all_east_notation(selected_data)
 
         if inplace:
             self.data = selected_data
@@ -232,18 +296,28 @@ class DataField:
         :param inplace: whether to make operation in-place or return
         :type inplace: bool
         """
-        resampled = self.data.interp(
-            lats=np.arange(self.lats.min(), self.lats.max(), d_lat),
-            lons=np.arange(self.lons.min(), self.lons.max(), d_lon),
+        # shift to -180 -- 179 for resampling
+        shifted = self.shift_lons_to_minus_notation(self.data)
+
+        resampled = shifted.interp(
+            lats=np.arange(shifted.lats.min(), shifted.lats.max() + 1, d_lat),
+            lons=np.arange(shifted.lons.min(), shifted.lons.max() + 1, d_lon),
             method=method,
         )
+        # create new coordinates attributes
+        resampled["lons"] = self._update_coord_attributes(
+            shifted.lons, resampled.lons
+        )
+        resampled["lats"] = self._update_coord_attributes(
+            shifted.lats, resampled.lats
+        )
 
-        # TODO deal with lons through prime meridian
+        resampled_shifted_back = self.shift_lons_to_all_east_notation(resampled)
 
         if inplace:
-            self.data = resampled
+            self.data = resampled_shifted_back
         else:
-            return DataField(data=resampled)
+            return DataField(data=resampled_shifted_back)
 
     def deseasonalise(self, base_period=None, standardise=False, inplace=True):
         """

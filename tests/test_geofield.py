@@ -9,15 +9,16 @@ import unittest
 from datetime import datetime
 
 import numpy as np
+import xarray as xr
 
 from pyclits.geofield_new import DataField
 
 from . import TestHelperTempSave
 
 
-class TestLoadSave(TestHelperTempSave):
+class TestDataField(TestHelperTempSave):
     """
-    Test basic loading of nc files.
+    Test DataField basic methods.
     """
 
     CORRECT_LATS = np.array(
@@ -44,6 +45,10 @@ class TestLoadSave(TestHelperTempSave):
 
     CORRECT_LONS = np.array(
         [
+            350.0,
+            352.5,
+            355.0,
+            357.5,
             0.0,
             2.5,
             5.0,
@@ -61,16 +66,12 @@ class TestLoadSave(TestHelperTempSave):
             35.0,
             37.5,
             40.0,
-            350.0,
-            352.5,
-            355.0,
-            357.5,
         ]
     )
 
     SELECTED_LATS = np.array([32.5, 35.0, 37.5, 40.0])
     SELECTED_LONS = np.array([17.5, 20.0, 22.5, 25.0, 27.5])
-    SELECTED_LONS_PRIME_MERIDIAN = np.array([0.0, 2.5, 357.5])
+    SELECTED_LONS_PRIME_MERIDIAN = np.array([357.5, 0.0, 2.5])
 
     COS_WEIGHTS = np.array(
         [
@@ -125,6 +126,23 @@ class TestLoadSave(TestHelperTempSave):
             == (self.CORRECT_LATS.shape[0], self.CORRECT_LONS.shape[0])
         )
 
+    def test_shift_lons(self):
+        df = self.load_df()
+        # shift to -180 -- 179
+        shifted = df.shift_lons_to_minus_notation(df.data)
+        self.assertTrue(
+            (shifted.lons <= 180).all() and (shifted.lons >= -180).all()
+        )
+
+        # shift back
+        shifted_back = df.shift_lons_to_all_east_notation(shifted)
+        self.assertTrue(
+            (shifted_back.lons >= 0).all() and (shifted_back.lons <= 360).all()
+        )
+
+        # final check - original opened data should be the same as shifted back
+        xr.testing.assert_equal(df.data, shifted_back)
+
     def test_select_date(self):
         df = self.load_df()
         selected_df = df.select_date(
@@ -178,7 +196,7 @@ class TestLoadSave(TestHelperTempSave):
         filename = os.path.join(self.temp_dir, "temp_resample.nc")
         resampled_df.save(filename)
 
-        # assert only time dimension got resample - no changed to spatial
+        # assert only time dimension got resampled - no changes to spatial dims
         self.assertTrue(
             resampled_df.spatial_dims
             == (self.CORRECT_LATS.shape[0], self.CORRECT_LONS.shape[0])
@@ -193,7 +211,18 @@ class TestLoadSave(TestHelperTempSave):
         resampled_df = df.spatial_resample(
             d_lat=5, d_lon=5, method="linear", inplace=False
         )
-        # TODO finish test
+        filename = os.path.join(self.temp_dir, "spatial_resample.nc")
+        resampled_df.save(filename)
+
+        # assert that time dimension did not change
+        self.compare_time_range(
+            df.time, datetime(1990, 1, 1), datetime(2000, 1, 1)
+        )
+
+        self.compare_nc_files(
+            os.path.join(self.test_results_path, "spatial_resample_result.nc"),
+            filename,
+        )
 
 
 if __name__ == "__main__":
