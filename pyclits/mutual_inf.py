@@ -7,6 +7,8 @@ last update on Sep 22, 2017
 """
 
 import numpy as np
+import numpy.random as random
+from sklearn.neighbors import KDTree
 
 
 def get_time_series_condition(ts, tau=1, reversed=False, dim_of_condition=1, eta=0, 
@@ -572,3 +574,50 @@ def knn_cond_mutual_information(x, y, z, k, standardize = True, dualtree = True)
     sum_ /= data.shape[0]
 
     return sum_ - _neg_harmonic(k-1)
+
+def graph_calculation(data, **kwargs):
+    tree_x = KDTree(data, leaf_size=kwargs["leaf_size"], metric=kwargs["metric"])
+    distances = tree_x.query(data, k=kwargs["maximal_index"], return_distance=True, dualtree=kwargs["dualtree"])
+    selected_distances = distances[0][:, kwargs["indices_to_use"]]
+    flatten_distances = selected_distances.flatten()
+    power_of_distances = np.power(flatten_distances, kwargs["power_of_distance_data"])
+    L_p_V_data = np.sum(power_of_distances)
+
+    return L_p_V_data
+
+
+def renyi_entropy(dataset_x: np.matrix, alpha=1, leaf_size = 15, metric="chebyshev", dualtree=True, sample_size=1000, indices_to_use=[3,4]):
+    """
+
+    :param dataset_x:
+    :return:
+
+    According to D.Pal, B. Poczos, C. Szepesvari, Estimation of Renyi Entropy and Mutual Information Based on Generalized Nearist-Neighbor Graphs, 2010.
+    """
+    shape_of_data = dataset_x.shape
+    maximal_index = max(indices_to_use) + 1
+    length_of_data = shape_of_data[0]
+    dimension_of_data = shape_of_data[1]
+    power_of_distance_data = dimension_of_data * (1 - alpha)
+
+    L_p_V_data = graph_calculation(dataset_x, **locals())
+
+    random_sample_of_array = random.uniform(size=(dimension_of_data, sample_size), dualtree=dualtree)
+    L_p_V_sample = graph_calculation(random_sample_of_array, **locals())
+
+    gamma = L_p_V_sample / np.power(sample_size, 1 - power_of_distance_data / dimension_of_data)
+
+    entropy = 1 / (1 - alpha) * np.log(L_p_V_data / (gamma * np.power(length_of_data, 1 - power_of_distance_data / dimension_of_data)))
+
+    return entropy
+
+def renyi_transfer_entropy(data_x, data_y, **kwargs):
+    marginal_entropy_x = renyi_entropy(data_x, **kwargs)
+    marginal_entropy_y = renyi_entropy(data_y, **kwargs)
+    joint_dataset = np.concatenate(data_x, data_y, axis=1)
+    entropy_xy = renyi_entropy(joint_dataset, **kwargs)
+
+    return marginal_entropy_x + marginal_entropy_y - entropy_xy
+
+if __name__ == "__main__":
+    renyi_entropy(np.matrix([[1],[2],[3],[4],[5],[6],[7]]))
