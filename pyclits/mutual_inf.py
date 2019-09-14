@@ -619,5 +619,19 @@ def renyi_transfer_entropy(data_x, data_y, **kwargs):
 
     return marginal_entropy_x + marginal_entropy_y - entropy_xy
 
+def conditional_transfer_entropy(data_x, data_y, data_z, **kwargs):
+    joint_dataset_xz = np.concatenate(data_x, data_z, axis=1)
+    marginal_entropy_xz = renyi_entropy(joint_dataset_xz, **kwargs)
+
+    marginal_entropy_z = renyi_entropy(data_z, **kwargs)
+
+    joint_dataset_xyz = np.concatenate(data_x, data_x, data_z, axis=1)
+    entropy_xyz = renyi_entropy(joint_dataset_xyz, **kwargs)
+
+    joint_dataset_yz = np.concatenate(data_y, data_y, axis=1)
+    entropy_xy = renyi_entropy(joint_dataset_yz, **kwargs)
+
+    return marginal_entropy_xz - marginal_entropy_z - entropy_xyz + entropy_xy
+
 if __name__ == "__main__":
     renyi_entropy(np.matrix([[1],[2],[3],[4],[5],[6],[7]]))
