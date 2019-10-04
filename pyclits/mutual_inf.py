@@ -6,9 +6,11 @@ created on May 6, 2015
 last update on Sep 22, 2017
 """
 
+import collections
 import numpy as np
 import numpy.random as random
-from sklearn.neighbors import KDTree
+from sklearn.neighbors import KDTree, BallTree
+import mpmath
 
 
 def get_time_series_condition(ts, tau=1, reversed=False, dim_of_condition=1, eta=0, 
@@ -575,7 +577,7 @@ def knn_cond_mutual_information(x, y, z, k, standardize = True, dualtree = True)
 
     return sum_ - _neg_harmonic(k-1)
 
-def graph_calculation(data, **kwargs):
+def graph_calculation_Paly(data, **kwargs):
     tree_x = KDTree(data, leaf_size=kwargs["leaf_size"], metric=kwargs["metric"])
     distances = tree_x.query(data, k=kwargs["maximal_index"], return_distance=True, dualtree=kwargs["dualtree"])
     selected_distances = distances[0][:, kwargs["indices_to_use"]]
@@ -585,37 +587,102 @@ def graph_calculation(data, **kwargs):
 
     return L_p_V_data
 
+def graph_calculation_Lavicka(data, **kwargs):
+    tree_x = KDTree(data, leaf_size=kwargs["leaf_size"], metric=kwargs["metric"])
+    distances = tree_x.query(data, k=kwargs["maximal_index"], return_distance=True, dualtree=kwargs["dualtree"])
+    selected_distances = distances[0][:, kwargs["indices_to_use"]]
 
-def renyi_entropy(dataset_x: np.matrix, alpha=1, leaf_size = 15, metric="chebyshev", dualtree=True, sample_size=1000, indices_to_use=[3,4]):
-    """
+    return selected_distances
 
-    :param dataset_x:
-    :return:
+def graph_calculation_within_distance_Lavicka(data, radii, **kwargs):
+    tree_x = KDTree(data, leaf_size=kwargs["leaf_size"], metric=kwargs["metric"])
+    distances = tree_x.query_radius(data, radii, return_distance=True, count_only=False)
 
-    According to D.Pal, B. Poczos, C. Szepesvari, Estimation of Renyi Entropy and Mutual Information Based on Generalized Nearist-Neighbor Graphs, 2010.
-    """
+    return distances
+
+def special(k, q, d, N, p0, p1, p, e0, e1):
+    value = p0*e1-p1*e0
+    return pow(p, 1+k-q) / (1+k-q) * pow((p0-p1)/(p0*e1-p1*e0), d*(1-q)) * mpmath.appellf1(1+k-q, 1+k-N, d * (1-q), 2+k-q, p, p*(e0-e1) / (p1*e0-p0*e1))
+
+def renyi_entropy_Lavicka(dataset_x: np.matrix, alpha=1, leaf_size = 15, metric="chebyshev", dualtree=True, sample_size=1000, indices_to_use=[3,4], **kwargs):
     shape_of_data = dataset_x.shape
     maximal_index = max(indices_to_use) + 1
     length_of_data = shape_of_data[0]
     dimension_of_data = shape_of_data[1]
-    power_of_distance_data = dimension_of_data * (1 - alpha)
 
-    L_p_V_data = graph_calculation(dataset_x, **locals())
+    distances = graph_calculation_Lavicka(dataset_x, **locals())
 
-    random_sample_of_array = random.uniform(size=(dimension_of_data, sample_size), dualtree=dualtree)
-    L_p_V_sample = graph_calculation(random_sample_of_array, **locals())
+    for index_of_distances, use_index in enumerate(indices_to_use):
+        selected_distances = distances[:, index_of_distances]
 
-    gamma = L_p_V_sample / np.power(sample_size, 1 - power_of_distance_data / dimension_of_data)
+        # calculation of PDF
+        counter = collections.Counter(selected_distances)
+        ordered_distances = sorted(list(counter.keys()))
 
-    entropy = 1 / (1 - alpha) * np.log(L_p_V_data / (gamma * np.power(length_of_data, 1 - power_of_distance_data / dimension_of_data)))
+        divisor = float(len(selected_distances))
 
-    return entropy
+        # integration over PDF
+        entropy = 0
+        previous_probability = 0
+        # save value to prevent problems at start
+        previous_distance = 0.1
+        for distance in ordered_distances:
+            actual_distance = distance
+            actual_probability = previous_probability + float(counter[distance]) / divisor
+
+            entropy += (special(use_index, alpha, dimension_of_data, divisor, previous_probability, actual_probability, actual_probability, previous_distance, actual_distance)
+                       - special(use_index, alpha, dimension_of_data, divisor, previous_probability, actual_probability, previous_probability, previous_distance, actual_distance))
+
+            previous_distance = actual_distance
+            previous_probability = actual_probability
+
+        return entropy
+
+def renyi_entropy_Paly(dataset_x: np.matrix, alpha=0.75, leaf_size = 15, metric="chebyshev", dualtree=True, sample_size=1000, indices_to_use=[3,4], **kwargs):
+    """
+    Calculation of Renyi entropy
+
+    :param dataset_x:
+    :return:
+
+    According to D.Pal, B. Poczos, C. Szepesvari, Estimation of Renyi Entropy and Mutual Information Based on Generalized Nearest-Neighbor Graphs, 2010.
+    """
+    if 0.5 < alpha < 1:
+        shape_of_data = dataset_x.shape
+        maximal_index = max(indices_to_use) + 1
+        length_of_data = shape_of_data[0]
+        dimension_of_data = shape_of_data[1]
+        power_of_distance_data = dimension_of_data * (1 - alpha)
+
+        L_p_V_data = graph_calculation_Paly(dataset_x, **locals())
+
+        random_sample_of_array = random.uniform(size=(sample_size, dimension_of_data))
+        L_p_V_sample = graph_calculation_Paly(random_sample_of_array, **locals())
+
+        gamma = L_p_V_sample / np.power(sample_size, 1 - power_of_distance_data / dimension_of_data)
+
+        entropy = 1 / (1 - alpha) * np.log(L_p_V_data / (gamma * np.power(length_of_data, 1 - power_of_distance_data / dimension_of_data)))
+
+        return entropy
+    else:
+        raise Exception("Paly method works for alpha in range (0.5,1)")
+
+def renyi_entropy(*args ,**kwargs):
+    if kwargs["method"] == "Paly" or kwargs["method"] == "GeneralizedNearestNeighbor":
+        return renyi_entropy_Paly(*args, **kwargs)
+    elif kwargs["method"] == "Lavicka" or kwargs["method"] == "NearestNeighbor":
+        return renyi_entropy_Lavicka(*args, **kwargs)
 
 def renyi_transfer_entropy(data_x, data_y, **kwargs):
-    marginal_entropy_x = renyi_entropy(data_x, **kwargs)
-    marginal_entropy_y = renyi_entropy(data_y, **kwargs)
-    joint_dataset = np.concatenate(data_x, data_y, axis=1)
-    entropy_xy = renyi_entropy(joint_dataset, **kwargs)
+    if kwargs["method"] == "Paly" or kwargs["method"] == "GeneralizedNearestNeighbor":
+        marginal_entropy_x = renyi_entropy(data_x, **kwargs)
+        marginal_entropy_y = renyi_entropy(data_y, **kwargs)
+        joint_dataset = np.concatenate(data_x, data_y, axis=1)
+        entropy_xy = renyi_entropy(joint_dataset, **kwargs)
+    elif kwargs["method"] == "Lavicka" or kwargs["method"] == "NearestNeighbor":
+        joint_dataset = np.concatenate(data_x, data_y, axis=1)
+        entropy_xy = renyi_entropy(joint_dataset, **kwargs)
+
 
     return marginal_entropy_x + marginal_entropy_y - entropy_xy
 
@@ -634,4 +701,4 @@ def conditional_transfer_entropy(data_x, data_y, data_z, **kwargs):
     return marginal_entropy_xz - marginal_entropy_z - entropy_xyz + entropy_xy
 
 if __name__ == "__main__":
-    renyi_entropy(np.matrix([[1],[2],[3],[4],[5],[6],[7]]))
+    print(renyi_entropy(np.matrix([[1],[2],[3],[4],[5],[6],[7],[8],[9]]), method="Lavicka"))
