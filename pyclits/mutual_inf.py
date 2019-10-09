@@ -611,6 +611,7 @@ def renyi_entropy_Lavicka(dataset_x: np.matrix, alpha=1, leaf_size = 15, metric=
     dimension_of_data = shape_of_data[1]
 
     distances = graph_calculation_Lavicka(dataset_x, **locals())
+    entropy = 0
 
     for index_of_distances, use_index in enumerate(indices_to_use):
         selected_distances = distances[:, index_of_distances]
@@ -622,7 +623,6 @@ def renyi_entropy_Lavicka(dataset_x: np.matrix, alpha=1, leaf_size = 15, metric=
         divisor = float(len(selected_distances))
 
         # integration over PDF
-        entropy = 0
         previous_probability = 0
         # save value to prevent problems at start
         previous_distance = 0.1
@@ -636,7 +636,7 @@ def renyi_entropy_Lavicka(dataset_x: np.matrix, alpha=1, leaf_size = 15, metric=
             previous_distance = actual_distance
             previous_probability = actual_probability
 
-        return entropy
+    return entropy/len(indices_to_use)
 
 def renyi_entropy_Paly(dataset_x: np.matrix, alpha=0.75, leaf_size = 15, metric="chebyshev", dualtree=True, sample_size=1000, indices_to_use=[3,4], **kwargs):
     """
