@@ -625,13 +625,14 @@ def renyi_entropy_Lavicka(dataset_x: np.matrix, alpha=1, leaf_size = 15, metric=
         # integration over PDF
         previous_probability = 0
         # save value to prevent problems at start
-        previous_distance = 0.1
+        previous_distance = 0
         for distance in ordered_distances:
             actual_distance = distance
             actual_probability = previous_probability + float(counter[distance]) / divisor
 
-            entropy += (special(use_index, alpha, dimension_of_data, divisor, previous_probability, actual_probability, actual_probability, previous_distance, actual_distance)
+            addition_to_entropy = (special(use_index, alpha, dimension_of_data, divisor, previous_probability, actual_probability, actual_probability, previous_distance, actual_distance)
                        - special(use_index, alpha, dimension_of_data, divisor, previous_probability, actual_probability, previous_probability, previous_distance, actual_distance))
+            entropy += addition_to_entropy
 
             previous_distance = actual_distance
             previous_probability = actual_probability
@@ -701,4 +702,18 @@ def conditional_transfer_entropy(data_x, data_y, data_z, **kwargs):
     return marginal_entropy_xz - marginal_entropy_z - entropy_xyz + entropy_xy
 
 if __name__ == "__main__":
+    import time
+
+    sample_array = np.array([[1], [2], [3], [4], [5], [6], [7], [8], [9]], dtype=float)
+    input_sample = np.ndarray(shape=sample_array.shape, buffer=sample_array)
+    #print(input_sample)
     print(renyi_entropy(np.matrix([[1],[2],[3],[4],[5],[6],[7],[8],[9]]), method="Lavicka"))
+    print(renyi_entropy(input_sample, method="Lavicka"))
+
+    mu = 0
+    sigma = 10
+    number_samples = 100
+
+    samples = np.random.normal(mu, sigma, (number_samples, 1))
+    print(renyi_entropy(samples, method="Lavicka"))
+
