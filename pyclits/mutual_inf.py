@@ -639,6 +639,59 @@ def renyi_entropy_Lavicka(dataset_x: np.matrix, alpha=1, leaf_size = 15, metric=
 
     return entropy/len(indices_to_use)
 
+def renyi_entropy_LeonenkoProzanto(dataset_x: np.matrix, alpha=1, **kwargs):
+    if alpha == 1:
+        return entropy_sum_Shannon_LeonenkoProzanto(dataset_x, alpha, **kwargs)
+    else:
+        return np.log2(entropy_sum_generic_LeonenkoProzanto(dataset_x, alpha, **kwargs)) / (1 - alpha)
+
+def tsallis_entropy_LeonenkoProzanto(dataset_x: np.matrix, alpha=1, **kwargs):
+    if alpha == 1:
+        return entropy_sum_Shannon_LeonenkoProzanto(dataset_x, alpha, **kwargs)
+    else:
+        return (1 - entropy_sum_generic_LeonenkoProzanto(dataset_x, alpha, **kwargs)) / (1 - alpha)
+
+def entropy_sum_generic_LeonenkoProzanto(dataset_x: np.matrix, alpha=1, leaf_size = 15, metric="chebyshev", dualtree=True, sample_size=1000, indices_to_use=[3,4], **kwargs):
+    shape_of_data = dataset_x.shape
+    maximal_index = max(indices_to_use) + 1
+    length_of_data = shape_of_data[0]
+    dimension_of_data = shape_of_data[1]
+
+    distances = graph_calculation_Lavicka(dataset_x, **locals())
+    entropy = np.zeros(len(indices_to_use))
+
+    for index_of_distances, use_index in enumerate(indices_to_use):
+        selected_distances = distances[:, index_of_distances]
+
+        number_of_data = float(len(selected_distances))
+
+        addition_to_entropy = np.sum(np.power(selected_distances, dimension_of_data * (1-alpha)))
+        entropy[index_of_distances] += addition_to_entropy
+        entropy[index_of_distances] *= mpmath.gamma(use_index) / mpmath.gamma(use_index+1-alpha) * np.power(np.pi, dimension_of_data / 2.0 * (1-alpha)) / np.power(mpmath.gamma(dimension_of_data / 2.0 + 1), 1-alpha) * np.power(number_of_data-1, 1-alpha) / number_of_data
+
+    return np.sum(entropy)/len(indices_to_use)
+
+def entropy_sum_Shannon_LeonenkoProzanto(dataset_x: np.matrix, alpha=1, leaf_size = 15, metric="chebyshev", dualtree=True, sample_size=1000, indices_to_use=[3,4], **kwargs):
+    shape_of_data = dataset_x.shape
+    maximal_index = max(indices_to_use) + 1
+    length_of_data = shape_of_data[0]
+    dimension_of_data = shape_of_data[1]
+
+    distances = graph_calculation_Lavicka(dataset_x, **locals())
+    entropy = np.zeros(len(indices_to_use))
+
+    for index_of_distances, use_index in enumerate(indices_to_use):
+        selected_distances = distances[:, index_of_distances]
+
+        number_of_data = float(len(selected_distances))
+
+        addition_to_entropy = np.sum(np.power(selected_distances, dimension_of_data))
+        entropy[index_of_distances] += addition_to_entropy
+        digamma = float(mpmath.digamma(use_index))
+        entropy[index_of_distances] *= np.power(np.pi, dimension_of_data / 2.0) / mpmath.gamma(dimension_of_data / 2.0 + 1) * np.exp(-digamma) * (number_of_data-1) / number_of_data
+
+    return np.sum(entropy)/len(indices_to_use)
+
 def renyi_entropy_Paly(dataset_x: np.matrix, alpha=0.75, leaf_size = 15, metric="chebyshev", dualtree=True, sample_size=1000, indices_to_use=[3,4], **kwargs):
     """
     Calculation of Renyi entropy
@@ -673,6 +726,8 @@ def renyi_entropy(*args ,**kwargs):
         return renyi_entropy_Paly(*args, **kwargs)
     elif kwargs["method"] == "Lavicka" or kwargs["method"] == "NearestNeighbor":
         return renyi_entropy_Lavicka(*args, **kwargs)
+    elif kwargs["method"] == "LeonenkoProzanto":
+        return renyi_entropy_LeonenkoProzanto(*args, **kwargs)
 
 def renyi_transfer_entropy(data_x, data_y, **kwargs):
     if kwargs["method"] == "Paly" or kwargs["method"] == "GeneralizedNearestNeighbor":
@@ -707,8 +762,8 @@ if __name__ == "__main__":
     sample_array = np.array([[1], [2], [3], [4], [5], [6], [7], [8], [9]], dtype=float)
     input_sample = np.ndarray(shape=sample_array.shape, buffer=sample_array)
     #print(input_sample)
-    print(renyi_entropy(np.matrix([[1],[2],[3],[4],[5],[6],[7],[8],[9]]), method="Lavicka"))
-    print(renyi_entropy(input_sample, method="Lavicka"))
+    print(renyi_entropy(np.matrix([[1],[2],[3],[4],[5],[6],[7],[8],[9]]), method="LeonenkoProzanto"))
+    print(renyi_entropy(input_sample, method="LeonenkoProzanto"))
 
     mu = 0
     sigma = 10
