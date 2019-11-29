@@ -19,7 +19,7 @@ def Renyi_normal_distribution(sigma, alpha):
 
 def Renyi_normal_distribution_1D(sigma_number, alpha):
     if alpha == 1:
-        return math.log2(2*math.pi*math.exp(1)*np.power(sigma_number, 2))/2
+        return math.log(2*math.pi*math.exp(1)*np.power(sigma_number, 2))/2
     else:
         return math.log2(2*math.pi) / 2 + math.log2(sigma) + math.log2(alpha) / (1 - alpha) / 2
 
@@ -66,4 +66,4 @@ if __name__ == "__main__":
             time_start = time.process_time()
             entropy = mutual_inf.renyi_entropy(samples, method="LeonenkoProzanto", indices_to_use=[1, 2, 3, 4], alpha=alpha)
             time_end = time.process_time()
-            print(f"{number_samples}, {time_end-time_start}, {alpha}, {entropy}, {Renyi_normal_distribution_1D(sigma, alpha)}")
+            print(f"samples={number_samples}, duration={time_end-time_start}, alpha={alpha}, tested_estimator={entropy}, theoretical_calculation={Renyi_normal_distribution_1D(sigma, alpha)}")

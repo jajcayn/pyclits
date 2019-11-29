@@ -685,10 +685,11 @@ def entropy_sum_Shannon_LeonenkoProzanto(dataset_x: np.matrix, alpha=1, leaf_siz
 
         number_of_data = float(len(selected_distances))
 
-        addition_to_entropy = np.sum(np.power(selected_distances, dimension_of_data))
+        addition_to_entropy = np.sum(np.log2(selected_distances)) * dimension_of_data / number_of_data
         entropy[index_of_distances] += addition_to_entropy
         digamma = float(mpmath.digamma(use_index))
-        entropy[index_of_distances] *= np.power(np.pi, dimension_of_data / 2.0) / mpmath.gamma(dimension_of_data / 2.0 + 1) * np.exp(-digamma) * (number_of_data-1) / number_of_data
+        argument_log = float(np.power(np.pi, dimension_of_data / 2.0) / mpmath.gamma(dimension_of_data / 2.0 + 1) * np.exp(-digamma) * (number_of_data-1))
+        entropy[index_of_distances] += np.log2(argument_log)
 
     return np.sum(entropy)/len(indices_to_use)
 
