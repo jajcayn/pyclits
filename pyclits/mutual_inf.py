@@ -651,7 +651,7 @@ def tsallis_entropy_LeonenkoProzanto(dataset_x: np.matrix, alpha=1, **kwargs):
     else:
         return (1 - entropy_sum_generic_LeonenkoProzanto(dataset_x, alpha, **kwargs)) / (1 - alpha)
 
-def entropy_sum_generic_LeonenkoProzanto(dataset_x: np.matrix, alpha=1, leaf_size = 15, metric="chebyshev", dualtree=True, sample_size=1000, indices_to_use=[3,4], **kwargs):
+def entropy_sum_generic_LeonenkoProzanto(dataset_x: np.matrix, alpha=1, leaf_size = 15, metric="euclidean", dualtree=True, sample_size=1000, indices_to_use=[3,4], **kwargs):
     shape_of_data = dataset_x.shape
     maximal_index = max(indices_to_use) + 1
     length_of_data = shape_of_data[0]
@@ -663,15 +663,15 @@ def entropy_sum_generic_LeonenkoProzanto(dataset_x: np.matrix, alpha=1, leaf_siz
     for index_of_distances, use_index in enumerate(indices_to_use):
         selected_distances = distances[:, index_of_distances]
 
-        number_of_data = float(len(selected_distances))
+        number_of_data = float(len(dataset_x))
 
         addition_to_entropy = np.sum(np.power(selected_distances, dimension_of_data * (1-alpha)))
-        entropy[index_of_distances] += addition_to_entropy
-        entropy[index_of_distances] *= mpmath.gamma(use_index) / mpmath.gamma(use_index+1-alpha) * np.power(np.pi, dimension_of_data / 2.0 * (1-alpha)) / np.power(mpmath.gamma(dimension_of_data / 2.0 + 1), 1-alpha) * np.power(number_of_data-1, 1-alpha) / number_of_data
+        multiplicator = mpmath.gamma(use_index) / mpmath.gamma(use_index+1-alpha) * np.power(np.pi, dimension_of_data / 2.0 * (1-alpha)) / np.power(mpmath.gamma(dimension_of_data / 2.0 + 1), 1-alpha) * np.power(number_of_data-1, 1-alpha) / number_of_data
+        entropy[index_of_distances] += multiplicator * addition_to_entropy
 
     return np.sum(entropy)/len(indices_to_use)
 
-def entropy_sum_Shannon_LeonenkoProzanto(dataset_x: np.matrix, alpha=1, leaf_size = 15, metric="chebyshev", dualtree=True, sample_size=1000, indices_to_use=[3,4], **kwargs):
+def entropy_sum_Shannon_LeonenkoProzanto(dataset_x: np.matrix, alpha=1, leaf_size = 15, metric="euclidean", dualtree=True, sample_size=1000, indices_to_use=[3,4], **kwargs):
     shape_of_data = dataset_x.shape
     maximal_index = max(indices_to_use) + 1
     length_of_data = shape_of_data[0]
@@ -683,7 +683,7 @@ def entropy_sum_Shannon_LeonenkoProzanto(dataset_x: np.matrix, alpha=1, leaf_siz
     for index_of_distances, use_index in enumerate(indices_to_use):
         selected_distances = distances[:, index_of_distances]
 
-        number_of_data = float(len(selected_distances))
+        number_of_data = float(len(dataset_x))
 
         addition_to_entropy = np.sum(np.log2(selected_distances)) * dimension_of_data / number_of_data
         entropy[index_of_distances] += addition_to_entropy
