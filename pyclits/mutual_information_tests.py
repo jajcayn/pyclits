@@ -4,6 +4,7 @@ import scipy.special as spec
 import time
 import mutual_inf
 import math
+import sys
 
 time_start = time.process_time()
 
@@ -42,9 +43,9 @@ def Renyi_normal_distribution_1D(sigma_number, alpha):
 def Renyi_normal_distribution_ND(sigma_matrix: np.matrix, alpha):
     dimension = sigma_matrix.shape[0]
     if alpha == 1:
-        return math.log2(math.pow(2*math.pi*math.exp(1), dimension/2.0) * math.sqrt(np.linalg.det(sigma_matrix)))
+        return math.log2(2*math.pi*math.exp(1)) * dimension/2.0 + math.log2(math.sqrt(np.linalg.det(sigma_matrix)))
     else:
-        return math.log2(2*math.pi) / 2 + math.log2(np.linalg.det(sigma_matrix)) + math.log2(alpha) / (alpha - 1) / 2
+        return math.log2(2*math.pi) * dimension / 2 + math.log2(np.linalg.det(sigma_matrix)) / 2.0 + dimension * math.log2(alpha) / (alpha - 1) / 2
 
 
 def Renyi_student_t_distribution_1D(sigma, degrees_of_freedom, alpha):
@@ -156,7 +157,7 @@ def complete_test_ND(filename="statistics.txt", samples = 1000, sigma_skeleton =
 
                         #print(f"samples={size_sample}, duration={time_end-time_start}, alpha={alpha}, tested_estimator={entropy}, theoretical_calculation={theoretical_value}, difference={difference}")
 
-                    print(f"{alpha} {size_sample} {sigma} {np.mean(entropy_samples[sample_position])} {np.std(entropy_samples[sample_position])} {np.mean(duration_samples[sample_position])} {np.std(duration_samples[sample_position])} {np.mean(difference_samples[sample_position])} {np.std(difference_samples[sample_position])}", file=fd)
+                    print(f"{alpha} {size_sample} {sigma} {np.mean(entropy_samples[sample_position])} {np.std(entropy_samples[sample_position])} {np.mean(duration_samples[sample_position])} {np.std(duration_samples[sample_position])} {np.mean(difference_samples[sample_position])} {np.std(difference_samples[sample_position])}", file=fd, flush=True)
 
 def small_test():
     sample_array = np.array([[1], [2], [3], [4], [5], [6], [7], [8], [9]], dtype=float)
@@ -192,7 +193,14 @@ if __name__ == "__main__":
     #small_test()
     #complete_test_1D(samples=10, sigmas=[10.0, 50, 100], theoretical_value_function=lambda sigma, alpha: Renyi_student_t_distribution_1D(sigma, sigma, alpha), sample_generator=lambda mu, sigma, size_sample: np.random.standard_t(sigma, size=(size_sample, 1)))
     #sigma_skeleton = np.matrix("5 1; 1 10")
-    for dimension in [2, 3, 5, 10, 20, 50]:
-        complete_test_ND(filename=f"statistics_{dimension}.txt", samples=200, sigmas=[10.0, 50, 100], sigma_skeleton=np.identity(dimension),
+    if len(sys.argv) >= 2:
+        dimensions = [int(sys.argv[1])]
+    else:
+        dimensions = [2, 3, 5, 10, 20, 50]
+
+    print(f"Calculation for dimensions {dimensions}")
+
+    for dimension in dimensions:
+        complete_test_ND(filename=f"statistics_{dimension}.txt", samples=200, sigmas=[0.1, 1, 10, 100], sigma_skeleton=np.identity(dimension), sizes_of_sample=[10, 20, 50, 100, 200, 500, 1000, 2000, 5000],
                          theoretical_value_function=lambda sigma, alpha: Renyi_normal_distribution_ND(sigma, alpha),
                          sample_generator=lambda mu, sigma, size_sample: sample_normal_distribution(sigma, size_sample))
