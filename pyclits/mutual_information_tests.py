@@ -1,6 +1,7 @@
 
 import numpy as np
 import scipy.special as spec
+import scipy.stats as stat
 import time
 import mutual_inf
 import math
@@ -115,14 +116,24 @@ def complete_test_1D(filename="statistics.txt", samples = 1000,
 
                     print(f"{alpha} {size_sample} {sigma} {np.mean(entropy_samples[sample_position])} {np.std(entropy_samples[sample_position])} {np.mean(duration_samples[sample_position])} {np.std(duration_samples[sample_position])} {np.mean(difference_samples[sample_position])} {np.std(difference_samples[sample_position])}", file=fd)
 
+
 def complete_test_ND(filename="statistics.txt", samples = 1000, sigma_skeleton = np.identity(10),
                   alphas=[0.1, 0.2, 0.3, 0.5, 0.6, 0.7, 0.8, 0.9, 0.95, 0.99, 1.0, 1.01, 1.05, 1.1, 1.2, 1.3, 1.4, 1.5, 1.7, 1.8, 1.9],
                   mu = 0, sigmas = [0.1, 0.5, 1.0, 5.0, 10.0, 50, 100],
-                  sizes_of_sample = [10, 20, 50, 100, 200, 500, 1000, 2000, 5000, 10000, 20000, 50000],
+                  sizes_of_sample = [10, 20, 50, 100, 200, 500, 1000, 2000, 5000, 10000, 20000, 50000], indices_to_use=[1, 2, 3, 4, 5, 6, 7, 8, 9],
                   theoretical_value_function=lambda sigma, alpha: Renyi_normal_distribution_ND(sigma, alpha),
                   sample_generator=lambda mu, sigma, size_sample: sample_normal_distribution(sigma, size_sample),
-                  sample_estimator=lambda data_samples, alpha: mutual_inf.renyi_entropy(data_samples, method="LeonenkoProzanto", indices_to_use=[1, 2, 3, 4, 5], alpha=alpha)):
+                  sample_estimator=lambda data_samples, alpha, indices_to_use: mutual_inf.renyi_entropy(data_samples, method="LeonenkoProzanto", indices_to_use=indices_to_use, alpha=alpha)):
     with open(filename, "wt") as fd:
+        real_indeces = []
+        print("alpha\tsample size\tsigma\ttheoretical value\t", file=fd, end="")
+        for index in indices_to_use:
+            print(f"mean Renyi entropy {index}\tstd Renyi entropy {index}\tmean computer time {index}\tstd computer time {index}\tmean difference {index}\tstd of difference {index}\t3rd moment of difference {index}\t", file=fd, end="")
+            real_indeces.append([index])
+        print("mean Renyi entropy\tstd Renyi entropy\tmean computer time\tstd computer time\tmean difference\tstd of difference\t3rd moment of difference", file=fd)
+        real_indeces.append(indices_to_use)
+
+        # collections of results
         entropy_samples = {}
         duration_samples = {}
         difference_samples = {}
@@ -131,33 +142,37 @@ def complete_test_ND(filename="statistics.txt", samples = 1000, sigma_skeleton =
             matrix_sigma = sigma * sigma_skeleton
             for alpha in alphas:
                 for size_sample in sizes_of_sample:
-                    sample_position = (alpha, size_sample, sigma)
-                    theoretical_value = theoretical_value_function(matrix_sigma, alpha)
+                    for indices_to_use in real_indeces:
+                        theoretical_value = theoretical_value_function(matrix_sigma, alpha)
 
-                    entropy_samples[sample_position] = []
-                    duration_samples[sample_position] = []
-                    difference_samples[sample_position] = []
+                        print(f"{alpha}\t{size_sample}\t{sigma}\t{theoretical_value}\t", file=fd, end="")
 
-                    for sample in range(1, samples + 1):
-                        if sample % 10 == 0:
-                            print(f"alpha = {alpha}, size_sample = {size_sample}, sigma={sigma}, sample = {sample}")
+                        sample_position = (alpha, size_sample, sigma)
 
-                        data_samples = sample_generator(mu, matrix_sigma, size_sample)
+                        entropy_samples[sample_position] = []
+                        duration_samples[sample_position] = []
+                        difference_samples[sample_position] = []
 
-                        time_start = time.process_time()
-                        entropy = sample_estimator(data_samples, alpha=alpha)
-                        time_end = time.process_time()
+                        for sample in range(1, samples + 1):
+                            if sample % 10 == 0:
+                                print(f"alpha = {alpha}, size_sample = {size_sample}, sigma={sigma}, sample = {sample}, indices_to_use={indices_to_use}")
 
-                        duration = time_end - time_start
-                        difference = theoretical_value - entropy
+                            data_samples = sample_generator(mu, matrix_sigma, size_sample)
 
-                        entropy_samples[sample_position].append(entropy)
-                        duration_samples[sample_position].append(duration)
-                        difference_samples[sample_position].append(difference)
+                            time_start = time.process_time()
+                            entropy = sample_estimator(data_samples, alpha=alpha, indices_to_use=indices_to_use)
+                            time_end = time.process_time()
 
-                        #print(f"samples={size_sample}, duration={time_end-time_start}, alpha={alpha}, tested_estimator={entropy}, theoretical_calculation={theoretical_value}, difference={difference}")
+                            duration = time_end - time_start
+                            difference = theoretical_value - entropy
 
-                    print(f"{alpha} {size_sample} {sigma} {np.mean(entropy_samples[sample_position])} {np.std(entropy_samples[sample_position])} {np.mean(duration_samples[sample_position])} {np.std(duration_samples[sample_position])} {np.mean(difference_samples[sample_position])} {np.std(difference_samples[sample_position])}", file=fd, flush=True)
+                            entropy_samples[sample_position].append(entropy)
+                            duration_samples[sample_position].append(duration)
+                            difference_samples[sample_position].append(difference)
+
+                        # save data for samples
+                        print(f"{np.mean(entropy_samples[sample_position])}\t{np.std(entropy_samples[sample_position])}\t{np.mean(duration_samples[sample_position])}\t{np.std(duration_samples[sample_position])}\t{np.mean(difference_samples[sample_position])}\t{np.std(difference_samples[sample_position])}\t{stat.moment(difference_samples[sample_position], moment=3)}", file=fd, end="")
+                    print("", file=fd, flush=True)
 
 def small_test():
     sample_array = np.array([[1], [2], [3], [4], [5], [6], [7], [8], [9]], dtype=float)
@@ -201,6 +216,7 @@ if __name__ == "__main__":
     print(f"Calculation for dimensions {dimensions}")
 
     for dimension in dimensions:
-        complete_test_ND(filename=f"statistics_{dimension}.txt", samples=200, sigmas=[0.1, 1, 10, 100], sigma_skeleton=np.identity(dimension), sizes_of_sample=[10, 20, 50, 100, 200, 500, 1000, 2000, 5000],
+        complete_test_ND(filename=f"complete_statistics_{dimension}.txt", samples=100, sigmas=[0.1, 1, 10, 100],
+                         sigma_skeleton=np.identity(dimension), sizes_of_sample=[10, 20, 50, 100, 200, 500, 1000],
                          theoretical_value_function=lambda sigma, alpha: Renyi_normal_distribution_ND(sigma, alpha),
                          sample_generator=lambda mu, sigma, size_sample: sample_normal_distribution(sigma, size_sample))
