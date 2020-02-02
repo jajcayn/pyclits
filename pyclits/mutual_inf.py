@@ -7,6 +7,7 @@ last update on Sep 22, 2017
 """
 
 import collections
+import logging
 
 import mpmath
 import numpy as np
@@ -733,12 +734,19 @@ def renyi_entropy_Paly(dataset_x: np.matrix, alpha=0.75, leaf_size = 15, metric=
 
 
 def renyi_entropy(*args, **kwargs):
-    if kwargs["method"] == "Paly" or kwargs["method"] == "GeneralizedNearestNeighbor":
-        return renyi_entropy_Paly(*args, **kwargs)
-    elif kwargs["method"] == "Lavicka" or kwargs["method"] == "NearestNeighbor":
-        return renyi_entropy_Lavicka(*args, **kwargs)
-    elif kwargs["method"] == "LeonenkoProzanto":
-        return renyi_entropy_LeonenkoProzanto(*args, **kwargs)
+    if "method" in kwargs:
+        if kwargs["method"] == "Paly" or kwargs["method"] == "GeneralizedNearestNeighbor":
+            return renyi_entropy_Paly(*args, **kwargs)
+        elif kwargs["method"] == "Lavicka" or kwargs["method"] == "NearestNeighbor":
+            return renyi_entropy_Lavicka(*args, **kwargs)
+        elif kwargs["method"] == "LeonenkoProzanto":
+            return renyi_entropy_LeonenkoProzanto(*args, **kwargs)
+        else:
+            logging.error("Wrong method was choosen.")
+            raise Exception("Wrong method was choosen.")
+    else:
+        logging.error("No method was choosen.")
+        raise Exception("No method was choosen.")
 
 
 def renyi_mutual_entropy(data_x, data_y, **kwargs):
@@ -783,7 +791,7 @@ def renyi_transfer_entropy(data_x, data_x_hist, data_y, **kwargs):
 
         entropy_X_history = renyi_entropy(data_x_hist, **kwargs)
 
-        result["result"] = entropy_joint_history + entropy_X - entropy_joint_present_history - entropy_X_history}
+        result["result"] = entropy_joint_history + entropy_X - entropy_joint_present_history - entropy_X_history
         return result
     else:
         joint_dataset = np.concatenate(data_x_hist, data_y, axis=axis_to_join)

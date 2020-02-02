@@ -16,8 +16,9 @@ if __name__ == "__main__":
     kwargs = {}
     kwargs["transpose"] = True
 
-    samples_x = samples_from_arrays(marginal_solution_1, kwargs)
+    samples_x = samples_from_arrays(marginal_solution_1, **kwargs)
     samples_marginal_1 = samples_from_arrays(marginal_solution_1, **kwargs)
     samples_marginal_2 = samples_from_arrays(marginal_solution_2, **kwargs)
 
-    transfer_entropy = renyi_transfer_entropy(samples_marginal_1, samples_marginal_2, **{"axis_to_join": 1})
+    transfer_entropy = renyi_transfer_entropy(marginal_solution_1, samples_marginal_1, samples_marginal_2,
+                                              **{"axis_to_join": 1})
