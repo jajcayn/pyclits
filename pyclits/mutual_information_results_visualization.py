@@ -6,19 +6,19 @@
 Demonstration of a basic scatterplot in 3D.
 '''
 
-from mpl_toolkits.mplot3d import Axes3D
-import matplotlib.pyplot as plt
-from matplotlib import cm
-import matplotlib
-import numpy as np
 import os
+
+import matplotlib
+import matplotlib.pyplot as plt
+import numpy as np
 import pandas as pd
-from matplotlib import rc
+from matplotlib import cm
 
 matplotlib.rcParams['text.usetex'] = True
 
 plt.rc('text', usetex=True)
 plt.rc('font', family='serif')
+
 
 def figures3d(dataset, dimensions, title, zlabel, zaxis_selector, row_sizes, filename, suffix, view=(30, 30), scale=lambda N: N, dpi=300):
 

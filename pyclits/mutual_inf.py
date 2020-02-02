@@ -7,14 +7,15 @@ last update on Sep 22, 2017
 """
 
 import collections
+
+import mpmath
 import numpy as np
 import numpy.random as random
-from sklearn.neighbors import KDTree, BallTree
-import mpmath
+from sklearn.neighbors import KDTree
 
 
-def get_time_series_condition(ts, tau=1, reversed=False, dim_of_condition=1, eta=0, 
-        close_condition=False, phase_diff=False, add_cond=None):
+def get_time_series_condition(ts, tau=1, reversed=False, dim_of_condition=1, eta=0,
+                              close_condition=False, phase_diff=False, add_cond=None):
     """
     Returns time series for CMI as list in the sense
         I(x; y | z), where x = x(t); y = y(t+tau) | z = [y(t), y(t-eta), y(t-2eta), ...] up to dim_of_condition
@@ -94,7 +95,6 @@ def get_time_series_condition(ts, tau=1, reversed=False, dim_of_condition=1, eta
         y[y < -np.pi] += 2*np.pi
 
     return (x, y, z)
-
 
 
 def mutual_information(x, y, algorithm='EQQ', bins=8, log2=True):
@@ -509,7 +509,6 @@ def cond_mutual_information(x, y, z, algorithm = 'EQQ', bins = 8, log2 = True):
     return cmi
 
 
-
 def _neg_harmonic(n):
     """
     Returns a negative Nth harmonic number.
@@ -517,7 +516,6 @@ def _neg_harmonic(n):
     """
 
     return -np.sum(1./np.arange(1,n+1))
-
 
 
 def knn_cond_mutual_information(x, y, z, k, standardize = True, dualtree = True):
@@ -577,6 +575,7 @@ def knn_cond_mutual_information(x, y, z, k, standardize = True, dualtree = True)
 
     return sum_ - _neg_harmonic(k-1)
 
+
 def graph_calculation_Paly(data, **kwargs):
     tree_x = KDTree(data, leaf_size=kwargs["leaf_size"], metric=kwargs["metric"])
     distances = tree_x.query(data, k=kwargs["maximal_index"], return_distance=True, dualtree=kwargs["dualtree"])
@@ -587,6 +586,7 @@ def graph_calculation_Paly(data, **kwargs):
 
     return L_p_V_data
 
+
 def graph_calculation_Lavicka(data, **kwargs):
     tree_x = KDTree(data, leaf_size=kwargs["leaf_size"], metric=kwargs["metric"])
     distances = tree_x.query(data, k=kwargs["maximal_index"], return_distance=True, dualtree=kwargs["dualtree"])
@@ -594,15 +594,18 @@ def graph_calculation_Lavicka(data, **kwargs):
 
     return selected_distances
 
+
 def graph_calculation_within_distance_Lavicka(data, radii, **kwargs):
     tree_x = KDTree(data, leaf_size=kwargs["leaf_size"], metric=kwargs["metric"])
     distances = tree_x.query_radius(data, radii, return_distance=True, count_only=False)
 
     return distances
 
+
 def special(k, q, d, N, p0, p1, p, e0, e1):
     value = p0*e1-p1*e0
     return pow(p, 1+k-q) / (1+k-q) * pow((p0-p1)/(p0*e1-p1*e0), d*(1-q)) * mpmath.appellf1(1+k-q, 1+k-N, d * (1-q), 2+k-q, p, p*(e0-e1) / (p1*e0-p0*e1))
+
 
 def renyi_entropy_Lavicka(dataset_x: np.matrix, alpha=1, leaf_size = 15, metric="chebyshev", dualtree=True, sample_size=1000, indices_to_use=[3,4], **kwargs):
     shape_of_data = dataset_x.shape
@@ -639,17 +642,20 @@ def renyi_entropy_Lavicka(dataset_x: np.matrix, alpha=1, leaf_size = 15, metric=
 
     return entropy/len(indices_to_use)
 
+
 def renyi_entropy_LeonenkoProzanto(dataset_x: np.matrix, alpha=1, **kwargs):
     if alpha == 1:
         return entropy_sum_Shannon_LeonenkoProzanto(dataset_x, alpha, **kwargs)
     else:
         return np.log2(entropy_sum_generic_LeonenkoProzanto(dataset_x, alpha, **kwargs)) / (1 - alpha)
 
+
 def tsallis_entropy_LeonenkoProzanto(dataset_x: np.matrix, alpha=1, **kwargs):
     if alpha == 1:
         return entropy_sum_Shannon_LeonenkoProzanto(dataset_x, alpha, **kwargs)
     else:
         return (1 - entropy_sum_generic_LeonenkoProzanto(dataset_x, alpha, **kwargs)) / (1 - alpha)
+
 
 def entropy_sum_generic_LeonenkoProzanto(dataset_x: np.matrix, alpha=1, leaf_size = 15, metric="euclidean", dualtree=True, sample_size=1000, indices_to_use=[3,4], **kwargs):
     shape_of_data = dataset_x.shape
@@ -670,6 +676,7 @@ def entropy_sum_generic_LeonenkoProzanto(dataset_x: np.matrix, alpha=1, leaf_siz
         entropy[index_of_distances] += multiplicator * addition_to_entropy
 
     return np.sum(entropy)/len(indices_to_use)
+
 
 def entropy_sum_Shannon_LeonenkoProzanto(dataset_x: np.matrix, alpha=1, leaf_size = 15, metric="euclidean", dualtree=True, sample_size=1000, indices_to_use=[3,4], **kwargs):
     shape_of_data = dataset_x.shape
@@ -692,6 +699,7 @@ def entropy_sum_Shannon_LeonenkoProzanto(dataset_x: np.matrix, alpha=1, leaf_siz
         entropy[index_of_distances] += np.log2(argument_log)
 
     return np.sum(entropy)/len(indices_to_use)
+
 
 def renyi_entropy_Paly(dataset_x: np.matrix, alpha=0.75, leaf_size = 15, metric="chebyshev", dualtree=True, sample_size=1000, indices_to_use=[3,4], **kwargs):
     """
@@ -716,13 +724,15 @@ def renyi_entropy_Paly(dataset_x: np.matrix, alpha=0.75, leaf_size = 15, metric=
 
         gamma = L_p_V_sample / np.power(sample_size, 1 - power_of_distance_data / dimension_of_data)
 
-        entropy = 1 / (1 - alpha) * np.log(L_p_V_data / (gamma * np.power(length_of_data, 1 - power_of_distance_data / dimension_of_data)))
+        entropy = 1 / (1 - alpha) * np.log(
+            L_p_V_data / (gamma * np.power(length_of_data, 1 - power_of_distance_data / dimension_of_data)))
 
         return entropy
     else:
         raise Exception("Paly method works for alpha in range (0.5,1)")
 
-def renyi_entropy(*args ,**kwargs):
+
+def renyi_entropy(*args, **kwargs):
     if kwargs["method"] == "Paly" or kwargs["method"] == "GeneralizedNearestNeighbor":
         return renyi_entropy_Paly(*args, **kwargs)
     elif kwargs["method"] == "Lavicka" or kwargs["method"] == "NearestNeighbor":
@@ -730,18 +740,59 @@ def renyi_entropy(*args ,**kwargs):
     elif kwargs["method"] == "LeonenkoProzanto":
         return renyi_entropy_LeonenkoProzanto(*args, **kwargs)
 
-def renyi_transfer_entropy(data_x, data_y, **kwargs):
+
+def renyi_mutual_entropy(data_x, data_y, **kwargs):
+    if "axis_to_join" in kwargs:
+        axis_to_join = kwargs["axis_to_join"]
+    else:
+        axis_to_join = 0
+
     if kwargs["method"] == "Paly" or kwargs["method"] == "GeneralizedNearestNeighbor":
         marginal_entropy_x = renyi_entropy(data_x, **kwargs)
         marginal_entropy_y = renyi_entropy(data_y, **kwargs)
-        joint_dataset = np.concatenate(data_x, data_y, axis=1)
+        joint_dataset = np.concatenate(data_x, data_y, axis=axis_to_join)
         entropy_xy = renyi_entropy(joint_dataset, **kwargs)
     elif kwargs["method"] == "Lavicka" or kwargs["method"] == "NearestNeighbor":
-        joint_dataset = np.concatenate(data_x, data_y, axis=1)
+        joint_dataset = np.concatenate(data_x, data_y, axis=axis_to_join)
         entropy_xy = renyi_entropy(joint_dataset, **kwargs)
 
-
     return marginal_entropy_x + marginal_entropy_y - entropy_xy
+
+
+def renyi_transfer_entropy(data_x, data_x_hist, data_y, **kwargs):
+    if "enhanced_calculation" in kwargs:
+        enhanced_calculation = kwargs["axis_to_join"]
+    else:
+        enhanced_calculation = True
+
+    if "axis_to_join" in kwargs:
+        axis_to_join = kwargs["axis_to_join"]
+    else:
+        axis_to_join = 0
+
+    result = {}
+    if enhanced_calculation:
+        joint_dataset = np.concatenate((data_x_hist, data_y), axis=axis_to_join)
+        entropy_joint_history = renyi_entropy(joint_dataset, **kwargs)
+
+        joint_dataset = np.concatenate((data_x, data_x_hist), axis=axis_to_join)
+        entropy_X = renyi_entropy(joint_dataset, **kwargs)
+
+        joint_dataset = np.concatenate((data_x, data_x_hist, data_y), axis=axis_to_join)
+        entropy_joint_present_history = renyi_entropy(joint_dataset, **kwargs)
+
+        entropy_X_history = renyi_entropy(data_x_hist, **kwargs)
+
+        result["result"] = entropy_joint_history + entropy_X - entropy_joint_present_history - entropy_X_history}
+        return result
+    else:
+        joint_dataset = np.concatenate(data_x_hist, data_y, axis=axis_to_join)
+
+        joint_part = renyi_mutual_entropy(data_x, joint_dataset, **kwargs)
+        marginal_part = renyi_mutual_entropy(data_x, data_x_hist, **kwargs)
+
+        return joint_part - marginal_part
+
 
 def conditional_transfer_entropy(data_x, data_y, data_z, **kwargs):
     joint_dataset_xz = np.concatenate(data_x, data_z, axis=1)
@@ -757,13 +808,12 @@ def conditional_transfer_entropy(data_x, data_y, data_z, **kwargs):
 
     return marginal_entropy_xz - marginal_entropy_z - entropy_xyz + entropy_xy
 
-if __name__ == "__main__":
-    import time
 
+if __name__ == "__main__":
     sample_array = np.array([[1], [2], [3], [4], [5], [6], [7], [8], [9]], dtype=float)
     input_sample = np.ndarray(shape=sample_array.shape, buffer=sample_array)
     #print(input_sample)
-    print(renyi_entropy(np.matrix([[1],[2],[3],[4],[5],[6],[7],[8],[9]]), method="LeonenkoProzanto"))
+    print(renyi_entropy(np.array([[1], [2], [3], [4], [5], [6], [7], [8], [9]]), method="LeonenkoProzanto"))
     print(renyi_entropy(input_sample, method="LeonenkoProzanto"))
 
     mu = 0

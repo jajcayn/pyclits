@@ -1,13 +1,21 @@
 [tool.poetry]
 name = "PyClits"
 version = "1.0.0"
-description = ""
-authors = ["ASB"]
+description = "Analyzer of nonlinear data"
+authors = [""]
 
 [tool.poetry.dependencies]
 python = ">=3.7"
 scipy = ">=1.3"
 numpy = "^1.3"
+mpmath = "^1.1.0"
+scikit-learn = "^0.22.1"
+pandas = "^1.0.0"
+matplotlib = "^3.1.2"
+pip = "^20.0.2"
+pydevd = "^1.9.0"
+pydevd-pycharm = "^201.3803.74"
+pytest-pycharm = "^0.6.0"
 
 [tool.poetry.dev-dependencies]
 pytest = "^3.4"
