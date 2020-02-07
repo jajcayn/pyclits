@@ -2,7 +2,7 @@
 name = "PyClits"
 version = "1.0.0"
 description = "Analyzer of nonlinear data"
-authors = [""]
+authors = ["Nikola Jajcay, Hynek Lavicka"]
 
 [tool.poetry.dependencies]
 python = ">=3.7"
