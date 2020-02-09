@@ -588,9 +588,24 @@ def graph_calculation_Paly(data, **kwargs):
     return L_p_V_data
 
 
-def graph_calculation_Lavicka(data, **kwargs):
-    tree_x = KDTree(data, leaf_size=kwargs["leaf_size"], metric=kwargs["metric"])
-    distances = tree_x.query(data, k=kwargs["maximal_index"], return_distance=True, dualtree=kwargs["dualtree"])
+def graph_calculation_preparation(data, **kwargs):
+    if "leaf_size" in kwargs:
+        leaf_size = kwargs["leaf_size"]
+    else:
+        leaf_size = 15
+
+    if "metric" in kwargs:
+        metric = kwargs["metric"]
+    else:
+        metric = "euclidean"
+
+    if "dualtree" in kwargs:
+        dualtree = kwargs["dualtree"]
+    else:
+        dualtree = True
+
+    tree_x = KDTree(data, leaf_size=leaf_size, metric=metric)
+    distances = tree_x.query(data, k=kwargs["maximal_index"], return_distance=True, dualtree=dualtree)
     selected_distances = distances[0][:, kwargs["indices_to_use"]]
 
     return selected_distances
@@ -608,13 +623,14 @@ def special(k, q, d, N, p0, p1, p, e0, e1):
     return pow(p, 1+k-q) / (1+k-q) * pow((p0-p1)/(p0*e1-p1*e0), d*(1-q)) * mpmath.appellf1(1+k-q, 1+k-N, d * (1-q), 2+k-q, p, p*(e0-e1) / (p1*e0-p0*e1))
 
 
-def renyi_entropy_Lavicka(dataset_x: np.matrix, alpha=1, leaf_size = 15, metric="chebyshev", dualtree=True, sample_size=1000, indices_to_use=[3,4], **kwargs):
+def renyi_entropy_Lavicka(dataset_x: np.matrix, alpha=1, leaf_size=15, metric="chebyshev", dualtree=True,
+                          sample_size=1000, indices_to_use=[3, 4], **kwargs):
     shape_of_data = dataset_x.shape
     maximal_index = max(indices_to_use) + 1
     length_of_data = shape_of_data[0]
     dimension_of_data = shape_of_data[1]
 
-    distances = graph_calculation_Lavicka(dataset_x, **locals())
+    distances = graph_calculation_preparation(dataset_x, **locals())
     entropy = 0
 
     for index_of_distances, use_index in enumerate(indices_to_use):
@@ -644,11 +660,33 @@ def renyi_entropy_Lavicka(dataset_x: np.matrix, alpha=1, leaf_size = 15, metric=
     return entropy/len(indices_to_use)
 
 
-def renyi_entropy_LeonenkoProzanto(dataset_x: np.matrix, alpha=1, **kwargs):
-    if alpha == 1:
-        return entropy_sum_Shannon_LeonenkoProzanto(dataset_x, alpha, **kwargs)
+def renyi_entropy_LeonenkoProzanto(dataset_x: np.matrix, **kwargs):
+    if "indices_to_use" in kwargs:
+        indices_to_use = kwargs["indices_to_use"]
     else:
-        return np.log2(entropy_sum_generic_LeonenkoProzanto(dataset_x, alpha, **kwargs)) / (1 - alpha)
+        indices_to_use = [3, 4]
+        kwargs["indices_to_use"] = indices_to_use
+
+    if "alphas" in kwargs:
+        alphas = kwargs["alphas"]
+    else:
+        alphas = [1]
+
+    shape_of_data = dataset_x.shape
+    kwargs["maximal_index"] = max(indices_to_use) + 1
+    length_of_data = shape_of_data[0]
+    kwargs["dimension_of_data"] = shape_of_data[1]
+
+    distances = graph_calculation_preparation(dataset_x, **kwargs)
+
+    results = {}
+    for alpha in alphas:
+        if alpha == 1.0:
+            result = entropy_sum_Shannon_LeonenkoProzanto(dataset_x, distances, **kwargs)
+        else:
+            result = np.log2(entropy_sum_generic_LeonenkoProzanto(dataset_x, distances, alpha, **kwargs)) / (1 - alpha)
+        results[alpha] = result
+    return results
 
 
 def tsallis_entropy_LeonenkoProzanto(dataset_x: np.matrix, alpha=1, **kwargs):
@@ -658,13 +696,10 @@ def tsallis_entropy_LeonenkoProzanto(dataset_x: np.matrix, alpha=1, **kwargs):
         return (1 - entropy_sum_generic_LeonenkoProzanto(dataset_x, alpha, **kwargs)) / (1 - alpha)
 
 
-def entropy_sum_generic_LeonenkoProzanto(dataset_x: np.matrix, alpha=1, leaf_size = 15, metric="euclidean", dualtree=True, sample_size=1000, indices_to_use=[3,4], **kwargs):
-    shape_of_data = dataset_x.shape
-    maximal_index = max(indices_to_use) + 1
-    length_of_data = shape_of_data[0]
-    dimension_of_data = shape_of_data[1]
+def entropy_sum_generic_LeonenkoProzanto(dataset_x: np.matrix, distances, alpha=1, **kwargs):
+    indices_to_use = kwargs["indices_to_use"]
+    dimension_of_data = kwargs["dimension_of_data"]
 
-    distances = graph_calculation_Lavicka(dataset_x, **locals())
     entropy = np.zeros(len(indices_to_use))
 
     for index_of_distances, use_index in enumerate(indices_to_use):
@@ -672,20 +707,21 @@ def entropy_sum_generic_LeonenkoProzanto(dataset_x: np.matrix, alpha=1, leaf_siz
 
         number_of_data = float(len(dataset_x))
 
-        addition_to_entropy = np.sum(np.power(selected_distances, dimension_of_data * (1-alpha)))
-        multiplicator = mpmath.gamma(use_index) / mpmath.gamma(use_index+1-alpha) * np.power(np.pi, dimension_of_data / 2.0 * (1-alpha)) / np.power(mpmath.gamma(dimension_of_data / 2.0 + 1), 1-alpha) * np.power(number_of_data-1, 1-alpha) / number_of_data
+        addition_to_entropy = np.sum(np.power(selected_distances, dimension_of_data * (1 - alpha)))
+        multiplicator = mpmath.gamma(use_index) / mpmath.gamma(use_index + 1 - alpha) * np.power(np.pi,
+                                                                                                 dimension_of_data / 2.0 * (
+                                                                                                             1 - alpha)) / np.power(
+            mpmath.gamma(dimension_of_data / 2.0 + 1), 1 - alpha) * np.power(number_of_data - 1,
+                                                                             1 - alpha) / number_of_data
         entropy[index_of_distances] += multiplicator * addition_to_entropy
 
     return np.sum(entropy)/len(indices_to_use)
 
 
-def entropy_sum_Shannon_LeonenkoProzanto(dataset_x: np.matrix, alpha=1, leaf_size = 15, metric="euclidean", dualtree=True, sample_size=1000, indices_to_use=[3,4], **kwargs):
-    shape_of_data = dataset_x.shape
-    maximal_index = max(indices_to_use) + 1
-    length_of_data = shape_of_data[0]
-    dimension_of_data = shape_of_data[1]
+def entropy_sum_Shannon_LeonenkoProzanto(dataset_x: np.matrix, distances, **kwargs):
+    indices_to_use = kwargs["indices_to_use"]
+    dimension_of_data = kwargs["dimension_of_data"]
 
-    distances = graph_calculation_Lavicka(dataset_x, **locals())
     entropy = np.zeros(len(indices_to_use))
 
     for index_of_distances, use_index in enumerate(indices_to_use):
@@ -778,7 +814,7 @@ def renyi_transfer_entropy(data_x, data_x_hist, data_y, **kwargs):
     else:
         axis_to_join = 0
 
-    result = {}
+    results = {}
     if enhanced_calculation:
         joint_dataset = np.concatenate((data_x_hist, data_y), axis=axis_to_join)
         entropy_joint_history = renyi_entropy(joint_dataset, **kwargs)
@@ -791,8 +827,11 @@ def renyi_transfer_entropy(data_x, data_x_hist, data_y, **kwargs):
 
         entropy_X_history = renyi_entropy(data_x_hist, **kwargs)
 
-        result["result"] = entropy_joint_history + entropy_X - entropy_joint_present_history - entropy_X_history
-        return result
+        for alpha in kwargs["alphas"]:
+            result = entropy_joint_history[alpha] + entropy_X[alpha] - entropy_joint_present_history[alpha] - \
+                     entropy_X_history[alpha]
+            results[alpha] = result
+        return results
     else:
         joint_dataset = np.concatenate(data_x_hist, data_y, axis=axis_to_join)
 
