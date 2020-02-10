@@ -16,6 +16,8 @@ pip = "^20.0.2"
 pydevd = "^1.9.0"
 pydevd-pycharm = "^201.3803.74"
 pytest-pycharm = "^0.6.0"
+sphinx = "^2.4.0"
+sphinx-rtd_theme = "^0.4.3"
 
 [tool.poetry.dev-dependencies]
 pytest = "^3.4"
