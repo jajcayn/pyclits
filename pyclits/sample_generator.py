@@ -37,6 +37,51 @@ def samples_from_arrays(data, **kwargs):
     return sampled_dataset
 
 
+def preparation_dataset_for_transfer_entropy(marginal_solution_1, marginal_solution_2, **kwargs):
+    if "history_x" in kwargs:
+        history_x = kwargs["history_x"]
+    else:
+        history_x = 5
+
+    if "history_y" in kwargs:
+        history_y = kwargs["history_y"]
+    else:
+        history_y = 5
+
+    if "skip_last" in kwargs:
+        skip_last = kwargs["skip_last"]
+    else:
+        skip_last = 0
+
+    if "skip_first" in kwargs:
+        skip_first = kwargs["skip_first"]
+    else:
+        skip_first = 0
+
+    if "transpose" in kwargs and kwargs["transpose"]:
+        marginal_solution_1 = marginal_solution_1.T
+        marginal_solution_2 = marginal_solution_2.T
+
+    shape = marginal_solution_1.shape
+    marginal_solution_1_selected = marginal_solution_1[:, skip_last:] if skip_last == 0 else marginal_solution_1[:,
+                                                                                             skip_last: -skip_last]
+    marginal_solution_2_selected = marginal_solution_2[:, skip_last:] if skip_last == 0 else marginal_solution_2[:,
+                                                                                             skip_last: -skip_last]
+
+    kwargs["transpose"] = False
+    kwargs["history"] = history_x
+    samples_marginal_1 = samples_from_arrays(marginal_solution_1_selected, **kwargs)
+
+    kwargs["history"] = history_y
+    samples_marginal_2 = samples_from_arrays(marginal_solution_2_selected, **kwargs)
+
+    y = samples_marginal_1[:shape[0], :]
+    y_history = samples_marginal_1[shape[0]:, :]
+    z = samples_marginal_2
+
+    return (y, y_history, z)
+
+
 def check_timesteps(data):
     for item in range(data.shape[0] - 1):
         print(data[item + 1] - data[item])

@@ -672,6 +672,14 @@ def renyi_entropy_LeonenkoProzanto(dataset_x: np.matrix, **kwargs):
     else:
         alphas = [1]
 
+    if "transpose" in kwargs:
+        transpose = kwargs["transpose"]
+    else:
+        transpose = False
+
+    if transpose:
+        dataset_x = dataset_x.T
+
     shape_of_data = dataset_x.shape
     kwargs["maximal_index"] = max(indices_to_use) + 1
     length_of_data = shape_of_data[0]
@@ -791,21 +799,22 @@ def renyi_mutual_entropy(data_x, data_y, **kwargs):
     else:
         axis_to_join = 0
 
-    if kwargs["method"] == "Paly" or kwargs["method"] == "GeneralizedNearestNeighbor":
-        marginal_entropy_x = renyi_entropy(data_x, **kwargs)
-        marginal_entropy_y = renyi_entropy(data_y, **kwargs)
-        joint_dataset = np.concatenate(data_x, data_y, axis=axis_to_join)
-        entropy_xy = renyi_entropy(joint_dataset, **kwargs)
-    elif kwargs["method"] == "Lavicka" or kwargs["method"] == "NearestNeighbor":
-        joint_dataset = np.concatenate(data_x, data_y, axis=axis_to_join)
-        entropy_xy = renyi_entropy(joint_dataset, **kwargs)
+    marginal_entropy_x = renyi_entropy(data_x, **kwargs)
+    marginal_entropy_y = renyi_entropy(data_y, **kwargs)
+    joint_dataset = np.concatenate((data_x, data_y), axis=axis_to_join)
+    entropy_xy = renyi_entropy(joint_dataset, **kwargs)
 
-    return marginal_entropy_x + marginal_entropy_y - entropy_xy
+    results = {}
+    for alpha in kwargs["alphas"]:
+        result = marginal_entropy_x[alpha] + marginal_entropy_y[alpha] - entropy_xy[alpha]
+        results[alpha] = result
+
+    return results
 
 
 def renyi_transfer_entropy(data_x, data_x_hist, data_y, **kwargs):
     if "enhanced_calculation" in kwargs:
-        enhanced_calculation = kwargs["axis_to_join"]
+        enhanced_calculation = kwargs["enhanced_calculation"]
     else:
         enhanced_calculation = True
 
@@ -833,12 +842,17 @@ def renyi_transfer_entropy(data_x, data_x_hist, data_y, **kwargs):
             results[alpha] = result
         return results
     else:
-        joint_dataset = np.concatenate(data_x_hist, data_y, axis=axis_to_join)
+        joint_dataset = np.concatenate((data_x_hist, data_y), axis=axis_to_join)
 
         joint_part = renyi_mutual_entropy(data_x, joint_dataset, **kwargs)
         marginal_part = renyi_mutual_entropy(data_x, data_x_hist, **kwargs)
 
-        return joint_part - marginal_part
+        results = {}
+        for alpha in kwargs["alphas"]:
+            result = joint_part[alpha] - marginal_part[alpha]
+            results[alpha] = result
+
+        return results
 
 
 def conditional_transfer_entropy(data_x, data_y, data_z, **kwargs):

@@ -1,14 +1,20 @@
-import numpy as np
+import os.path
+import pickle
+from pathlib import Path
+
 import matplotlib.pyplot as plt
-from scipy.integrate import odeint, solve_ivp
+import numpy as np
+from scipy.integrate import solve_ivp
 
 
-def right_side(y, t, params = [0,0,0,0,0,0,0,0]):
-    x1, x2, x3, y1, y2, y3 = y      # unpack current values of y
+def right_side(y, t, params=[0, 0, 0, 0, 0, 0, 0, 0]):
+    x1, x2, x3, y1, y2, y3 = y  # unpack current values of y
     a1, a2, b1, b2, c1, c2, omega1, omega2, epsilon = params  # unpack parameters
-    derivs = [-omega1 * x2 - x3, omega1 * x1 + a1 * x2, b1 + x3 * (x1 - c1), - omega2 * y2 - y3 + epsilon * (x1 - y1), omega2 * y1 + a2 * y2, b2 + y3 * (y1 - c2)]
+    derivs = [-omega1 * x2 - x3, omega1 * x1 + a1 * x2, b1 + x3 * (x1 - c1), - omega2 * y2 - y3 + epsilon * (x1 - y1),
+              omega2 * y1 + a2 * y2, b2 + y3 * (y1 - c2)]
 
     return derivs
+
 
 def right_side_ivp(t, y, params):
     x1, x2, x3, y1, y2, y3 = y      # unpack current values of y
@@ -16,6 +22,7 @@ def right_side_ivp(t, y, params):
     derivs = [-omega1 * x2 - x3, omega1 * x1 + a1 * x2, b1 + x3 * (x1 - c1), - omega2 * y2 - y3 + epsilon * (x1 - y1), omega2 * y1 + a2 * y2, b2 + y3 * (y1 - c2)]
 
     return derivs
+
 
 def roessler_oscillator(**kwargs):
     # Parameters
@@ -122,13 +129,37 @@ def roessler_oscillator(**kwargs):
     else:
         tInc = 0.001
 
-    timepoints = np.arange(tStart, tStop, tInc)
+    if "cache" in kwargs:
+        cache = kwargs["cache"]
+    else:
+        cache = False
 
-    # Call the ODE solver
-    # old version
-    #psoln = odeint(right_side, y0, t, args=(params,))
+    if "file_template" in kwargs:
+        file_template = kwargs["file"]
+    else:
+        file_template = "roessler_system/cache-{}.bin"
 
-    return solve_ivp(lambda t, y: right_side_ivp(t, y, params), [tStart, tStop], y0, method=method)
+    file = file_template.format(epsilon)
+    path = Path(file)
+
+    if not cache or not os.path.isfile(path):
+        timepoints = np.arange(tStart, tStop, tInc)
+
+        # Call the ODE solver
+        # old version
+        # psoln = odeint(right_side, y0, t, args=(params,))
+        solution = solve_ivp(lambda t, y: right_side_ivp(t, y, params), [tStart, tStop], y0, method=method)
+
+        path.parent.mkdir(parents=True, exist_ok=True)
+        with open(path, "wb") as fb:
+            pickle.dump((params, y0, solution), fb)
+
+        return solution
+    else:
+        with open(path, "rb") as fb:
+            (params, y0, solution) = pickle.load(fb)
+
+        return solution
 
 
 def visualization(sol, **kwargs):
