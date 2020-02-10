@@ -8,6 +8,7 @@ last update on Sep 22, 2017
 
 import collections
 import logging
+import traceback
 
 import mpmath
 import numpy as np
@@ -699,6 +700,7 @@ def renyi_entropy_LeonenkoProzanto(dataset_x: np.matrix, **kwargs):
             results[alpha] = result
         except Exception as exc:
             logging.info(exc)
+            traceback.print_stack()
 
     return results
 
