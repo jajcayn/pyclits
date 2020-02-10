@@ -37,7 +37,7 @@ if __name__ == "__main__":
                   0.9, 0.95,
                   0.99, 0.999, 1.0, 1.001, 1.01, 1.05, 1.1, 1.15, 1.2, 1.25, 1.3, 1.35, 1.4, 1.45, 1.5, 1.55, 1.6, 1.65,
                   1.7, 1.75, 1.8, 1.85, 1.9, 1.95, 1.99]
-        indices_to_use = list(range(solution_size[1] // 1000))
+        indices_to_use = list(range(50))
         configuration = {"transpose": True, "axis_to_join": 0, "method": "LeonenkoProzanto", "alphas": alphas,
                          "enhanced_calculation": True, "indices_to_use": indices_to_use}
         t0 = time.process_time()

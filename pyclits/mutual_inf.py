@@ -689,11 +689,17 @@ def renyi_entropy_LeonenkoProzanto(dataset_x: np.matrix, **kwargs):
 
     results = {}
     for alpha in alphas:
-        if alpha == 1.0:
-            result = entropy_sum_Shannon_LeonenkoProzanto(dataset_x, distances, **kwargs)
-        else:
-            result = np.log2(entropy_sum_generic_LeonenkoProzanto(dataset_x, distances, alpha, **kwargs)) / (1 - alpha)
-        results[alpha] = result
+        try:
+            if alpha == 1.0:
+                result = entropy_sum_Shannon_LeonenkoProzanto(dataset_x, distances, **kwargs)
+            else:
+                result = np.log2(entropy_sum_generic_LeonenkoProzanto(dataset_x, distances, alpha, **kwargs)) / (
+                            1 - alpha)
+
+            results[alpha] = result
+        except Exception as exc:
+            logging.info(exc)
+
     return results
 
 
