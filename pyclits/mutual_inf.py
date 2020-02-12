@@ -13,6 +13,7 @@ import traceback
 import mpmath
 import numpy as np
 import numpy.random as random
+import scipy.special as scipyspecial
 from sklearn.neighbors import KDTree
 
 
@@ -694,8 +695,7 @@ def renyi_entropy_LeonenkoProzanto(dataset_x: np.matrix, **kwargs):
             if alpha == 1.0:
                 result = entropy_sum_Shannon_LeonenkoProzanto(dataset_x, distances, **kwargs)
             else:
-                result = np.log2(entropy_sum_generic_LeonenkoProzanto(dataset_x, distances, alpha, **kwargs)) / (
-                            1 - alpha)
+                result = np.log2(entropy_sum_generic_LeonenkoProzanto(dataset_x, distances, alpha, **kwargs)) / (1 - alpha)
 
             results[alpha] = result
         except Exception as exc:
@@ -723,13 +723,15 @@ def entropy_sum_generic_LeonenkoProzanto(dataset_x: np.matrix, distances, alpha=
 
         number_of_data = float(len(dataset_x))
 
-        addition_to_entropy = np.sum(np.power(selected_distances, dimension_of_data * (1 - alpha)))
-        multiplicator = mpmath.gamma(use_index) / mpmath.gamma(use_index + 1 - alpha) * np.power(np.pi,
-                                                                                                 dimension_of_data / 2.0 * (
-                                                                                                             1 - alpha)) / np.power(
-            mpmath.gamma(dimension_of_data / 2.0 + 1), 1 - alpha) * np.power(number_of_data - 1,
-                                                                             1 - alpha) / number_of_data
-        entropy[index_of_distances] += multiplicator * addition_to_entropy
+        try:
+            gamma_dim = scipyspecial.gamma(dimension_of_data / 2.0 + 1)
+            addition_to_entropy = np.sum(np.power(selected_distances, dimension_of_data * (1 - alpha)))
+            multiplicator_gamma = np.exp(scipyspecial.gammaln(use_index) - scipyspecial.gammaln(use_index + 1 - alpha))
+            multiplicator = multiplicator_gamma * np.power(np.pi, dimension_of_data / 2.0 * (1 - alpha)) / \
+                            np.power(gamma_dim, 1 - alpha) * np.power(number_of_data - 1, 1 - alpha) / number_of_data
+            entropy[index_of_distances] += multiplicator * addition_to_entropy
+        except Exception as exc:
+            print(f"Exception: {exc} {alpha} {use_index}")
 
     return np.sum(entropy)/len(indices_to_use)
 
