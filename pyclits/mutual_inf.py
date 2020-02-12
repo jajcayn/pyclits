@@ -724,12 +724,15 @@ def entropy_sum_generic_LeonenkoProzanto(dataset_x: np.matrix, distances, alpha=
         number_of_data = float(len(dataset_x))
 
         try:
-            gamma_dim = scipyspecial.gamma(dimension_of_data / 2.0 + 1)
-            addition_to_entropy = np.sum(np.power(selected_distances, dimension_of_data * (1 - alpha)))
+            log_gamma_dim = scipyspecial.gammaln(dimension_of_data / 2.0 + 1)
+            maximum = max(selected_distances)
+            exponent = dimension_of_data * (1 - alpha)
+            addition_to_entropy = np.sum(np.power(selected_distances / maximum, exponent))
             multiplicator_gamma = np.exp(scipyspecial.gammaln(use_index) - scipyspecial.gammaln(use_index + 1 - alpha))
-            multiplicator = multiplicator_gamma * np.power(np.pi, dimension_of_data / 2.0 * (1 - alpha)) / \
-                            np.power(gamma_dim, 1 - alpha) * np.power(number_of_data - 1, 1 - alpha) / number_of_data
-            entropy[index_of_distances] += multiplicator * addition_to_entropy
+            multiplicator = multiplicator_gamma * np.power(np.pi, exponent / 2.0) * np.power(number_of_data - 1, 1 - alpha) / number_of_data
+            log_sum_multiplicator = np.log(maximum) * exponent
+            powered_log_gamma_dim = (1 - alpha) * log_gamma_dim
+            entropy[index_of_distances] += multiplicator * addition_to_entropy * np.exp(log_sum_multiplicator - powered_log_gamma_dim)
         except Exception as exc:
             print(f"Exception: {exc} {alpha} {use_index}")
 
