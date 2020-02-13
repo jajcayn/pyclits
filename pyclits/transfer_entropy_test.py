@@ -10,7 +10,7 @@ from sample_generator import preparation_dataset_for_transfer_entropy
 
 if __name__ == "__main__":
     epsilons = [0.1]
-    for espilon in epsilons:
+    for epsilon in epsilons:
         configuration = {"method": "LSODA", "tInc": 0.001, "cache": True, "epsilon": epsilon}
         configuration["tStop"] = 10000
 
@@ -53,7 +53,7 @@ if __name__ == "__main__":
 
             results[history] = transfer_entropy
 
-        path = Path(f"trasfer_entropy/Transfer_entropy-{espilon}.bin")
+        path = Path(f"trasfer_entropy/Transfer_entropy-{epsilon}.bin")
         path.parent.mkdir(parents=True, exist_ok=True)
         with open(path, "wb") as fb:
             pickle.dump(results, fb)
