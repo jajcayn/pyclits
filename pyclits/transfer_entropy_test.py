@@ -1,3 +1,4 @@
+import pickle
 import time
 from pathlib import Path
 
@@ -55,6 +56,4 @@ if __name__ == "__main__":
         path = Path(f"trasfer_entropy/Transfer_entropy-{espilon}.bin")
         path.parent.mkdir(parents=True, exist_ok=True)
         with open(path, "wb") as fb:
-            import pickle
-
             pickle.dump(results, fb)
