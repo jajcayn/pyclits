@@ -15,7 +15,6 @@ if __name__ == "__main__":
     parser.add_argument('--t_stop', metavar='XXX', type=float, default=10000.0, help='T stop')
     parser.add_argument('--t_inc', metavar='XXX', type=float, default=0.001, help='T increment')
     parser.add_argument('--skip', metavar='XXX', type=int, default=2000, help='Skipped results of integration')
-    parser.add_argument('--skip', metavar='XXX', type=int, default=2000, help='Skipped results of integration')
     parser.add_argument('--history', metavar='XXX', type=int, nargs='+', help='Historie to take into account')
     parser.add_argument('--method', metavar='XXX', type=str, default="LSODA", help='Method of integration')
     args = parser.parse_args()
