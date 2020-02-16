@@ -10,7 +10,7 @@ from roessler_system import roessler_oscillator
 from sample_generator import preparation_dataset_for_transfer_entropy
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description='Calculates transfer entropy for coupled Rössler systems with strength og coupling epsilon.')
+    parser = argparse.ArgumentParser(description='Calculates transfer entropy for coupled Rössler systems with strength of coupling epsilon.')
     parser.add_argument('--epsilon', metavar='XXX', type=float, nargs='+', help='Epsilons')
     parser.add_argument('--t_stop', metavar='XXX', type=float, default=10000.0, help='T stop')
     parser.add_argument('--t_inc', metavar='XXX', type=float, default=0.001, help='T increment')
@@ -28,7 +28,8 @@ if __name__ == "__main__":
     if args.history:
         histories = args.history
     else:
-        histories = [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 15, 17, 20]
+        histories = range(1, 25)
+        # [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 15, 17, 20]
 
     for epsilon in epsilons:
         configuration = {"method": args.method, "tInc": args.t_inc, "tStop": args.t_stop, "cache": True, "epsilon": epsilon}
@@ -58,7 +59,6 @@ if __name__ == "__main__":
             duration = t1 - t0
             print(f"Preparation of datasets [s]: {duration}", flush=True)
 
-            results = {}
             indices_to_use = list(range(1, 50))
             configuration = {"transpose": True, "axis_to_join": 0, "method": "LeonenkoProzanto", "alphas": alphas,
                              "enhanced_calculation": True, "indices_to_use": indices_to_use}
@@ -67,11 +67,11 @@ if __name__ == "__main__":
             t1 = time.process_time()
             duration = t1 - t0
             print(f"Calculation of transfer entropy [s]: {duration}", flush=True)
-            print(f"Transfer Renyi entropy with {history}: {transfer_entropy}", flush=True)
+            print(f"Transfer Renyi entropy with {history} {epsilon}: {transfer_entropy}", flush=True)
 
             results[history] = transfer_entropy
 
-        path = Path(f"trasfer_entropy/Transfer_entropy-{epsilon}.bin")
+        path = Path(f"transfer_entropy/Transfer_entropy-{epsilon}.bin")
         print(f"Save to file {path}", flush=True)
         path.parent.mkdir(parents=True, exist_ok=True)
         with open(path, "wb") as fb:
