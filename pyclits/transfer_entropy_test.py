@@ -72,7 +72,7 @@ if __name__ == "__main__":
             print(f"Calculation of transfer entropy [s]: {duration}", flush=True)
             print(f"Transfer Renyi entropy with {history} {epsilon}: {transfer_entropy}", flush=True)
 
-            results[history] = transfer_entropy
+            results[(epsilon, history)] = transfer_entropy
 
         path = Path(f"transfer_entropy/Transfer_entropy-{epsilon}.bin")
         print(f"Save to file {path}", flush=True)
