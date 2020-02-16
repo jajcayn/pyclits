@@ -1,10 +1,5 @@
-'''
-==============
-3D scatterplot
-==============
-
-Demonstration of a basic scatterplot in 3D.
-'''
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
 
 import os
 

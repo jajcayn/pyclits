@@ -1,11 +1,15 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+
+import math
+import sys
+import time
 
 import numpy as np
 import scipy.special as spec
 import scipy.stats as stat
-import time
+
 import mutual_inf
-import math
-import sys
 
 time_start = time.process_time()
 
