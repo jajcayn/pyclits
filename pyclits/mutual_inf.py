@@ -609,6 +609,7 @@ def graph_calculation_preparation(data, **kwargs):
     else:
         dualtree = True
 
+    print(f" * shape of data which will be used to construct tree: {data.shape}")
     tree_x = KDTree(data, leaf_size=leaf_size, metric=metric)
     distances = tree_x.query(data, k=kwargs["maximal_index"], return_distance=True, dualtree=dualtree)
     selected_distances = distances[0][:, kwargs["indices_to_use"]]
