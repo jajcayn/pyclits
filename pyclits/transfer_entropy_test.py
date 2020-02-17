@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 
 import argparse
+import logging
 import pickle
 import time
 from pathlib import Path
@@ -18,6 +19,7 @@ if __name__ == "__main__":
     parser.add_argument('--t_stop', metavar='XXX', type=float, default=10000.0, help='T stop')
     parser.add_argument('--t_inc', metavar='XXX', type=float, default=0.001, help='T increment')
     parser.add_argument('--skip', metavar='XXX', type=int, default=2000, help='Skipped results of integration')
+    parser.add_argument('--skip_real_t', action='store_true', help='Indicates skip in time')
     parser.add_argument('--history', metavar='XXX', type=int, nargs='+', help='Historie to take into account')
     parser.add_argument('--method', metavar='XXX', type=str, default="LSODA", help='Method of integration')
     args = parser.parse_args()
@@ -44,7 +46,16 @@ if __name__ == "__main__":
         print(f"Solution duration [s]: {duration}", flush=True)
 
         # preparation of sources
-        filtrated_solution = sol.y[:, args.skip:]
+        if args.skip_real_t:
+            indices = np.where(sol.t >= args.skip)
+            if len(indices) > 0:
+                filtrated_solution = sol.y[:, indices[0]:]
+            else:
+                logging.error("Skipping is too large and no data were selected for processing")
+                raise AssertionError("No data selected")
+        else:
+            filtrated_solution = sol.y[:, args.skip:]
+
         print(f"Shape of solution: {filtrated_solution.shape}")
         joint_solution = filtrated_solution
         marginal_solution_1 = filtrated_solution[0:3, :].T
