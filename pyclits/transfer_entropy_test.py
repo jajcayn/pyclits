@@ -45,6 +45,7 @@ if __name__ == "__main__":
 
         # preparation of sources
         filtrated_solution = sol.y[:, args.skip:]
+        print(f"Shape of solution: {filtrated_solution.shape}")
         joint_solution = filtrated_solution
         marginal_solution_1 = filtrated_solution[0:3, :].T
         marginal_solution_2 = filtrated_solution[3:6, :].T
