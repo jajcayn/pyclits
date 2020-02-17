@@ -31,7 +31,7 @@ if __name__ == "__main__":
     if args.history:
         histories = args.history
     else:
-        histories = range(1, 25)
+        histories = range(2, 25)
         # [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 15, 17, 20]
 
     for epsilon in epsilons:
