@@ -53,6 +53,7 @@ if __name__ == "__main__":
         alphas = np.linspace(0.01, 1.99, 199)
         results = {}
         for history in histories:
+            print(f"History: {history} and epsilon: {epsilon} is processed", flush=True)
             solution_size = joint_solution.shape
             configuration = {"transpose": True, "history_x": history, "history_y": history}
 
@@ -61,19 +62,22 @@ if __name__ == "__main__":
                                                                     **configuration)
             t1 = time.process_time()
             duration = t1 - t0
-            print(f"Preparation of datasets [s]: {duration}", flush=True)
+            print(f" * Preparation of datasets [s]: {duration}", flush=True)
 
             indices_to_use = list(range(1, 50))
             configuration = {"transpose": True, "axis_to_join": 0, "method": "LeonenkoProzanto", "alphas": alphas,
                              "enhanced_calculation": True, "indices_to_use": indices_to_use}
+
+            print(f" * Transfer entropy for history: {history} and epsilon: {epsilon} is calculated", flush=True)
             t0 = time.process_time()
             transfer_entropy = renyi_transfer_entropy(y, y_hist, z, **configuration)
             t1 = time.process_time()
             duration = t1 - t0
-            print(f"Calculation of transfer entropy [s]: {duration}", flush=True)
-            print(f"Transfer Renyi entropy with {history} {epsilon}: {transfer_entropy}", flush=True)
+            print(f" * Duration of calculation of transfer entropy [s]: {duration}", flush=True)
+            # print(f" * Transfer Renyi entropy with {history} {epsilon}: {transfer_entropy}", flush=True)
 
             results[(epsilon, history)] = transfer_entropy
+            print(f" * Transfer entropy calculation for history: {history} and epsilon: {epsilon} is finished", flush=True)
 
         path = Path(f"transfer_entropy/Transfer_entropy-{epsilon}.bin")
         print(f"Save to file {path}", flush=True)
