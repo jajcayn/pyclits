@@ -18,6 +18,7 @@ if __name__ == "__main__":
     parser.add_argument('--epsilon', metavar='XXX', type=float, nargs='+', help='Epsilons')
     parser.add_argument('--t_stop', metavar='XXX', type=float, default=10000.0, help='T stop')
     parser.add_argument('--t_inc', metavar='XXX', type=float, default=0.001, help='T increment')
+    parser.add_argument('--no_cache', action='store_true', help='Skips cached results of the Rössler system')
     parser.add_argument('--skip', metavar='XXX', type=int, default=2000, help='Skipped results of integration')
     parser.add_argument('--skip_real_t', action='store_true', help='Indicates skip in time')
     parser.add_argument('--history', metavar='XXX', type=int, nargs='+', help='Historie to take into account')
