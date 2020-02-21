@@ -604,17 +604,10 @@ def graph_calculation_preparation(data, **kwargs):
     else:
         metric = "euclidean"
 
-    if "dualtree" in kwargs:
-        dualtree = kwargs["dualtree"]
-    else:
-        dualtree = True
-
     print(f" * shape of data which will be used to construct tree: {data.shape}")
     tree_x = KDTree(data, leaf_size=leaf_size, metric=metric)
-    distances = tree_x.query(data, k=kwargs["maximal_index"], return_distance=True, dualtree=dualtree)
-    selected_distances = distances[0][:, kwargs["indices_to_use"]]
 
-    return selected_distances
+    return tree_x
 
 
 def graph_calculation_within_distance_Lavicka(data, radii, **kwargs):
@@ -686,20 +679,27 @@ def renyi_entropy_LeonenkoProzanto(dataset_x: np.matrix, **kwargs):
     if transpose:
         dataset_x = dataset_x.T
 
+    if kwargs["arbitrary_precision"]:
+        mpmath.mp.dps = kwargs["decimal_places"]
+        print(mpmath.mp)
+
     shape_of_data = dataset_x.shape
     kwargs["maximal_index"] = max(indices_to_use) + 1
     length_of_data = shape_of_data[0]
     kwargs["dimension_of_data"] = shape_of_data[1]
 
-    distances = graph_calculation_preparation(dataset_x, **kwargs)
+    kdtree = graph_calculation_preparation(dataset_x, **kwargs)
 
     results = {}
     for alpha in alphas:
         try:
             if alpha == 1.0:
-                result = entropy_sum_Shannon_LeonenkoProzanto(dataset_x, distances, **kwargs)
+                result = entropy_sum_Shannon_LeonenkoProzanto(dataset_x, kdtree, **kwargs)
             else:
-                result = np.log2(entropy_sum_generic_LeonenkoProzanto(dataset_x, distances, alpha, **kwargs)) / (1 - alpha)
+                if kwargs["arbitrary_precision"]:
+                    result = mpmath.log(entropy_sum_generic_LeonenkoProzanto(dataset_x, kdtree, alpha, **kwargs)) / (1 - alpha)
+                else:
+                    result = np.log2(entropy_sum_generic_LeonenkoProzanto(dataset_x, kdtree, alpha, **kwargs)) / (1 - alpha)
 
             results[alpha] = result
         except Exception as exc:
@@ -716,51 +716,115 @@ def tsallis_entropy_LeonenkoProzanto(dataset_x: np.matrix, alpha=1, **kwargs):
         return (1 - entropy_sum_generic_LeonenkoProzanto(dataset_x, alpha, **kwargs)) / (1 - alpha)
 
 
-def entropy_sum_generic_LeonenkoProzanto(dataset_x: np.matrix, distances, alpha=1, **kwargs):
+def entropy_sum_generic_LeonenkoProzanto(dataset_x: np.matrix, tree_x, alpha=1, **kwargs):
     indices_to_use = kwargs["indices_to_use"]
     dimension_of_data = kwargs["dimension_of_data"]
 
-    entropy = np.zeros(len(indices_to_use))
+    if "dualtree" in kwargs:
+        dualtree = kwargs["dualtree"]
+    else:
+        dualtree = True
+
+    if kwargs["arbitrary_precision"]:
+        entropy = [mpmath.mpf("0.0") for index in range(len(indices_to_use))]
+    else:
+        entropy = np.zeros(len(indices_to_use))
+
+    distances = tree_x.query(dataset_x, k=kwargs["maximal_index"], return_distance=True, dualtree=dualtree)
+    selected_distances = distances[0][:, kwargs["indices_to_use"]]
 
     for index_of_distances, use_index in enumerate(indices_to_use):
-        selected_distances = distances[:, index_of_distances]
+        subselected_distances = selected_distances[:, index_of_distances]
 
         number_of_data = float(len(dataset_x))
 
         try:
-            log_gamma_dim = scipyspecial.gammaln(dimension_of_data / 2.0 + 1)
-            maximum = max(selected_distances)
-            exponent = dimension_of_data * (1 - alpha)
-            addition_to_entropy = np.sum(np.power(selected_distances / maximum, exponent))
-            multiplicator_gamma = np.exp(scipyspecial.gammaln(use_index) - scipyspecial.gammaln(use_index + 1 - alpha))
-            multiplicator = multiplicator_gamma * np.power(np.pi, exponent / 2.0) * np.power(number_of_data - 1, 1 - alpha) / number_of_data
-            log_sum_multiplicator = np.log(maximum) * exponent
-            powered_log_gamma_dim = (1 - alpha) * log_gamma_dim
-            entropy[index_of_distances] += multiplicator * addition_to_entropy * np.exp(log_sum_multiplicator - powered_log_gamma_dim)
+            if kwargs["arbitrary_precision"]:
+                exponent = dimension_of_data * (1 - alpha)
+                addition_to_entropy = mpmath.mpf('0.0')
+                shape = subselected_distances.shape
+                for index in range(shape[0]):
+                    addition_to_entropy += mpmath.power(subselected_distances[index], exponent)
+
+                multiplicator_gamma = mpmath.gammaprod([use_index], [use_index + 1 - alpha])
+                multiplicator = multiplicator_gamma * mpmath.power(mpmath.pi, exponent / 2.0) * mpmath.power(number_of_data - 1, 1 - alpha) / number_of_data
+                power_gamma_dim = mpmath.power(mpmath.gamma(dimension_of_data / 2.0 + 1), (1 - alpha))
+
+                entropy[index_of_distances] += multiplicator * addition_to_entropy / power_gamma_dim
+            else:
+                log_gamma_dim = scipyspecial.gammaln(dimension_of_data / 2.0 + 1)
+                maximum = max(subselected_distances)
+                exponent = dimension_of_data * (1 - alpha)
+                addition_to_entropy = np.sum(np.power(subselected_distances / maximum, exponent))
+                multiplicator_gamma = np.exp(scipyspecial.gammaln(use_index) - scipyspecial.gammaln(use_index + 1 - alpha))
+                multiplicator = multiplicator_gamma * np.power(np.pi, exponent / 2.0) * np.power(number_of_data - 1, 1 - alpha) / number_of_data
+                log_sum_multiplicator = np.log(maximum) * exponent
+                powered_log_gamma_dim = (1 - alpha) * log_gamma_dim
+                entropy[index_of_distances] += multiplicator * addition_to_entropy * np.exp(log_sum_multiplicator - powered_log_gamma_dim)
         except Exception as exc:
             print(f"Exception: {exc} {alpha} {use_index}")
 
-    return np.sum(entropy)/len(indices_to_use)
+    if kwargs["arbitrary_precision"]:
+        ent = mpmath.mpf('0.0')
+        for ent_item in entropy:
+            ent += ent_item
+
+        return ent / len(indices_to_use)
+    else:
+        return np.sum(entropy) / len(indices_to_use)
 
 
-def entropy_sum_Shannon_LeonenkoProzanto(dataset_x: np.matrix, distances, **kwargs):
+def entropy_sum_Shannon_LeonenkoProzanto(dataset_x: np.matrix, tree_x, **kwargs):
+    if "dualtree" in kwargs:
+        dualtree = kwargs["dualtree"]
+    else:
+        dualtree = True
+
     indices_to_use = kwargs["indices_to_use"]
     dimension_of_data = kwargs["dimension_of_data"]
 
-    entropy = np.zeros(len(indices_to_use))
+    if kwargs["arbitrary_precision"]:
+        entropy = [mpmath.mpf("0.0") for index in range(len(indices_to_use))]
+    else:
+        entropy = np.zeros(len(indices_to_use))
+
+    distances = tree_x.query(dataset_x, k=kwargs["maximal_index"], return_distance=True, dualtree=dualtree)
+    distances_used_by_index = distances[0][:, kwargs["indices_to_use"]]
 
     for index_of_distances, use_index in enumerate(indices_to_use):
-        selected_distances = distances[:, index_of_distances]
+        subselected_distances = distances_used_by_index[:, index_of_distances]
 
         number_of_data = float(len(dataset_x))
 
-        addition_to_entropy = np.sum(np.log2(selected_distances)) * dimension_of_data / number_of_data
-        entropy[index_of_distances] += addition_to_entropy
-        digamma = float(mpmath.digamma(use_index))
-        argument_log = float(np.power(np.pi, dimension_of_data / 2.0) / mpmath.gamma(dimension_of_data / 2.0 + 1) * np.exp(-digamma) * (number_of_data-1))
-        entropy[index_of_distances] += np.log2(argument_log)
+        if kwargs["arbitrary_precision"]:
+            addition_to_entropy = mpmath.mpf('0.0')
+            shape = subselected_distances.shape
+            for index in range(shape[0]):
+                addition_to_entropy += mpmath.log2(subselected_distances[index])
 
-    return np.sum(entropy)/len(indices_to_use)
+            addition_to_entropy *= dimension_of_data / number_of_data
+
+            entropy[index_of_distances] += addition_to_entropy
+            digamma = mpmath.digamma(use_index)
+            argument_log = mpmath.power(mpmath.pi, dimension_of_data / 2.0) / mpmath.gamma(dimension_of_data / 2.0 + 1) * mpmath.exp(-digamma) * (
+                        number_of_data - 1)
+            entropy[index_of_distances] += mpmath.log2(argument_log)
+        else:
+            addition_to_entropy = np.sum(np.log2(subselected_distances)) * dimension_of_data / number_of_data
+
+            entropy[index_of_distances] += addition_to_entropy
+            digamma = scipyspecial.digamma(use_index)
+            argument_log = np.power(np.pi, dimension_of_data / 2.0) / mpmath.gamma(dimension_of_data / 2.0 + 1) * np.exp(-digamma) * (number_of_data - 1)
+            entropy[index_of_distances] += np.log2(argument_log)
+
+    if kwargs["arbitrary_precision"]:
+        ent = mpmath.mpf('0.0')
+        for ent_item in entropy:
+            ent += ent_item
+
+        return ent / len(indices_to_use)
+    else:
+        return np.sum(entropy) / len(indices_to_use)
 
 
 def renyi_entropy_Paly(dataset_x: np.matrix, alpha=0.75, leaf_size = 15, metric="chebyshev", dualtree=True, sample_size=1000, indices_to_use=[3,4], **kwargs):

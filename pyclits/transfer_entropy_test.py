@@ -20,9 +20,12 @@ if __name__ == "__main__":
     parser.add_argument('--t_inc', metavar='XXX', type=float, default=0.001, help='T increment')
     parser.add_argument('--no_cache', action='store_true', help='Skips cached results of the Rössler system')
     parser.add_argument('--skip', metavar='XXX', type=int, default=2000, help='Skipped results of integration')
+    parser.add_argument('--blockwise', metavar='XXX', type=int, default=0, help='Blockwise calculation of distances to prevent excessive memory usage')
     parser.add_argument('--skip_real_t', action='store_true', help='Indicates skip in time')
     parser.add_argument('--history', metavar='XXX', type=int, nargs='+', help='Historie to take into account')
     parser.add_argument('--method', metavar='XXX', type=str, default="LSODA", help='Method of integration')
+    parser.add_argument('--arbitrary_precision', action='store_true', help='Calculates the main part in arbitrary precision')
+    parser.add_argument('--interpolation', metavar='XXX', type=str, default="LSODA", help='Method of integration')
     args = parser.parse_args()
     # print(args.epsilon, flush=True)
 
@@ -38,7 +41,8 @@ if __name__ == "__main__":
         # [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 15, 17, 20]
 
     for epsilon in epsilons:
-        configuration = {"method": args.method, "tInc": args.t_inc, "tStop": args.t_stop, "cache": True, "epsilon": epsilon}
+        configuration = {"method": args.method, "tInc": args.t_inc, "tStop": args.t_stop, "cache": True, "epsilon": epsilon,
+                         "arbitrary_precision": args.arbitrary_precision}
 
         t0 = time.process_time()
         sol = roessler_oscillator(**configuration)
@@ -67,18 +71,18 @@ if __name__ == "__main__":
         for history in histories:
             print(f"History: {history} and epsilon: {epsilon} is processed", flush=True)
             solution_size = joint_solution.shape
-            configuration = {"transpose": True, "history_x": history, "history_y": history}
+            configuration = {"transpose": True, "history_x": history, "history_y": history, "blockwise": args.blockwise}
 
             t0 = time.process_time()
-            y, y_hist, z = preparation_dataset_for_transfer_entropy(marginal_solution_2, marginal_solution_1,
-                                                                    **configuration)
+            y, y_hist, z = preparation_dataset_for_transfer_entropy(marginal_solution_2, marginal_solution_1, **configuration)
             t1 = time.process_time()
             duration = t1 - t0
             print(f" * Preparation of datasets [s]: {duration}", flush=True)
 
             indices_to_use = list(range(1, 50))
             configuration = {"transpose": True, "axis_to_join": 0, "method": "LeonenkoProzanto", "alphas": alphas,
-                             "enhanced_calculation": True, "indices_to_use": indices_to_use}
+                             "enhanced_calculation": True, "indices_to_use": indices_to_use, "arbitrary_precision": args.arbitrary_precision,
+                             "decimal_places": 300}
 
             print(f" * Transfer entropy for history: {history} and epsilon: {epsilon} is calculated", flush=True)
             t0 = time.process_time()
