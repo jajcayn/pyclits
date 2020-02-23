@@ -16,7 +16,7 @@ plt.rc('text', usetex=True)
 plt.rc('font', family='serif')
 
 
-def figures3d_TE(dataset, selector, title, zlabel, filename, suffix, view=(70, 30), dpi=300):
+def figures3d_TE(dataset, selector, title, zlabel, filename, suffix, view=(70, 120), dpi=300):
     fig = plt.figure(figsize=(13, 8))
     ax = Axes3D(fig)
 
