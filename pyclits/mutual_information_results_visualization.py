@@ -16,7 +16,6 @@ plt.rc('font', family='serif')
 
 
 def figures3d(dataset, dimensions, title, zlabel, zaxis_selector, row_sizes, filename, suffix, view=(30, 30), scale=lambda N: N, dpi=300):
-
     fig = plt.figure(figsize=(13, 8), tight_layout=True)
     ax = fig.add_subplot(111, projection='3d')
 
