@@ -25,6 +25,7 @@ if __name__ == "__main__":
     parser.add_argument('--skip_real_t', action='store_true', help='Indicates skip in time')
     parser.add_argument('--history', metavar='XXX', type=int, nargs='+', help='Historie to take into account')
     parser.add_argument('--method', metavar='XXX', type=str, default="LSODA", help='Method of integration')
+    parser.add_argument('--maximal_neighborhood', metavar='XXX', type=int, default=2, help='Maximal neighborhood')
     parser.add_argument('--arbitrary_precision', action='store_true', help='Calculates the main part in arbitrary precision')
     parser.add_argument('--interpolate', action='store_true', help='Switch on intepolation')
     parser.add_argument('--interpolate_samples_per_unit_time', metavar='XXX', type=int, default=10, help='Number of samples generated per unit time')
@@ -93,7 +94,7 @@ if __name__ == "__main__":
             duration = t1 - t0
             print(f" * Preparation of datasets [s]: {duration}", flush=True)
 
-            indices_to_use = list(range(1, 50))
+            indices_to_use = list(range(1, args.maximal_neighborhood))
             configuration = {"transpose": True, "axis_to_join": 0, "method": "LeonenkoProzanto", "alphas": alphas,
                              "enhanced_calculation": True, "indices_to_use": indices_to_use, "arbitrary_precision": args.arbitrary_precision,
                              "decimal_places": 300}
