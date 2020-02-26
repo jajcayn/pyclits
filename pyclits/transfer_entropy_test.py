@@ -94,7 +94,7 @@ if __name__ == "__main__":
             duration = t1 - t0
             print(f" * Preparation of datasets [s]: {duration}", flush=True)
 
-            indices_to_use = list(range(1, args.maximal_neighborhood))
+            indices_to_use = list(range(1, args.maximal_neighborhood + 1))
             configuration = {"transpose": True, "axis_to_join": 0, "method": "LeonenkoProzanto", "alphas": alphas,
                              "enhanced_calculation": True, "indices_to_use": indices_to_use, "arbitrary_precision": args.arbitrary_precision,
                              "decimal_places": 300}
