@@ -8,6 +8,7 @@ import time
 from pathlib import Path
 
 import numpy as np
+import scipy.interpolate
 
 from mutual_inf import renyi_transfer_entropy
 from roessler_system import roessler_oscillator
@@ -17,7 +18,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Calculates transfer entropy for coupled Rössler systems with strength of coupling epsilon.')
     parser.add_argument('--epsilon', metavar='XXX', type=float, nargs='+', help='Epsilons')
     parser.add_argument('--t_stop', metavar='XXX', type=float, default=10000.0, help='T stop')
-    parser.add_argument('--t_inc', metavar='XXX', type=float, default=0.001, help='T increment')
+    parser.add_argument('--t_inc', metavar='XXX', type=float, default=0.01, help='T increment')
     parser.add_argument('--no_cache', action='store_true', help='Skips cached results of the Rössler system')
     parser.add_argument('--skip', metavar='XXX', type=int, default=2000, help='Skipped results of integration')
     parser.add_argument('--blockwise', metavar='XXX', type=int, default=0, help='Blockwise calculation of distances to prevent excessive memory usage')
@@ -25,7 +26,8 @@ if __name__ == "__main__":
     parser.add_argument('--history', metavar='XXX', type=int, nargs='+', help='Historie to take into account')
     parser.add_argument('--method', metavar='XXX', type=str, default="LSODA", help='Method of integration')
     parser.add_argument('--arbitrary_precision', action='store_true', help='Calculates the main part in arbitrary precision')
-    parser.add_argument('--interpolation', metavar='XXX', type=str, default="LSODA", help='Method of integration')
+    parser.add_argument('--interpolate', action='store_true', help='Switch on intepolation')
+    parser.add_argument('--interpolate_samples_per_unit_time', metavar='XXX', type=int, default=10, help='Number of samples generated per unit time')
     args = parser.parse_args()
     # print(args.epsilon, flush=True)
 
@@ -50,23 +52,35 @@ if __name__ == "__main__":
         duration = t1 - t0
         print(f"Solution duration [s]: {duration}", flush=True)
 
-        # preparation of sources
-        if args.skip_real_t:
-            indices = np.where(sol.t >= args.skip)
-            if len(indices) > 0:
-                filtrated_solution = sol.y[:, indices[0]:]
-            else:
-                logging.error("Skipping is too large and no data were selected for processing")
-                raise AssertionError("No data selected")
+        if args.interpolate:
+            number = int((args.t_stop - args.skip) * args.interpolate_samples_per_unit_time)
+
+            new_t = np.linspace(args.skip, args.t_stop, num=number, endpoint=True)
+            solution = []
+            for dimension in range(sol.y.shape[0]):
+                function = scipy.interpolate.interp1d(sol.t, sol.y[dimension], kind='cubic')
+
+                solution.append(function(new_t))
+
+            filtrated_solution = np.vstack(solution)
         else:
-            filtrated_solution = sol.y[:, args.skip:]
+            # preparation of sources
+            if args.skip_real_t:
+                indices = np.where(sol.t >= args.skip)
+                if len(indices) > 0:
+                    filtrated_solution = sol.y[:, indices[0]:]
+                else:
+                    logging.error("Skipping is too large and no data were selected for processing")
+                    raise AssertionError("No data selected")
+            else:
+                filtrated_solution = sol.y[:, args.skip:]
 
         print(f"Shape of solution: {filtrated_solution.shape}")
         joint_solution = filtrated_solution
         marginal_solution_1 = filtrated_solution[0:3, :].T
         marginal_solution_2 = filtrated_solution[3:6, :].T
 
-        alphas = np.linspace(0.01, 1.99, 199)
+        alphas = np.linspace(0.1, 1.9, 19)
         results = {}
         for history in histories:
             print(f"History: {history} and epsilon: {epsilon} is processed", flush=True)
