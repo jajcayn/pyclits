@@ -10,6 +10,7 @@ from pathlib import Path
 import numpy as np
 import scipy.interpolate
 
+import data_plugin
 from mutual_inf import renyi_transfer_entropy
 from roessler_system import roessler_oscillator
 from sample_generator import preparation_dataset_for_transfer_entropy
@@ -27,8 +28,11 @@ if __name__ == "__main__":
     parser.add_argument('--method', metavar='XXX', type=str, default="LSODA", help='Method of integration')
     parser.add_argument('--maximal_neighborhood', metavar='XXX', type=int, default=2, help='Maximal neighborhood')
     parser.add_argument('--arbitrary_precision', action='store_true', help='Calculates the main part in arbitrary precision')
+    parser.add_argument('--arbitrary_precision_decimal_places', metavar='XXX', type=int, default=100,
+                        help='Sets number saved in arbitrary precision arithmetic')
     parser.add_argument('--interpolate', action='store_true', help='Switch on intepolation')
     parser.add_argument('--interpolate_samples_per_unit_time', metavar='XXX', type=int, default=10, help='Number of samples generated per unit time')
+    parser.add_argument('--dataset', action='store_true', help='Use dataset provided by dr. Paluš')
     args = parser.parse_args()
     # print(args.epsilon, flush=True)
 
@@ -43,38 +47,49 @@ if __name__ == "__main__":
         histories = range(2, 25)
         # [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 15, 17, 20]
 
-    for epsilon in epsilons:
+    if args.dataset:
+        print("Load dataset")
+        datasets = data_plugin.load_datasets()
+        epsilons = []
+        for dataset in datasets:
+            epsilons.append(dataset[0]["eps1"])
+        print(f"Epsilons: {epsilons}")
+
+    for index_epsilon, epsilon in enumerate(epsilons):
         configuration = {"method": args.method, "tInc": args.t_inc, "tStop": args.t_stop, "cache": True, "epsilon": epsilon,
-                         "arbitrary_precision": args.arbitrary_precision}
+                         "arbitrary_precision": args.arbitrary_precision, "arbitrary_precision_decimal_numbers": args.arbitrary_precision_decimal_places}
 
-        t0 = time.process_time()
-        sol = roessler_oscillator(**configuration)
-        t1 = time.process_time()
-        duration = t1 - t0
-        print(f"Solution duration [s]: {duration}", flush=True)
+        if not args.dataset:
+            t0 = time.process_time()
+            sol = roessler_oscillator(**configuration)
+            t1 = time.process_time()
+            duration = t1 - t0
+            print(f"Solution duration [s]: {duration}", flush=True)
 
-        if args.interpolate:
-            number = int((args.t_stop - args.skip) * args.interpolate_samples_per_unit_time)
+            if args.interpolate:
+                number = int((args.t_stop - args.skip) * args.interpolate_samples_per_unit_time)
 
-            new_t = np.linspace(args.skip, args.t_stop, num=number, endpoint=True)
-            solution = []
-            for dimension in range(sol.y.shape[0]):
-                function = scipy.interpolate.interp1d(sol.t, sol.y[dimension], kind='cubic')
+                new_t = np.linspace(args.skip, args.t_stop, num=number, endpoint=True)
+                solution = []
+                for dimension in range(sol.y.shape[0]):
+                    function = scipy.interpolate.interp1d(sol.t, sol.y[dimension], kind='cubic')
 
-                solution.append(function(new_t))
+                    solution.append(function(new_t))
 
-            filtrated_solution = np.vstack(solution)
-        else:
-            # preparation of sources
-            if args.skip_real_t:
-                indices = np.where(sol.t >= args.skip)
-                if len(indices) > 0:
-                    filtrated_solution = sol.y[:, indices[0]:]
-                else:
-                    logging.error("Skipping is too large and no data were selected for processing")
-                    raise AssertionError("No data selected")
+                filtrated_solution = np.vstack(solution)
             else:
-                filtrated_solution = sol.y[:, args.skip:]
+                # preparation of sources
+                if args.skip_real_t:
+                    indices = np.where(sol.t >= args.skip)
+                    if len(indices) > 0:
+                        filtrated_solution = sol.y[:, indices[0]:]
+                    else:
+                        logging.error("Skipping is too large and no data were selected for processing")
+                        raise AssertionError("No data selected")
+                else:
+                    filtrated_solution = sol.y[:, args.skip:]
+        else:
+            filtrated_solution = datasets[index_epsilon][1]
 
         print(f"Shape of solution: {filtrated_solution.shape}")
         joint_solution = filtrated_solution
@@ -97,7 +112,7 @@ if __name__ == "__main__":
             indices_to_use = list(range(1, args.maximal_neighborhood + 1))
             configuration = {"transpose": True, "axis_to_join": 0, "method": "LeonenkoProzanto", "alphas": alphas,
                              "enhanced_calculation": True, "indices_to_use": indices_to_use, "arbitrary_precision": args.arbitrary_precision,
-                             "decimal_places": 300}
+                             "arbitrary_precision_decimal_numbers": args.arbitrary_precision_decimal_places}
 
             print(f" * Transfer entropy for history: {history} and epsilon: {epsilon} is calculated", flush=True)
             t0 = time.process_time()

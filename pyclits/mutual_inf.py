@@ -680,7 +680,7 @@ def renyi_entropy_LeonenkoProzanto(dataset_x: np.matrix, **kwargs):
         dataset_x = dataset_x.T
 
     if kwargs["arbitrary_precision"]:
-        mpmath.mp.dps = kwargs["decimal_places"]
+        mpmath.mp.dps = kwargs["arbitrary_precision_decimal_numbers"]
         print(mpmath.mp)
 
     shape_of_data = dataset_x.shape
