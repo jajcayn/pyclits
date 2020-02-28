@@ -88,13 +88,18 @@ if __name__ == "__main__":
                         raise AssertionError("No data selected")
                 else:
                     filtrated_solution = sol.y[:, args.skip:]
-        else:
-            filtrated_solution = datasets[index_epsilon][1]
 
-        print(f"Shape of solution: {filtrated_solution.shape}")
-        joint_solution = filtrated_solution
-        marginal_solution_1 = filtrated_solution[0:3, :].T
-        marginal_solution_2 = filtrated_solution[3:6, :].T
+            print(f"Shape of solution: {filtrated_solution.shape}")
+            joint_solution = filtrated_solution
+            marginal_solution_1 = filtrated_solution[0:3, :].T
+            marginal_solution_2 = filtrated_solution[3:6, :].T
+        else:
+            filtrated_solution = datasets[index_epsilon][1].T
+
+            print(f"Shape of solution: {filtrated_solution.shape}")
+            joint_solution = filtrated_solution
+            marginal_solution_1 = filtrated_solution[0:1, :].T
+            marginal_solution_2 = filtrated_solution[1:2, :].T
 
         alphas = np.linspace(0.1, 1.9, 19)
         results = {}
@@ -125,7 +130,7 @@ if __name__ == "__main__":
             results[(epsilon, history)] = transfer_entropy
             print(f" * Transfer entropy calculation for history: {history} and epsilon: {epsilon} is finished", flush=True)
 
-        path = Path(f"transfer_entropy/Transfer_entropy-{epsilon}.bin")
+        path = Path(f"transfer_entropy/Transfer_entropy_dataset-{epsilon}.bin")
         print(f"Save to file {path}", flush=True)
         path.parent.mkdir(parents=True, exist_ok=True)
         with open(path, "wb") as fb:

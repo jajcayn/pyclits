@@ -1,7 +1,7 @@
 import pickle
 from pathlib import Path
 
-from pandas import DataFrame
+import numpy as np
 
 file = Path(__file__).parents[0] / "roessler_system_reference" / "arosf11n00eps100raw.dat"
 file_pickled = Path(__file__).parents[0] / "roessler_system_reference" / "dataset.bin"
@@ -37,7 +37,7 @@ def read_dataset(fh, parameter):
             second = float(line[15:])
             dataset.append([first, second])
 
-        frame = DataFrame(dataset)
+        frame = np.array(dataset)
         return frame
     else:
         return None
