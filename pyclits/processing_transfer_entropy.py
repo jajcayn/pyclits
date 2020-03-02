@@ -20,9 +20,6 @@ def figures3d_TE(dataset, selector, title, zlabel, filename, suffix, view=(70, 1
     fig = plt.figure(figsize=(13, 8))
     ax = Axes3D(fig)
 
-    # For each set of style and range settings, plot n random points in
-    # the box
-    # defined by x in [23, 32], y in [0, 100], z in [zlow, zhigh].
     colors = ["r", "g", "b", "c", "m", "y", "k", "orange", "pink"]
     markers = ['b', '^']
 
@@ -56,13 +53,13 @@ def figures3d_TE(dataset, selector, title, zlabel, filename, suffix, view=(70, 1
 
 
 def figures2d_TE(dataset, selector, title, zlabel, filename, suffix, view=(70, 120), dpi=300):
-    fig = plt.figure(figsize=(13, 8))
-    ax = Axes3D(fig)
+    matplotlib.style.use("seaborn")
 
-    # For each set of style and range settings, plot n random points in
-    # the box
-    # defined by x in [23, 32], y in [0, 100], z in [zlow, zhigh].
-    colors = ["r", "g", "b", "c", "m", "y", "k", "orange", "pink"]
+    color_map = matplotlib.cm.get_cmap("summer")
+
+    fig = plt.figure(figsize=(13, 8))
+    ax = fig.add_subplot(1, 1, 1)
+
     markers = ['b', '^']
 
     ax.set_title(title)
@@ -71,24 +68,24 @@ def figures2d_TE(dataset, selector, title, zlabel, filename, suffix, view=(70, 1
     # ax.set_yticks([1, 2, 3, 4, 5], ["10", "100", "1000", "10000", "100000"])
     # plt.yticks((1.0, 2.0, 3.0, 4.0, 5.0), ("10", "100", "1000", "10000", "100000"))
 
-    xs = dataset['alpha'].unique()
+    alphas = dataset['alpha'].unique()
 
-    alpha = 0.1
-    subselection = dataset["alpha" == alpha]
-    ys = dataset["alpha" == alpha][['epsilon']]
-    zs = dataset[[selector]]
+    for alpha in alphas:
+        subselection = dataset.loc[dataset["alpha"] == alpha]
+        ys = subselection[['epsilon']]
+        zs = subselection[[selector]]
 
-    row_size = 100
-    try:
-        ax.plot(np.reshape(ys.values, (-1, row_size)), np.reshape(zs.values, (-1, row_size)),
-                rstride=1, cstride=1, color=colors[0], linewidth=1)
-    except Exception as exc:
-        print(f"{exc}: Problem D=")
+        trasform = lambda alpha: (alpha - min(alphas)) / (max(alphas) - min(alphas))
+        color = color_map(trasform(alpha))
+        row_size = 100
+        try:
+            ax.plot(ys.values, zs.values, color=color, linewidth=1, label=r'$\alpha={}$'.format(alpha))
+        except Exception as exc:
+            print(f"{exc}: Problem D=")
 
     # Add a color bar which maps values to colors.
     # fig.colorbar(surf, shrink=0.5, aspect=5)
-    plt.legend(loc=1)
-    ax.view_init(view[0], view[1])
+    plt.legend(loc=4)
 
     plt.savefig(filename + "." + suffix, dpi=dpi)
     # plt.draw()
@@ -134,7 +131,7 @@ def process_datasets(processed_datasets, result_dataset, new_columns_base_name="
     print(pivot_table[["transfer_entropy_30"]])
     TE = pivot_table.reset_index()
 
-    pivot_table.to_pickle(result_dataset)
+    TE.to_pickle(result_dataset)
 
     return TE, new_columns
 
