@@ -33,6 +33,7 @@ if __name__ == "__main__":
     parser.add_argument('--interpolate', action='store_true', help='Switch on intepolation')
     parser.add_argument('--interpolate_samples_per_unit_time', metavar='XXX', type=int, default=10, help='Number of samples generated per unit time')
     parser.add_argument('--dataset', action='store_true', help='Use dataset provided by dr. Paluš')
+    parser.add_argument('--dataset_range', metavar='XXX-YYY', type=str, help='Dataset with range')
     args = parser.parse_args()
     # print(args.epsilon, flush=True)
 
@@ -50,6 +51,12 @@ if __name__ == "__main__":
     if args.dataset:
         print("Load dataset")
         datasets = data_plugin.load_datasets()
+
+        if args.dataset_range:
+            dataset_start = int(args.dataset_range.split("-")[0])
+            dataset_end = int(args.dataset_range.split("-")[1])
+            datasets = datasets[dataset_start:dataset_end]
+
         epsilons = []
         for dataset in datasets:
             epsilons.append(dataset[0]["eps1"])
