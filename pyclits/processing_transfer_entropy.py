@@ -96,7 +96,7 @@ def figures2d_TE(dataset, selector, title, zlabel, filename, suffix, view=(70, 1
     plt.close()
 
 
-def process_datasets(processed_datasets, result_dataset):
+def process_datasets(processed_datasets, result_dataset, new_columns_base_name="transfer_entropy_"):
     files = glob.glob(processed_datasets)
     print(files)
     frames = []
@@ -114,7 +114,7 @@ def process_datasets(processed_datasets, result_dataset):
         # print(old_columns)
 
         # give names to the columns
-        new_columns = [f"transfer_entropy_{item[1]}" for item in old_columns[:-1]]
+        new_columns = [f"{new_columns_base_name}{item[1]}" for item in old_columns[:-1]]
         column_names = ["alpha"]
         column_names.extend(new_columns)
         column_names.append("epsilon")
@@ -139,19 +139,24 @@ def process_datasets(processed_datasets, result_dataset):
     return TE, new_columns
 
 
-def processed_dataset(dataset):
+def load_processed_dataset(dataset, new_columns_base_name="transfer_entropy_"):
     TE = pd.read_pickle(dataset)
+    columns = TE.columns
+    TE_column_names = []
+    for column in columns:
+        if new_columns_base_name in column:
+            TE_column_names.append(column)
 
-    return TE
+    return TE, TE_column_names
 
 
 if __name__ == "__main__":
     processed_dataset = "transfer_entropy/pivot_dataset.bin"
     files = glob.glob(processed_dataset)
-    if files:
+    if len(files) == 0:
         TE, TE_column_names = process_datasets("transfer_entropy/Transfer_entropy_dataset-*.bin", processed_dataset)
     else:
-        TE = processed_dataset(processed_dataset)
+        TE, TE_column_names = load_processed_dataset(processed_dataset)
 
     for item in TE_column_names:
         figures2d_TE(TE, item, "Transfer entropy", "TE", item + "_2d", "png")
