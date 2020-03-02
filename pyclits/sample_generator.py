@@ -74,8 +74,7 @@ def preparation_dataset_for_transfer_entropy(marginal_solution_1, marginal_solut
                                                                                              skip_last: -skip_last]
 
     kwargs["transpose"] = False
-    # + 1 stands here because the actual timeserie is then stripped (-1)
-    kwargs["history"] = history_x + 1
+    kwargs["history"] = history_x
     kwargs["skip_first"] = 0 if history_x > history_y else history_y - history_x
     samples_marginal_1 = samples_from_arrays(marginal_solution_1_selected, **kwargs)
 
