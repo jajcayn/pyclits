@@ -69,17 +69,18 @@ def figures2d_TE(dataset, selector, title, zlabel, filename, suffix, view=(70, 1
     # plt.yticks((1.0, 2.0, 3.0, 4.0, 5.0), ("10", "100", "1000", "10000", "100000"))
 
     alphas = dataset['alpha'].unique()
+    subselected_alphas = alphas[8:11]
 
-    for alpha in alphas:
+    for alpha in subselected_alphas:
         subselection = dataset.loc[dataset["alpha"] == alpha]
         ys = subselection[['epsilon']]
         zs = subselection[[selector]]
 
-        trasform = lambda alpha: (alpha - min(alphas)) / (max(alphas) - min(alphas))
+        trasform = lambda alpha: (alpha - min(subselected_alphas)) / (max(subselected_alphas) - min(subselected_alphas))
         color = color_map(trasform(alpha))
         row_size = 100
         try:
-            ax.plot(ys.values, zs.values, color=color, linewidth=1, label=r'$\alpha={}$'.format(alpha))
+            ax.plot(ys.values, zs.values, color=color, linewidth=1, label=r'$\alpha={}$'.format(round(alpha, 3)))
         except Exception as exc:
             print(f"{exc}: Problem D=")
 
