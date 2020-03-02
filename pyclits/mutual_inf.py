@@ -762,7 +762,7 @@ def entropy_sum_generic_LeonenkoProzanto(dataset_x: np.matrix, tree_x, alpha=1, 
                 powered_log_gamma_dim = (1 - alpha) * log_gamma_dim
                 entropy[index_of_distances] += multiplicator * addition_to_entropy * np.exp(log_sum_multiplicator - powered_log_gamma_dim)
         except Exception as exc:
-            print(f"Exception: {exc} {alpha} {use_index}")
+            print(f"Exception happened: {exc.exc_info()[0]} {alpha} {use_index}")
 
     if kwargs["arbitrary_precision"]:
         ent = mpmath.mpf('0.0')
