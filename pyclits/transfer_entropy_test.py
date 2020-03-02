@@ -24,7 +24,8 @@ if __name__ == "__main__":
     parser.add_argument('--skip', metavar='XXX', type=int, default=2000, help='Skipped results of integration')
     parser.add_argument('--blockwise', metavar='XXX', type=int, default=0, help='Blockwise calculation of distances to prevent excessive memory usage')
     parser.add_argument('--skip_real_t', action='store_true', help='Indicates skip in time')
-    parser.add_argument('--history', metavar='XXX', type=int, nargs='+', help='Historie to take into account')
+    parser.add_argument('--history_first', metavar='XXX', type=int, nargs='+', help='History to take into account')
+    parser.add_argument('--history_second', metavar='XXX', type=int, nargs='+', help='History to take into account')
     parser.add_argument('--method', metavar='XXX', type=str, default="LSODA", help='Method of integration')
     parser.add_argument('--maximal_neighborhood', metavar='XXX', type=int, default=2, help='Maximal neighborhood')
     parser.add_argument('--arbitrary_precision', action='store_true', help='Calculates the main part in arbitrary precision')
@@ -42,11 +43,15 @@ if __name__ == "__main__":
     else:
         epsilons = [0.01, 0.02, 0.03, 0.04, 0.05, 0.06, 0.07, 0.08, 0.09, 0.1, 0.11, 0.12, 0.13]
 
-    if args.history:
-        histories = args.history
+    if args.history_first:
+        histories_first = args.history_first
     else:
-        histories = range(2, 25)
-        # [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 15, 17, 20]
+        histories_first = range(2, 25)
+
+    if args.history_second:
+        histories_second = args.history_second
+    else:
+        histories_second = range(2, 25)
 
     if args.dataset:
         print("Load dataset")
@@ -110,32 +115,37 @@ if __name__ == "__main__":
 
         alphas = np.linspace(0.1, 1.9, 19)
         results = {}
-        for history in histories:
-            print(f"History: {history} and epsilon: {epsilon} is processed", flush=True)
-            solution_size = joint_solution.shape
-            configuration = {"transpose": True, "history_x": history, "history_y": history, "blockwise": args.blockwise}
+        for history_first in histories_first:
+            for history_second in histories_second:
+                print(f"History first: {history_first}, history second: {history_second} and epsilon: {epsilon} is processed", flush=True)
 
-            t0 = time.process_time()
-            y, y_hist, z = preparation_dataset_for_transfer_entropy(marginal_solution_2, marginal_solution_1, **configuration)
-            t1 = time.process_time()
-            duration = t1 - t0
-            print(f" * Preparation of datasets [s]: {duration}", flush=True)
+                solution_size = joint_solution.shape
+                configuration = {"transpose": True, "history_x": history_first, "history_y": history_second, "blockwise": args.blockwise}
 
-            indices_to_use = list(range(1, args.maximal_neighborhood + 1))
-            configuration = {"transpose": True, "axis_to_join": 0, "method": "LeonenkoProzanto", "alphas": alphas,
-                             "enhanced_calculation": True, "indices_to_use": indices_to_use, "arbitrary_precision": args.arbitrary_precision,
-                             "arbitrary_precision_decimal_numbers": args.arbitrary_precision_decimal_places}
+                t0 = time.process_time()
+                y, y_hist, z = preparation_dataset_for_transfer_entropy(marginal_solution_2, marginal_solution_1, **configuration)
+                t1 = time.process_time()
+                duration = t1 - t0
+                print(f" * Preparation of datasets [s]: {duration}", flush=True)
 
-            print(f" * Transfer entropy for history: {history} and epsilon: {epsilon} is calculated", flush=True)
-            t0 = time.process_time()
-            transfer_entropy = renyi_transfer_entropy(y, y_hist, z, **configuration)
-            t1 = time.process_time()
-            duration = t1 - t0
-            print(f" * Duration of calculation of transfer entropy [s]: {duration}", flush=True)
-            # print(f" * Transfer Renyi entropy with {history} {epsilon}: {transfer_entropy}", flush=True)
+                indices_to_use = list(range(1, args.maximal_neighborhood + 1))
+                configuration = {"transpose": True, "axis_to_join": 0, "method": "LeonenkoProzanto", "alphas": alphas,
+                                 "enhanced_calculation": True, "indices_to_use": indices_to_use, "arbitrary_precision": args.arbitrary_precision,
+                                 "arbitrary_precision_decimal_numbers": args.arbitrary_precision_decimal_places}
 
-            results[(epsilon, history)] = transfer_entropy
-            print(f" * Transfer entropy calculation for history: {history} and epsilon: {epsilon} is finished", flush=True)
+                print(f" * Transfer entropy for history first: {history_first}, history second: {history_second} and epsilon: {epsilon} is calculated",
+                      flush=True)
+                t0 = time.process_time()
+                transfer_entropy = renyi_transfer_entropy(y, y_hist, z, **configuration)
+                t1 = time.process_time()
+                duration = t1 - t0
+                print(f" * Duration of calculation of transfer entropy [s]: {duration}", flush=True)
+                # print(f" * Transfer Renyi entropy with {history} {epsilon}: {transfer_entropy}", flush=True)
+
+                results[(epsilon, history_first, history_second)] = transfer_entropy
+                print(
+                    f" * Transfer entropy calculation for history first: {history_first}, history second: {history_second} and epsilon: {epsilon} is finished",
+                    flush=True)
 
         path = Path(f"transfer_entropy/Transfer_entropy_dataset-{epsilon}.bin")
         print(f"Save to file {path}", flush=True)
