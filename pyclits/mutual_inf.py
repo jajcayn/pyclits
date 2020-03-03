@@ -11,7 +11,6 @@ last update on Sep 22, 2017
 
 import collections
 import logging
-import traceback
 
 import mpmath
 import numpy as np
@@ -713,8 +712,7 @@ def renyi_entropy_LeonenkoProzanto(dataset_x: np.matrix, **kwargs):
 
             results[alpha] = result
         except Exception as exc:
-            logging.info(f"{exc.args[0]}")
-            traceback.print_stack()
+            print(f"{exc.args[0]}")
 
     return results
 
@@ -729,11 +727,6 @@ def tsallis_entropy_LeonenkoProzanto(dataset_x: np.matrix, alpha=1, **kwargs):
 def entropy_sum_generic_LeonenkoProzanto(dataset_x: np.matrix, distances, alpha=1, **kwargs):
     indices_to_use = kwargs["indices_to_use"]
     dimension_of_data = kwargs["dimension_of_data"]
-
-    if "dualtree" in kwargs:
-        dualtree = kwargs["dualtree"]
-    else:
-        dualtree = True
 
     if kwargs["arbitrary_precision"]:
         entropy = [mpmath.mpf("0.0") for index in range(len(indices_to_use))]
@@ -779,11 +772,6 @@ def entropy_sum_generic_LeonenkoProzanto(dataset_x: np.matrix, distances, alpha=
 
 
 def entropy_sum_Shannon_LeonenkoProzanto(dataset_x: np.matrix, distances, **kwargs):
-    if "dualtree" in kwargs:
-        dualtree = kwargs["dualtree"]
-    else:
-        dualtree = True
-
     indices_to_use = kwargs["indices_to_use"]
     dimension_of_data = kwargs["dimension_of_data"]
 
@@ -815,10 +803,13 @@ def entropy_sum_Shannon_LeonenkoProzanto(dataset_x: np.matrix, distances, **kwar
         else:
             addition_to_entropy = np.sum(np.log2(subselected_distances)) * dimension_of_data / number_of_data
 
-            entropy[index_of_distances] += addition_to_entropy
             digamma = scipyspecial.digamma(use_index)
-            argument_log = np.power(np.pi, dimension_of_data / 2.0) / mpmath.gamma(dimension_of_data / 2.0 + 1) * np.exp(-digamma) * (number_of_data - 1)
-            entropy[index_of_distances] += np.log2(argument_log)
+            argument_log = np.power(np.pi, dimension_of_data / 2.0) / scipyspecial.gamma(dimension_of_data / 2.0 + 1) * np.exp(-digamma) * (number_of_data - 1)
+
+            entropy[index_of_distances] += addition_to_entropy + np.log2(argument_log)
+
+    if not kwargs["arbitrary_precision"]:
+        entropy = entropy.tolist()
 
     return entropy
 
