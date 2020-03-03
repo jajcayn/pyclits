@@ -30,7 +30,7 @@ def figures3d_TE(dataset, selector, title, zlabel, filename, suffix, view=(70, 1
     # ax.set_yticks([1, 2, 3, 4, 5], ["10", "100", "1000", "10000", "100000"])
     # plt.yticks((1.0, 2.0, 3.0, 4.0, 5.0), ("10", "100", "1000", "10000", "100000"))
 
-    row_size = dataset['alpha'].unique()
+    row_size = len(dataset['epsilon'].unique())
     xs = dataset[['alpha']]
     ys = dataset[['epsilon']]
     zs = dataset[[selector]]
@@ -94,7 +94,7 @@ def figures2d_TE(dataset, selector, title, zlabel, filename, suffix, view=(70, 1
     plt.close()
 
 
-def process_datasets(processed_datasets, result_dataset, new_columns_base_name="transfer_entropy_"):
+def process_datasets(processed_datasets, result_dataset, new_columns_base_name="transfer_entropy"):
     files = glob.glob(processed_datasets)
     print(files)
     frames = []
@@ -109,10 +109,12 @@ def process_datasets(processed_datasets, result_dataset, new_columns_base_name="
 
         old_columns = frame.columns
         frame = frame.reset_index()
+
+        # print(frame)
         # print(old_columns)
 
         # give names to the columns
-        new_columns = [f"{new_columns_base_name}{item[1]}" for item in old_columns[:-1]]
+        new_columns = [f"{new_columns_base_name}_{item[1]}_{item[2]}" for item in old_columns[:-1]]
         column_names = ["alpha"]
         column_names.extend(new_columns)
         column_names.append("epsilon")
@@ -129,7 +131,7 @@ def process_datasets(processed_datasets, result_dataset, new_columns_base_name="
     pivot_table = pd.pivot_table(join_table, index=['alpha', 'epsilon'])
     # print(pivot_table)
 
-    print(pivot_table[["transfer_entropy_30"]])
+    print(pivot_table[["transfer_entropy_5_5"]])
     TE = pivot_table.reset_index()
 
     TE.to_pickle(result_dataset)
