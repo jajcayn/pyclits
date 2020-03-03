@@ -708,11 +708,12 @@ def renyi_entropy_LeonenkoProzanto(dataset_x: np.matrix, **kwargs):
                 if kwargs["arbitrary_precision"]:
                     result = [mpmath.log(item) / (1 - alpha) for item in entropy_sum]
                 else:
+                    entropy_sum = entropy_sum.tolist()
                     result = [np.log2(item) / (1 - alpha) for item in entropy_sum]
 
             results[alpha] = result
         except Exception as exc:
-            logging.info(exc)
+            logging.info(f"{exc.args[0]}")
             traceback.print_stack()
 
     return results

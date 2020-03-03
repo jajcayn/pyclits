@@ -114,7 +114,7 @@ if __name__ == "__main__":
             marginal_solution_1 = filtrated_solution[0:1, :].T
             marginal_solution_2 = filtrated_solution[1:2, :].T
 
-        alphas = np.round(np.linspace(0.1, 1.9, 36), 3)
+        alphas = np.round(np.linspace(0.1, 1.9, 57), 3)
         results = {}
         for history_first in histories_first:
             for history_second in histories_second:
