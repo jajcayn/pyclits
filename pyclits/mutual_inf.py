@@ -676,6 +676,11 @@ def renyi_entropy_LeonenkoProzanto(dataset_x: np.matrix, **kwargs):
     else:
         transpose = False
 
+    if "dualtree" in kwargs:
+        dualtree = kwargs["dualtree"]
+    else:
+        dualtree = True
+
     if transpose:
         dataset_x = dataset_x.T
 
@@ -691,15 +696,19 @@ def renyi_entropy_LeonenkoProzanto(dataset_x: np.matrix, **kwargs):
     kdtree = graph_calculation_preparation(dataset_x, **kwargs)
 
     results = {}
+
+    distances = kdtree.query(dataset_x, k=kwargs["maximal_index"], return_distance=True, dualtree=dualtree)
     for alpha in alphas:
         try:
-            if alpha == 1.0:
-                result = entropy_sum_Shannon_LeonenkoProzanto(dataset_x, kdtree, **kwargs)
+            if alpha == 1.:
+                result = entropy_sum_Shannon_LeonenkoProzanto(dataset_x, distances, **kwargs)
             else:
+                entropy_sum = entropy_sum_generic_LeonenkoProzanto(dataset_x, distances, alpha, **kwargs)
+
                 if kwargs["arbitrary_precision"]:
-                    result = mpmath.log(entropy_sum_generic_LeonenkoProzanto(dataset_x, kdtree, alpha, **kwargs)) / (1 - alpha)
+                    result = [mpmath.log(item) / (1 - alpha) for item in entropy_sum]
                 else:
-                    result = np.log2(entropy_sum_generic_LeonenkoProzanto(dataset_x, kdtree, alpha, **kwargs)) / (1 - alpha)
+                    result = [np.log2(item) / (1 - alpha) for item in entropy_sum]
 
             results[alpha] = result
         except Exception as exc:
@@ -716,7 +725,7 @@ def tsallis_entropy_LeonenkoProzanto(dataset_x: np.matrix, alpha=1, **kwargs):
         return (1 - entropy_sum_generic_LeonenkoProzanto(dataset_x, alpha, **kwargs)) / (1 - alpha)
 
 
-def entropy_sum_generic_LeonenkoProzanto(dataset_x: np.matrix, tree_x, alpha=1, **kwargs):
+def entropy_sum_generic_LeonenkoProzanto(dataset_x: np.matrix, distances, alpha=1, **kwargs):
     indices_to_use = kwargs["indices_to_use"]
     dimension_of_data = kwargs["dimension_of_data"]
 
@@ -730,7 +739,6 @@ def entropy_sum_generic_LeonenkoProzanto(dataset_x: np.matrix, tree_x, alpha=1, 
     else:
         entropy = np.zeros(len(indices_to_use))
 
-    distances = tree_x.query(dataset_x, k=kwargs["maximal_index"], return_distance=True, dualtree=dualtree)
     selected_distances = distances[0][:, kwargs["indices_to_use"]]
 
     for index_of_distances, use_index in enumerate(indices_to_use):
@@ -756,25 +764,20 @@ def entropy_sum_generic_LeonenkoProzanto(dataset_x: np.matrix, tree_x, alpha=1, 
                 maximum = max(subselected_distances)
                 exponent = dimension_of_data * (1 - alpha)
                 addition_to_entropy = np.sum(np.power(subselected_distances / maximum, exponent))
+
                 multiplicator_gamma = np.exp(scipyspecial.gammaln(use_index) - scipyspecial.gammaln(use_index + 1 - alpha))
                 multiplicator = multiplicator_gamma * np.power(np.pi, exponent / 2.0) * np.power(number_of_data - 1, 1 - alpha) / number_of_data
                 log_sum_multiplicator = np.log(maximum) * exponent
                 powered_log_gamma_dim = (1 - alpha) * log_gamma_dim
+
                 entropy[index_of_distances] += multiplicator * addition_to_entropy * np.exp(log_sum_multiplicator - powered_log_gamma_dim)
         except Exception as exc:
             print(f"Exception happened: {exc.exc_info()[0]} {alpha} {use_index}")
 
-    if kwargs["arbitrary_precision"]:
-        ent = mpmath.mpf('0.0')
-        for ent_item in entropy:
-            ent += ent_item
-
-        return ent / len(indices_to_use)
-    else:
-        return np.sum(entropy) / len(indices_to_use)
+    return entropy
 
 
-def entropy_sum_Shannon_LeonenkoProzanto(dataset_x: np.matrix, tree_x, **kwargs):
+def entropy_sum_Shannon_LeonenkoProzanto(dataset_x: np.matrix, distances, **kwargs):
     if "dualtree" in kwargs:
         dualtree = kwargs["dualtree"]
     else:
@@ -788,7 +791,6 @@ def entropy_sum_Shannon_LeonenkoProzanto(dataset_x: np.matrix, tree_x, **kwargs)
     else:
         entropy = np.zeros(len(indices_to_use))
 
-    distances = tree_x.query(dataset_x, k=kwargs["maximal_index"], return_distance=True, dualtree=dualtree)
     distances_used_by_index = distances[0][:, kwargs["indices_to_use"]]
 
     for index_of_distances, use_index in enumerate(indices_to_use):
@@ -804,11 +806,11 @@ def entropy_sum_Shannon_LeonenkoProzanto(dataset_x: np.matrix, tree_x, **kwargs)
 
             addition_to_entropy *= dimension_of_data / number_of_data
 
-            entropy[index_of_distances] += addition_to_entropy
             digamma = mpmath.digamma(use_index)
             argument_log = mpmath.power(mpmath.pi, dimension_of_data / 2.0) / mpmath.gamma(dimension_of_data / 2.0 + 1) * mpmath.exp(-digamma) * (
-                        number_of_data - 1)
-            entropy[index_of_distances] += mpmath.log2(argument_log)
+                    number_of_data - 1)
+
+            entropy[index_of_distances] += addition_to_entropy + mpmath.log2(argument_log)
         else:
             addition_to_entropy = np.sum(np.log2(subselected_distances)) * dimension_of_data / number_of_data
 
@@ -817,14 +819,7 @@ def entropy_sum_Shannon_LeonenkoProzanto(dataset_x: np.matrix, tree_x, **kwargs)
             argument_log = np.power(np.pi, dimension_of_data / 2.0) / mpmath.gamma(dimension_of_data / 2.0 + 1) * np.exp(-digamma) * (number_of_data - 1)
             entropy[index_of_distances] += np.log2(argument_log)
 
-    if kwargs["arbitrary_precision"]:
-        ent = mpmath.mpf('0.0')
-        for ent_item in entropy:
-            ent += ent_item
-
-        return ent / len(indices_to_use)
-    else:
-        return np.sum(entropy) / len(indices_to_use)
+    return entropy
 
 
 def renyi_entropy_Paly(dataset_x: np.matrix, alpha=0.75, leaf_size = 15, metric="chebyshev", dualtree=True, sample_size=1000, indices_to_use=[3,4], **kwargs):
@@ -918,8 +913,9 @@ def renyi_transfer_entropy(data_x, data_x_hist, data_y, **kwargs):
         entropy_X_history = renyi_entropy(data_x_hist, **kwargs)
 
         for alpha in kwargs["alphas"]:
-            result = entropy_joint_history[alpha] + entropy_X[alpha] - entropy_joint_present_history[alpha] - \
-                     entropy_X_history[alpha]
+            result = [
+                entropy_joint_history[alpha][index] + entropy_X[alpha][index] - entropy_joint_present_history[alpha][index] - entropy_X_history[alpha][index]
+                for index in range(len(kwargs["indices_to_use"]))]
             results[alpha] = result
         return results
     else:
@@ -930,7 +926,7 @@ def renyi_transfer_entropy(data_x, data_x_hist, data_y, **kwargs):
 
         results = {}
         for alpha in kwargs["alphas"]:
-            result = joint_part[alpha] - marginal_part[alpha]
+            result = [joint_part[alpha][index] - marginal_part[alpha][index] for index in range(len(kwargs["indices_to_use"]))]
             results[alpha] = result
 
         return results
