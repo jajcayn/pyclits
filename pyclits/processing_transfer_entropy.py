@@ -16,7 +16,7 @@ plt.rc('text', usetex=True)
 plt.rc('font', family='serif')
 
 
-def figures3d_TE(dataset, selector, title, zlabel, filename, suffix, view=(70, 120), dpi=300):
+def figures3d_TE(dataset, selector, title, zlabel, filename, suffix, view=(70, 280), dpi=300):
     fig = plt.figure(figsize=(13, 8))
     ax = Axes3D(fig)
 
@@ -69,7 +69,9 @@ def figures2d_TE(dataset, selector, title, zlabel, filename, suffix, view=(70, 1
     # plt.yticks((1.0, 2.0, 3.0, 4.0, 5.0), ("10", "100", "1000", "10000", "100000"))
 
     alphas = dataset['alpha'].unique()
-    subselected_alphas = alphas[8:11]
+    mean = int(len(alphas) / 2)
+    neghborhood = 3
+    subselected_alphas = alphas[mean - neghborhood:  mean + neghborhood]
 
     for alpha in subselected_alphas:
         subselection = dataset.loc[dataset["alpha"] == alpha]
@@ -80,7 +82,7 @@ def figures2d_TE(dataset, selector, title, zlabel, filename, suffix, view=(70, 1
         color = color_map(trasform(alpha))
         row_size = 100
         try:
-            ax.plot(ys.values, zs.values, color=color, linewidth=1, label=r'$\alpha={}$'.format(round(alpha, 3)))
+            ax.plot(ys.values, zs.values, color=color, linewidth=3, label=r'$\alpha={}$'.format(round(alpha, 3)))
         except Exception as exc:
             print(f"{exc}: Problem D=")
 
@@ -102,41 +104,66 @@ def process_datasets(processed_datasets, result_dataset, new_columns_base_name="
         epsilon = float(file.split("-")[1].split(".b")[0])
         path = Path(file)
 
+        # with open(path, "rb") as fh:
+        #    table = pickle.load(fh)
         table = pd.read_pickle(path)
 
         frame = pd.DataFrame(table)
         frame["epsilon"] = epsilon
 
+        # print(frame)
+
         old_columns = frame.columns
+        for item in old_columns[:-1]:
+            mean_column_name = f"{new_columns_base_name}_{item[1]}_{item[2]}_mean"
+            std_column_name = f"{new_columns_base_name}_{item[1]}_{item[2]}_std"
+
+            # add mean of entropy
+            frame[mean_column_name] = frame.apply(lambda row: np.mean(row[item]), axis=1, raw=True)
+
+            # add std of entropy
+            frame[std_column_name] = frame.apply(lambda row: np.std(row[item]), axis=1, raw=True)
+
+        # dropping the index
         frame = frame.reset_index()
 
-        # print(frame)
-        # print(old_columns)
+        # print(frame.columns.tolist())
+        column = [("alpha", "", "") if "index" == item[0] else item for item in frame.columns.tolist()]
+        new_columns = pd.MultiIndex.from_tuples([("alpha", "", "") if "index" == item[0] else item for item in frame.columns])
+        frame.columns = new_columns
 
         # give names to the columns
-        new_columns = [f"{new_columns_base_name}_{item[1]}_{item[2]}" for item in old_columns[:-1]]
-        column_names = ["alpha"]
-        column_names.extend(new_columns)
-        column_names.append("epsilon")
+        # new_columns = [f"{new_columns_base_name}_{item[1]}_{item[2]}" for item in old_columns[:-1]]
+        # column_names = ["alpha"]
+        # column_names.extend(new_columns)
+        # column_names.append("epsilon")
         # .append(["epsilon"])
-        frame.columns = column_names
+        # frame.columns = column_names
 
-        # reorder columns
-        columns = frame.columns.tolist()
-        columns = columns[:1] + columns[-1:] + columns[1:-1]
+        # selection of columns
+        columns = [item for item in frame.columns.tolist() if
+                   "_mean" in str(item[0]) or "_std" in str(item[0]) or "alpha" in str(item[0]) or "epsilon" in str(item[0])]
         frame = frame[columns]
+
+        # dropping of multiindex
+        columns = [item[0] for item in frame.columns.tolist()]
+        frame.columns = columns
+
+        # append frame for processing
         frames.append(frame)
 
+    # join the table
     join_table = pd.concat(frames, ignore_index=True)
+    #print(join_table)
     pivot_table = pd.pivot_table(join_table, index=['alpha', 'epsilon'])
-    # print(pivot_table)
+    print(join_table.columns.tolist())
 
-    print(pivot_table[["transfer_entropy_5_5"]])
+    #print(pivot_table[["transfer_entropy_15_5_mean"]])
     TE = pivot_table.reset_index()
 
     TE.to_pickle(result_dataset)
 
-    return TE, new_columns
+    return TE, [item for item in join_table.columns.tolist() if "_mean" in str(item)]
 
 
 def load_processed_dataset(dataset, new_columns_base_name="transfer_entropy_"):
@@ -144,7 +171,7 @@ def load_processed_dataset(dataset, new_columns_base_name="transfer_entropy_"):
     columns = TE.columns
     TE_column_names = []
     for column in columns:
-        if new_columns_base_name in column:
+        if "_mean" in column:
             TE_column_names.append(column)
 
     return TE, TE_column_names
