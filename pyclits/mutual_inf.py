@@ -893,20 +893,20 @@ def renyi_transfer_entropy(data_x, data_x_hist, data_y, **kwargs):
 
     results = {}
     if enhanced_calculation:
-        joint_dataset = np.concatenate((data_x_hist, data_y), axis=axis_to_join)
-        entropy_joint_history = renyi_entropy(joint_dataset, **kwargs)
+        joint_dataset = np.concatenate((data_x, data_y), axis=axis_to_join)
+        entropy_present_X_history_Y = renyi_entropy(joint_dataset, **kwargs)
 
-        joint_dataset = np.concatenate((data_x, data_x_hist), axis=axis_to_join)
-        entropy_X = renyi_entropy(joint_dataset, **kwargs)
+        joint_dataset = np.concatenate((data_x_hist, data_y), axis=axis_to_join)
+        entropy_history_X_history_Y = renyi_entropy(joint_dataset, **kwargs)
 
         joint_dataset = np.concatenate((data_x, data_x_hist, data_y), axis=axis_to_join)
-        entropy_joint_present_history = renyi_entropy(joint_dataset, **kwargs)
+        entropy_joint = renyi_entropy(joint_dataset, **kwargs)
 
-        entropy_X_history = renyi_entropy(data_x_hist, **kwargs)
+        entropy_Y = renyi_entropy(data_y, **kwargs)
 
         for alpha in kwargs["alphas"]:
             result = [
-                entropy_joint_history[alpha][index] + entropy_X[alpha][index] - entropy_joint_present_history[alpha][index] - entropy_X_history[alpha][index]
+                entropy_present_X_history_Y[alpha][index] + entropy_history_X_history_Y[alpha][index] - entropy_joint[alpha][index] - entropy_Y[alpha][index]
                 for index in range(len(kwargs["indices_to_use"]))]
             results[alpha] = result
         return results
