@@ -13,10 +13,10 @@ import scipy.interpolate
 import data_plugin
 from mutual_inf import renyi_transfer_entropy
 from roessler_system import roessler_oscillator
-from sample_generator import preparation_dataset_for_transfer_entropy
+from sample_generator import preparation_dataset_for_transfer_entropy, shuffle_sample
 
 
-def prepare_dataset(args, datasets=None):
+def prepare_dataset(args, datasets=None, shuffle_dataset=False):
     if not args.dataset:
         # calculate Rössler coupled oscilators
         t0 = time.process_time()
@@ -48,12 +48,18 @@ def prepare_dataset(args, datasets=None):
             else:
                 filtrated_solution = sol.y[:, args.skip:]
 
+        if shuffle_dataset:
+            filtrated_solution = shuffle_sample(filtrated_solution)
+
         print(f"Shape of solution: {filtrated_solution.shape}", flush=True)
         joint_solution = filtrated_solution
         marginal_solution_1 = filtrated_solution[0:3, :].T
         marginal_solution_2 = filtrated_solution[3:6, :].T
     else:
         filtrated_solution = datasets[index_epsilon][1].T
+
+        if shuffle_dataset:
+            filtrated_solution = shuffle_sample(filtrated_solution)
 
         print(f"Shape of solution: {filtrated_solution.shape}", flush=True)
         joint_solution = filtrated_solution
@@ -124,55 +130,58 @@ if __name__ == "__main__":
     # load static dataset
     datasets = load_static_dataset(args)
 
-    # loop over different realizations for various epsilon
-    for index_epsilon, epsilon in enumerate(epsilons):
-        configuration = {"method": args.method, "tInc": args.t_inc, "tStop": args.t_stop, "cache": True, "epsilon": epsilon,
-                         "arbitrary_precision": args.arbitrary_precision, "arbitrary_precision_decimal_numbers": args.arbitrary_precision_decimal_places}
+    # loop over shuffling
+    for shuffle_dataset in [False, True]:
 
-        # prepare dataset that is been processed
-        marginal_solution_1, marginal_solution_2 = prepare_dataset(args, datasets=datasets)
+        # loop over different realizations for various epsilon
+        for index_epsilon, epsilon in enumerate(epsilons):
+            configuration = {"method": args.method, "tInc": args.t_inc, "tStop": args.t_stop, "cache": True, "epsilon": epsilon,
+                             "arbitrary_precision": args.arbitrary_precision, "arbitrary_precision_decimal_numbers": args.arbitrary_precision_decimal_places}
 
-        # create alphas that are been calculated
-        alphas = np.round(np.linspace(0.1, 1.9, 57), 3)
+            # prepare dataset that is been processed
+            marginal_solution_1, marginal_solution_2 = prepare_dataset(args, datasets=datasets, shuffle_dataset=shuffle_dataset)
 
-        # create structure for results
-        results = {}
-        for history_first in histories_first:
-            for history_second in histories_second:
-                print(f"History first: {history_first}, history second: {history_second} and epsilon: {epsilon} is processed", flush=True)
+            # create alphas that are been calculated
+            alphas = np.round(np.linspace(0.1, 1.9, 57), 3)
 
-                # preparation of the configuration dictionary
-                # additional +1 is there for separation
-                configuration = {"transpose": True, "history_x": history_first + 1, "history_y": history_second, "blockwise": args.blockwise}
+            # create structure for results
+            results = {}
+            for history_first in histories_first:
+                for history_second in histories_second:
+                    print(f"History first: {history_first}, history second: {history_second} and epsilon: {epsilon} is processed", flush=True)
 
-                # prepare samples to be used to calculate transfer entropy
-                t0 = time.process_time()
-                y, y_hist, z = preparation_dataset_for_transfer_entropy(marginal_solution_2, marginal_solution_1, **configuration)
-                t1 = time.process_time()
-                duration = t1 - t0
-                print(f" * Preparation of datasets [s]: {duration}", flush=True)
+                    # preparation of the configuration dictionary
+                    # additional +1 is there for separation
+                    configuration = {"transpose": True, "history_x": history_first + 1, "history_y": history_second, "blockwise": args.blockwise}
 
-                # create range of indices that will be used for calculation
-                indices_to_use = list(range(1, args.maximal_neighborhood + 1))
-                configuration = {"transpose": True, "axis_to_join": 0, "method": "LeonenkoProzanto", "alphas": alphas,
-                                 "enhanced_calculation": True, "indices_to_use": indices_to_use, "arbitrary_precision": args.arbitrary_precision,
-                                 "arbitrary_precision_decimal_numbers": args.arbitrary_precision_decimal_places}
+                    # prepare samples to be used to calculate transfer entropy
+                    t0 = time.process_time()
+                    y, y_hist, z = preparation_dataset_for_transfer_entropy(marginal_solution_2, marginal_solution_1, **configuration)
+                    t1 = time.process_time()
+                    duration = t1 - t0
+                    print(f" * Preparation of datasets [s]: {duration}", flush=True)
 
-                # calculation of transfer entropy
-                print(f" * Transfer entropy for history first: {history_first}, history second: {history_second} and epsilon: {epsilon} is calculated",
-                      flush=True)
-                t0 = time.process_time()
-                transfer_entropy = renyi_transfer_entropy(y, y_hist, z, **configuration)
-                t1 = time.process_time()
-                duration = t1 - t0
-                print(f" * Duration of calculation of transfer entropy [s]: {duration}", flush=True)
-                # print(f" * Transfer Renyi entropy with {history} {epsilon}: {transfer_entropy}", flush=True)
+                    # create range of indices that will be used for calculation
+                    indices_to_use = list(range(1, args.maximal_neighborhood + 1))
+                    configuration = {"transpose": True, "axis_to_join": 0, "method": "LeonenkoProzanto", "alphas": alphas,
+                                     "enhanced_calculation": True, "indices_to_use": indices_to_use, "arbitrary_precision": args.arbitrary_precision,
+                                     "arbitrary_precision_decimal_numbers": args.arbitrary_precision_decimal_places}
 
-                # store transfer entropy to the result structure
-                results[(epsilon, history_first, history_second)] = transfer_entropy
-                print(
-                    f" * Transfer entropy calculation for history first: {history_first}, history second: {history_second} and epsilon: {epsilon} is finished",
-                    flush=True)
+                    # calculation of transfer entropy
+                    print(f" * Transfer entropy for history first: {history_first}, history second: {history_second} and epsilon: {epsilon} is calculated",
+                          flush=True)
+                    t0 = time.process_time()
+                    transfer_entropy = renyi_transfer_entropy(y, y_hist, z, **configuration)
+                    t1 = time.process_time()
+                    duration = t1 - t0
+                    print(f" * Duration of calculation of transfer entropy [s]: {duration}", flush=True)
+                    # print(f" * Transfer Renyi entropy with {history} {epsilon}: {transfer_entropy}", flush=True)
+
+                    # store transfer entropy to the result structure
+                    results[(shuffle_dataset, epsilon, history_first, history_second)] = transfer_entropy
+                    print(
+                        f" * Transfer entropy calculation for history first: {history_first}, history second: {history_second} and epsilon: {epsilon} is finished",
+                        flush=True)
 
         # save result structure to the file
         path = Path(f"transfer_entropy/Transfer_entropy_dataset-{epsilon}.bin")

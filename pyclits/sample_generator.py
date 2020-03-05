@@ -1,9 +1,24 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
+import random
+
 import numpy as np
 
 from roessler_system import roessler_oscillator
+
+
+def shuffle_sample(data):
+    shape = data.shape
+    items = list(range(shape[1]))
+    i = len(items)
+    while i > 1:
+        i = i - 1
+        j = random.randrange(i)
+        items[j], items[i] = items[i], items[j]
+
+    # print(f"New shuffle arrangement {items}")
+    return data[:, items]
 
 
 def samples_from_arrays(data, **kwargs):
