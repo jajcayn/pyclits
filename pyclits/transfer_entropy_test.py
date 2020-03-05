@@ -168,8 +168,9 @@ if __name__ == "__main__":
                                      "arbitrary_precision_decimal_numbers": args.arbitrary_precision_decimal_places}
 
                     # calculation of transfer entropy
-                    print(f" * Transfer entropy for history first: {history_first}, history second: {history_second} and epsilon: {epsilon} is calculated",
-                          flush=True)
+                    print(
+                        f" * Transfer entropy for history first: {history_first}, history second: {history_second} and epsilon: {epsilon} shuffling; {shuffle_dataset} is calculated",
+                        flush=True)
                     t0 = time.process_time()
                     transfer_entropy = renyi_transfer_entropy(y, y_hist, z, **configuration)
                     t1 = time.process_time()
@@ -180,7 +181,7 @@ if __name__ == "__main__":
                     # store transfer entropy to the result structure
                     results[(shuffle_dataset, epsilon, history_first, history_second)] = transfer_entropy
                     print(
-                        f" * Transfer entropy calculation for history first: {history_first}, history second: {history_second} and epsilon: {epsilon} is finished",
+                        f" * Transfer entropy calculation for history first: {history_first}, history second: {history_second} and epsilon: {epsilon}, shuffling; {shuffle_dataset} is finished",
                         flush=True)
 
         # save result structure to the file
