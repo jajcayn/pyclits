@@ -11,6 +11,7 @@ last update on Sep 22, 2017
 
 import collections
 import logging
+import time
 
 import mpmath
 import numpy as np
@@ -696,7 +697,13 @@ def renyi_entropy_LeonenkoProzanto(dataset_x: np.matrix, **kwargs):
 
     results = {}
 
+    t0 = time.process_time()
     distances = kdtree.query(dataset_x, k=kwargs["maximal_index"], return_distance=True, dualtree=dualtree)
+    t1 = time.process_time()
+    duration = t1 - t0
+    print(f" * * Calculation of distances [s]: {duration}", flush=True)
+
+    t0 = time.process_time()
     for alpha in alphas:
         try:
             if alpha == 1.:
@@ -713,6 +720,10 @@ def renyi_entropy_LeonenkoProzanto(dataset_x: np.matrix, **kwargs):
             results[alpha] = result
         except Exception as exc:
             print(f"{exc.args[0]}")
+
+    t1 = time.process_time()
+    duration = t1 - t0
+    print(f" * * Calculation of entropy [s]: {duration}", flush=True)
 
     return results
 
@@ -893,8 +904,8 @@ def renyi_transfer_entropy(data_x, data_x_hist, data_y, **kwargs):
 
     results = {}
     if enhanced_calculation:
-        joint_dataset = np.concatenate((data_x, data_y), axis=axis_to_join)
-        entropy_present_X_history_Y = renyi_entropy(joint_dataset, **kwargs)
+        joint_dataset = np.concatenate((data_x, data_x_hist), axis=axis_to_join)
+        entropy_present_X_history_X = renyi_entropy(joint_dataset, **kwargs)
 
         joint_dataset = np.concatenate((data_x_hist, data_y), axis=axis_to_join)
         entropy_history_X_history_Y = renyi_entropy(joint_dataset, **kwargs)
@@ -902,11 +913,12 @@ def renyi_transfer_entropy(data_x, data_x_hist, data_y, **kwargs):
         joint_dataset = np.concatenate((data_x, data_x_hist, data_y), axis=axis_to_join)
         entropy_joint = renyi_entropy(joint_dataset, **kwargs)
 
-        entropy_Y = renyi_entropy(data_y, **kwargs)
+        entropy_history_X = renyi_entropy(data_x_hist, **kwargs)
 
         for alpha in kwargs["alphas"]:
             result = [
-                entropy_present_X_history_Y[alpha][index] + entropy_history_X_history_Y[alpha][index] - entropy_joint[alpha][index] - entropy_Y[alpha][index]
+                entropy_present_X_history_X[alpha][index] + entropy_history_X_history_Y[alpha][index] - entropy_joint[alpha][index] - entropy_history_X[alpha][
+                    index]
                 for index in range(len(kwargs["indices_to_use"]))]
             results[alpha] = result
         return results

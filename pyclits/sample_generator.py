@@ -63,6 +63,12 @@ def preparation_dataset_for_transfer_entropy(marginal_solution_1, marginal_solut
     else:
         skip_first = 0
 
+    # time lag between X and Y
+    if "time_shift_between_X_Y" in kwargs:
+        time_shift_between_X_Y = kwargs["time_shift_between_X_Y"]
+    else:
+        time_shift_between_X_Y = 1
+
     if "transpose" in kwargs and kwargs["transpose"]:
         marginal_solution_1 = marginal_solution_1.T
         marginal_solution_2 = marginal_solution_2.T
@@ -74,12 +80,14 @@ def preparation_dataset_for_transfer_entropy(marginal_solution_1, marginal_solut
                                                                                              skip_last: -skip_last]
 
     kwargs["transpose"] = False
+    # additional move in history is there because then actual timeserie is separated
     kwargs["history"] = history_x
-    kwargs["skip_first"] = 0 if history_x > history_y else history_y - history_x
+    kwargs["skip_first"] = 1 if history_x > history_y else history_y - history_x + time_shift_between_X_Y
     samples_marginal_1 = samples_from_arrays(marginal_solution_1_selected, **kwargs)
 
     kwargs["history"] = history_y
     kwargs["skip_first"] = 0 if history_y > history_x else history_x - history_y
+    kwargs["skip_last"] = time_shift_between_X_Y
     samples_marginal_2 = samples_from_arrays(marginal_solution_2_selected, **kwargs)
 
     y = samples_marginal_1[:shape[0], :]

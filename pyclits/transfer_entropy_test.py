@@ -55,7 +55,7 @@ if __name__ == "__main__":
         histories_second = range(2, 25)
 
     if args.dataset:
-        print("Load dataset")
+        print("Load dataset", flush=True)
         datasets = data_plugin.load_datasets()
 
         if args.dataset_range:
@@ -66,7 +66,7 @@ if __name__ == "__main__":
         epsilons = []
         for dataset in datasets:
             epsilons.append(dataset[0]["eps1"])
-        print(f"Epsilons: {epsilons}")
+        print(f"Epsilons: {epsilons}", flush=True)
 
     for index_epsilon, epsilon in enumerate(epsilons):
         configuration = {"method": args.method, "tInc": args.t_inc, "tStop": args.t_stop, "cache": True, "epsilon": epsilon,
@@ -102,14 +102,14 @@ if __name__ == "__main__":
                 else:
                     filtrated_solution = sol.y[:, args.skip:]
 
-            print(f"Shape of solution: {filtrated_solution.shape}")
+            print(f"Shape of solution: {filtrated_solution.shape}", flush=True)
             joint_solution = filtrated_solution
             marginal_solution_1 = filtrated_solution[0:3, :].T
             marginal_solution_2 = filtrated_solution[3:6, :].T
         else:
             filtrated_solution = datasets[index_epsilon][1].T
 
-            print(f"Shape of solution: {filtrated_solution.shape}")
+            print(f"Shape of solution: {filtrated_solution.shape}", flush=True)
             joint_solution = filtrated_solution
             marginal_solution_1 = filtrated_solution[0:1, :].T
             marginal_solution_2 = filtrated_solution[1:2, :].T
@@ -121,7 +121,8 @@ if __name__ == "__main__":
                 print(f"History first: {history_first}, history second: {history_second} and epsilon: {epsilon} is processed", flush=True)
 
                 solution_size = joint_solution.shape
-                configuration = {"transpose": True, "history_x": history_first, "history_y": history_second, "blockwise": args.blockwise}
+                # additional +1 is there for separation
+                configuration = {"transpose": True, "history_x": history_first + 1, "history_y": history_second, "blockwise": args.blockwise}
 
                 t0 = time.process_time()
                 y, y_hist, z = preparation_dataset_for_transfer_entropy(marginal_solution_2, marginal_solution_1, **configuration)
