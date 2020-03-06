@@ -48,9 +48,6 @@ def prepare_dataset(args, index_epsilon, datasets=None, shuffle_dataset=False):
             else:
                 filtrated_solution = sol.y[:, args.skip:]
 
-        if shuffle_dataset:
-            filtrated_solution = shuffle_sample(filtrated_solution)
-
         print(f"Shape of solution: {filtrated_solution.shape}", flush=True)
         joint_solution = filtrated_solution
         marginal_solution_1 = filtrated_solution[0:3, :].T
@@ -58,13 +55,13 @@ def prepare_dataset(args, index_epsilon, datasets=None, shuffle_dataset=False):
     else:
         filtrated_solution = datasets[index_epsilon][1].T
 
-        if shuffle_dataset:
-            filtrated_solution = shuffle_sample(filtrated_solution)
-
         print(f"Shape of solution: {filtrated_solution.shape}", flush=True)
         joint_solution = filtrated_solution
         marginal_solution_1 = filtrated_solution[0:1, :].T
         marginal_solution_2 = filtrated_solution[1:2, :].T
+
+    if shuffle_dataset:
+        marginal_solution_1 = shuffle_sample(marginal_solution_1)
 
     return marginal_solution_1, marginal_solution_2
 
@@ -139,7 +136,7 @@ if __name__ == "__main__":
         results = {}
 
         # loop over shuffling
-        for shuffle_dataset in [False, True]:
+        for shuffle_dataset in [True, False]:
             # prepare dataset that is been processed
             marginal_solution_1, marginal_solution_2 = prepare_dataset(args, index_epsilon=index_epsilon, datasets=datasets, shuffle_dataset=shuffle_dataset)
 
@@ -182,7 +179,7 @@ if __name__ == "__main__":
                     # print(f" * Transfer Renyi entropy with {history} {epsilon}: {transfer_entropy}", flush=True)
 
                     # store transfer entropy to the result structure
-                    results[(shuffle_dataset, epsilon, history_first, history_second)] = transfer_entropy
+                    results[(epsilon, history_first, history_second, shuffle_dataset)] = transfer_entropy
                     print(
                         f" * Transfer entropy calculation for history first: {history_first}, history second: {history_second} and epsilon: {epsilon}, shuffling; {shuffle_dataset} is finished",
                         flush=True)

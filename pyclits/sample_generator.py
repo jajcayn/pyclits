@@ -10,7 +10,7 @@ from roessler_system import roessler_oscillator
 
 def shuffle_sample(data):
     shape = data.shape
-    items = list(range(shape[1]))
+    items = list(range(shape[0]))
     i = len(items)
     while i > 1:
         i = i - 1
@@ -18,7 +18,7 @@ def shuffle_sample(data):
         items[j], items[i] = items[i], items[j]
 
     # print(f"New shuffle arrangement {items}")
-    return data[:, items]
+    return data[items, :]
 
 
 def samples_from_arrays(data, **kwargs):
