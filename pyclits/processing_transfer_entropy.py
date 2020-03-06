@@ -52,7 +52,7 @@ def figures3d_TE(dataset, selector, title, zlabel, filename, suffix, view=(70, 2
     plt.close()
 
 
-def figures2d_TE(dataset, selector, title, zlabel, filename, suffix, view=(70, 120), dpi=300):
+def figures2d_TE(dataset, selector, title, ylabel, filename, suffix, view=(70, 120), dpi=300):
     matplotlib.style.use("seaborn")
 
     color_map = matplotlib.cm.get_cmap("summer")
@@ -64,13 +64,13 @@ def figures2d_TE(dataset, selector, title, zlabel, filename, suffix, view=(70, 1
 
     ax.set_title(title)
     ax.set_xlabel(r"$\varepsilon$")
-    ax.set_ylabel(zlabel)
+    ax.set_ylabel(ylabel)
     # ax.set_yticks([1, 2, 3, 4, 5], ["10", "100", "1000", "10000", "100000"])
     # plt.yticks((1.0, 2.0, 3.0, 4.0, 5.0), ("10", "100", "1000", "10000", "100000"))
 
     alphas = dataset['alpha'].unique()
     mean = int(len(alphas) / 2)
-    neghborhood = 3
+    neghborhood = 5
     subselected_alphas = alphas[mean - neghborhood:  mean + neghborhood]
 
     for alpha in subselected_alphas:
@@ -115,21 +115,21 @@ def process_datasets(processed_datasets, result_dataset, new_columns_base_name="
 
         old_columns = frame.columns
         for item in old_columns[:-1]:
-            mean_column_name = f"{new_columns_base_name}_{item[1]}_{item[2]}_mean"
-            std_column_name = f"{new_columns_base_name}_{item[1]}_{item[2]}_std"
+            mean_column_name = f"{new_columns_base_name}_{item[2]}_{item[3]}"
+            std_column_name = f"{new_columns_base_name}_{item[2]}_{item[3]}"
 
             # add mean of entropy
-            frame[mean_column_name] = frame.apply(lambda row: np.mean(row[item]), axis=1, raw=True)
+            frame[item[0], mean_column_name, "mean", ""] = frame.apply(lambda row: np.mean(row[item]), axis=1, raw=True)
 
             # add std of entropy
-            frame[std_column_name] = frame.apply(lambda row: np.std(row[item]), axis=1, raw=True)
+            frame[item[0], std_column_name, "std", ""] = frame.apply(lambda row: np.std(row[item]), axis=1, raw=True)
 
         # dropping the index
         frame = frame.reset_index()
 
         # print(frame.columns.tolist())
         column = [("alpha", "", "") if "index" == item[0] else item for item in frame.columns.tolist()]
-        new_columns = pd.MultiIndex.from_tuples([("alpha", "", "") if "index" == item[0] else item for item in frame.columns])
+        new_columns = pd.MultiIndex.from_tuples([("alpha", "", "", "") if "index" == item[0] else item for item in frame.columns])
         frame.columns = new_columns
 
         # give names to the columns
@@ -142,12 +142,8 @@ def process_datasets(processed_datasets, result_dataset, new_columns_base_name="
 
         # selection of columns
         columns = [item for item in frame.columns.tolist() if
-                   "_mean" in str(item[0]) or "_std" in str(item[0]) or "alpha" in str(item[0]) or "epsilon" in str(item[0])]
+                   "mean" in str(item[2]) or "std" in str(item[2]) or "alpha" in str(item[0]) or "epsilon" in str(item[0])]
         frame = frame[columns]
-
-        # dropping of multiindex
-        columns = [item[0] for item in frame.columns.tolist()]
-        frame.columns = columns
 
         # append frame for processing
         frames.append(frame)
@@ -156,25 +152,21 @@ def process_datasets(processed_datasets, result_dataset, new_columns_base_name="
     join_table = pd.concat(frames, ignore_index=True)
     #print(join_table)
     pivot_table = pd.pivot_table(join_table, index=['alpha', 'epsilon'])
-    print(join_table.columns.tolist())
+    print(pivot_table, join_table.columns.tolist())
 
     #print(pivot_table[["transfer_entropy_15_5_mean"]])
     TE = pivot_table.reset_index()
 
     TE.to_pickle(result_dataset)
 
-    return TE, [item for item in join_table.columns.tolist() if "_mean" in str(item)]
+    return TE, [item for item in join_table.columns.tolist() if "mean" in str(item[2])]
 
 
 def load_processed_dataset(dataset, new_columns_base_name="transfer_entropy_"):
     TE = pd.read_pickle(dataset)
     columns = TE.columns
-    TE_column_names = []
-    for column in columns:
-        if "_mean" in column:
-            TE_column_names.append(column)
 
-    return TE, TE_column_names
+    return TE, [item for item in TE.columns.tolist() if "mean" in str(item[2])]
 
 
 if __name__ == "__main__":
@@ -186,5 +178,8 @@ if __name__ == "__main__":
         TE, TE_column_names = load_processed_dataset(processed_dataset)
 
     for item in TE_column_names:
-        figures2d_TE(TE, item, "Transfer entropy", "TE", item + "_2d", "png")
-        figures3d_TE(TE, item, "Transfer entropy", "TE", item, "png")
+        m = item[1].split("_")[2]
+        l = item[1].split("_")[3]
+        label = "$T^{}_{} ({},{})$".format("\{(R)\}", r"{\alpha: Y_{shuffled}\rightarrow X}" if item[0] else r"{\alpha: Y\rightarrow X}", m, l)
+        figures2d_TE(TE, item, "Transfer entropy", label, item[1] + ("_shuffled" if item[0] else "") + "_2d", "png")
+        figures3d_TE(TE, item, "Transfer entropy", label, item[1] + ("_shuffled" if item[0] else ""), "png")
