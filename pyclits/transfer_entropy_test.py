@@ -16,7 +16,7 @@ from roessler_system import roessler_oscillator
 from sample_generator import preparation_dataset_for_transfer_entropy, shuffle_sample
 
 
-def prepare_dataset(args, datasets=None, shuffle_dataset=False):
+def prepare_dataset(args, index_epsilon, datasets=None, shuffle_dataset=False):
     if not args.dataset:
         # calculate Rössler coupled oscilators
         t0 = time.process_time()
@@ -139,10 +139,10 @@ if __name__ == "__main__":
                              "arbitrary_precision": args.arbitrary_precision, "arbitrary_precision_decimal_numbers": args.arbitrary_precision_decimal_places}
 
             # prepare dataset that is been processed
-            marginal_solution_1, marginal_solution_2 = prepare_dataset(args, datasets=datasets, shuffle_dataset=shuffle_dataset)
+            marginal_solution_1, marginal_solution_2 = prepare_dataset(args, index_epsilon=index_epsilon, datasets=datasets, shuffle_dataset=shuffle_dataset)
 
             # create alphas that are been calculated
-            alphas = np.round(np.linspace(0.1, 1.9, 57), 3)
+            alphas = np.round(np.linspace(0.1, 1.9, 18), 3)
 
             # create structure for results
             results = {}
@@ -184,9 +184,9 @@ if __name__ == "__main__":
                         f" * Transfer entropy calculation for history first: {history_first}, history second: {history_second} and epsilon: {epsilon}, shuffling; {shuffle_dataset} is finished",
                         flush=True)
 
-        # save result structure to the file
-        path = Path(f"transfer_entropy/Transfer_entropy_dataset-{epsilon}.bin")
-        print(f"Save to file {path}", flush=True)
-        path.parent.mkdir(parents=True, exist_ok=True)
-        with open(path, "wb") as fb:
-            pickle.dump(results, fb)
+    # save result structure to the file
+    path = Path(f"transfer_entropy/Transfer_entropy_dataset-{epsilon}.bin")
+    print(f"Save to file {path}", flush=True)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with open(path, "wb") as fb:
+        pickle.dump(results, fb)
