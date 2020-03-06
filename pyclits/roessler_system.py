@@ -148,17 +148,20 @@ def roessler_oscillator(**kwargs):
     if not cache or not os.path.isfile(path):
         timepoints = np.arange(tStart, tStop, tInc)
 
+        print("Calculating numerical solution")
         # Call the ODE solver
         # old version
         # psoln = odeint(right_side, y0, t, args=(params,))
         solution = solve_ivp(lambda t, y: right_side_ivp(t, y, params), [tStart, tStop], y0, method=method)
 
+        print("Saving the solution to the cache")
         path.parent.mkdir(parents=True, exist_ok=True)
         with open(path, "wb") as fb:
             pickle.dump((params, y0, solution), fb)
 
         return solution
     else:
+        print("Load dataset from cache")
         with open(path, "rb") as fb:
             (params, y0, solution) = pickle.load(fb)
 
