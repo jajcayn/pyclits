@@ -70,23 +70,20 @@ def prepare_dataset(args, index_epsilon, datasets=None, shuffle_dataset=False):
 
 
 def load_static_dataset(args):
-    if args.dataset:
-        print("Load dataset", flush=True)
-        datasets = data_plugin.load_datasets()
+    print("Load dataset", flush=True)
+    datasets = data_plugin.load_datasets()
 
-        if args.dataset_range:
-            dataset_start = int(args.dataset_range.split("-")[0])
-            dataset_end = int(args.dataset_range.split("-")[1])
-            datasets = datasets[dataset_start:dataset_end]
+    if args.dataset_range:
+        dataset_start = int(args.dataset_range.split("-")[0])
+        dataset_end = int(args.dataset_range.split("-")[1])
+        datasets = datasets[dataset_start:dataset_end]
 
-        epsilons = []
-        for dataset in datasets:
-            epsilons.append(dataset[0]["eps1"])
-        print(f"Epsilons: {epsilons}", flush=True)
-    else:
-        datasets = None
+    epsilons = []
+    for dataset in datasets:
+        epsilons.append(dataset[0]["eps1"])
+    print(f"Epsilons: {epsilons}", flush=True)
 
-    return datasets
+    return datasets, epsilons
 
 
 if __name__ == "__main__":
@@ -128,7 +125,8 @@ if __name__ == "__main__":
         histories_second = range(2, 25)
 
     # load static dataset
-    datasets = load_static_dataset(args)
+    if args.dataset:
+        datasets, epsilons = load_static_dataset(args)
 
     # loop over shuffling
     for shuffle_dataset in [False, True]:
@@ -142,7 +140,7 @@ if __name__ == "__main__":
             marginal_solution_1, marginal_solution_2 = prepare_dataset(args, index_epsilon=index_epsilon, datasets=datasets, shuffle_dataset=shuffle_dataset)
 
             # create alphas that are been calculated
-            alphas = np.round(np.linspace(0.1, 1.9, 18), 3)
+            alphas = np.round(np.linspace(0.1, 1.9, 54), 3)
 
             # create structure for results
             results = {}
