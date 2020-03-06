@@ -127,6 +127,8 @@ if __name__ == "__main__":
     # load static dataset
     if args.dataset:
         datasets, epsilons = load_static_dataset(args)
+    else:
+        datasets = None
 
     # loop over different realizations for various epsilon
     for index_epsilon, epsilon in enumerate(epsilons):
