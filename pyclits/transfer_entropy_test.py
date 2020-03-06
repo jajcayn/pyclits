@@ -128,23 +128,26 @@ if __name__ == "__main__":
     if args.dataset:
         datasets, epsilons = load_static_dataset(args)
 
-    # loop over shuffling
-    for shuffle_dataset in [False, True]:
+    # loop over different realizations for various epsilon
+    for index_epsilon, epsilon in enumerate(epsilons):
+        configuration = {"method": args.method, "tInc": args.t_inc, "tStop": args.t_stop, "cache": True, "epsilon": epsilon,
+                         "arbitrary_precision": args.arbitrary_precision, "arbitrary_precision_decimal_numbers": args.arbitrary_precision_decimal_places}
 
-        # loop over different realizations for various epsilon
-        for index_epsilon, epsilon in enumerate(epsilons):
-            configuration = {"method": args.method, "tInc": args.t_inc, "tStop": args.t_stop, "cache": True, "epsilon": epsilon,
-                             "arbitrary_precision": args.arbitrary_precision, "arbitrary_precision_decimal_numbers": args.arbitrary_precision_decimal_places}
+        # create structure for results
+        results = {}
 
+        # loop over shuffling
+        for shuffle_dataset in [False, True]:
             # prepare dataset that is been processed
             marginal_solution_1, marginal_solution_2 = prepare_dataset(args, index_epsilon=index_epsilon, datasets=datasets, shuffle_dataset=shuffle_dataset)
 
             # create alphas that are been calculated
             alphas = np.round(np.linspace(0.1, 1.9, 54), 3)
 
-            # create structure for results
-            results = {}
+            # looping history of X timeserie
             for history_first in histories_first:
+
+                # looping history of Y timeserie
                 for history_second in histories_second:
                     print(f"History first: {history_first}, history second: {history_second} and epsilon: {epsilon} is processed", flush=True)
 
@@ -182,9 +185,9 @@ if __name__ == "__main__":
                         f" * Transfer entropy calculation for history first: {history_first}, history second: {history_second} and epsilon: {epsilon}, shuffling; {shuffle_dataset} is finished",
                         flush=True)
 
-    # save result structure to the file
-    path = Path(f"transfer_entropy/Transfer_entropy_dataset-{epsilon}.bin")
-    print(f"Save to file {path}", flush=True)
-    path.parent.mkdir(parents=True, exist_ok=True)
-    with open(path, "wb") as fb:
-        pickle.dump(results, fb)
+        # save result structure to the file
+        path = Path(f"transfer_entropy/Transfer_entropy_dataset-{epsilon}.bin")
+        print(f"Save to file {path}", flush=True)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        with open(path, "wb") as fb:
+            pickle.dump(results, fb)
