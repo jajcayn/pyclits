@@ -41,8 +41,9 @@ def samples_from_arrays(data, **kwargs):
         data = data.T
 
     if "select_indices" in kwargs:
-        select_indices = kwargs["select_indices"]
+        select_indices = sorted(kwargs["select_indices"])
         history = max(select_indices)
+        skip_first = history
 
     shape_of_array = data.shape
     sampled_dataset = np.zeros((shape_of_array[0] * history, shape_of_array[1] - history - skip_first - skip_last))
@@ -167,11 +168,13 @@ if __name__ == "__main__":
     elif test_sample in ["transfer_entropy"]:
         kwargs = {"history_index_x": [0, 1, 2], "history_index_y": [2], "future_index_x": [2]}
 
-        pattern = [list(range(10000, 0, -1))]
+        pattern = [list(range(0, 100, 1))]
 
         X_solution = np.array(pattern)
         Y_solution = np.array(pattern)
 
         solution = preparation_dataset_for_transfer_entropy(X_solution, Y_solution, **kwargs)
 
-        print(solution)
+        print(solution[0])
+        print(solution[1])
+        print(solution[2])
