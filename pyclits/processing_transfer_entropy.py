@@ -115,14 +115,23 @@ def process_datasets(processed_datasets, result_dataset, new_columns_base_name="
 
         old_columns = frame.columns
         for item in old_columns[:-1]:
-            mean_column_name = f"{new_columns_base_name}_{item[2]}_{item[3]}"
-            std_column_name = f"{new_columns_base_name}_{item[2]}_{item[3]}"
+            mean_column_name = f"{new_columns_base_name}_{item[1]}_{item[2]}"
+            std_column_name = f"{new_columns_base_name}_{item[1]}_{item[2]}"
 
             # add mean of entropy
-            frame[item[0], mean_column_name, "mean", ""] = frame.apply(lambda row: np.mean(row[item]), axis=1, raw=True)
+            frame[mean_column_name, "mean", "", item[3]] = frame.apply(lambda row: np.mean(row[item]), axis=1, raw=True)
 
             # add std of entropy
-            frame[item[0], std_column_name, "std", ""] = frame.apply(lambda row: np.std(row[item]), axis=1, raw=True)
+            frame[std_column_name, "std", "", item[3]] = frame.apply(lambda row: np.std(row[item]), axis=1, raw=True)
+
+        # effective transfer entropy
+        for item in [item for item in frame.columns.tolist() if item[3] == False and "entropy" not in str(item[0])]:
+            mean_column_name = f"effective_{new_columns_base_name}_{item[1]}_{item[2]}"
+            std_column_name = f"effective_{new_columns_base_name}_{item[1]}_{item[2]}"
+
+            frame[mean_column_name, "mean", "", ""] = frame.apply(lambda row: np.mean(row[item]) - np.mean(row[item[0], item[1], item[2], True]), axis=1,
+                                                                  raw=True)
+            frame[mean_column_name, "std", "", ""] = frame.apply(lambda row: np.std(row[item]) + np.std(row[item[0], item[1], item[2], True]), axis=1, raw=True)
 
         # dropping the index
         frame = frame.reset_index()
@@ -142,8 +151,9 @@ def process_datasets(processed_datasets, result_dataset, new_columns_base_name="
 
         # selection of columns
         columns = [item for item in frame.columns.tolist() if
-                   "mean" in str(item[2]) or "std" in str(item[2]) or "alpha" in str(item[0]) or "epsilon" in str(item[0])]
+                   "mean" in str(item[1]) or "std" in str(item[1]) or "alpha" in str(item[0]) or "epsilon" in str(item[0])]
         frame = frame[columns]
+        # print(frame)
 
         # append frame for processing
         frames.append(frame)
@@ -159,14 +169,14 @@ def process_datasets(processed_datasets, result_dataset, new_columns_base_name="
 
     TE.to_pickle(result_dataset)
 
-    return TE, [item for item in join_table.columns.tolist() if "mean" in str(item[2])]
+    return TE, [item for item in join_table.columns.tolist() if "mean" in str(item[1])]
 
 
 def load_processed_dataset(dataset, new_columns_base_name="transfer_entropy_"):
     TE = pd.read_pickle(dataset)
     columns = TE.columns
 
-    return TE, [item for item in TE.columns.tolist() if "mean" in str(item[2])]
+    return TE, [item for item in TE.columns.tolist() if "mean" in str(item[1])]
 
 
 if __name__ == "__main__":
@@ -178,8 +188,14 @@ if __name__ == "__main__":
         TE, TE_column_names = load_processed_dataset(processed_dataset)
 
     for item in TE_column_names:
-        m = item[1].split("_")[2]
-        l = item[1].split("_")[3]
-        label = "$T^{}_{} ({},{})$".format("\{(R)\}", r"{\alpha: Y_{shuffled}\rightarrow X}" if item[0] else r"{\alpha: Y\rightarrow X}", m, l)
-        figures2d_TE(TE, item, "Transfer entropy", label, item[1] + ("_shuffled" if item[0] else "") + "_2d", "png")
-        figures3d_TE(TE, item, "Transfer entropy", label, item[1] + ("_shuffled" if item[0] else ""), "png")
+        if "effective" in item[0]:
+            m = item[0].split("_")[3]
+            l = item[0].split("_")[4]
+        else:
+            m = item[0].split("_")[2]
+            l = item[0].split("_")[3]
+
+        label = "$T^{}_{} ({},{})$".format("{(R, eff)}" if "effective" in item[0] else "{(R)}",
+                                           r"{\alpha: Y_{shuffled}\rightarrow X}" if item[3] else r"{\alpha: Y\rightarrow X}", m, l)
+        figures2d_TE(TE, item, r"$\large\rm{Transfer\ entropy}$", label, item[0] + ("_shuffled" if item[3] else "") + "_2d", "pdf")
+        figures3d_TE(TE, item, r"$\large\rm{Transfer\ entropy}$", label, item[0] + ("_shuffled" if item[3] else ""), "pdf")

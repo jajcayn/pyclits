@@ -57,8 +57,8 @@ def prepare_dataset(args, index_epsilon, datasets=None, shuffle_dataset=False):
 
         print(f"Shape of solution: {filtrated_solution.shape}", flush=True)
         joint_solution = filtrated_solution
-        marginal_solution_1 = filtrated_solution[0:1, :].T
-        marginal_solution_2 = filtrated_solution[1:2, :].T
+        marginal_solution_2 = filtrated_solution[0:1, :].T
+        marginal_solution_1 = filtrated_solution[1:2, :].T
 
     if shuffle_dataset:
         marginal_solution_1 = shuffle_sample(marginal_solution_1)

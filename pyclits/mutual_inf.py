@@ -768,7 +768,8 @@ def entropy_sum_generic_LeonenkoProzanto(dataset_x: np.matrix, distances, alpha=
                 log_gamma_dim = scipyspecial.gammaln(dimension_of_data / 2.0 + 1)
                 maximum = max(subselected_distances)
                 exponent = dimension_of_data * (1 - alpha)
-                addition_to_entropy = np.sum(np.power(subselected_distances / maximum, exponent))
+                power = np.power(subselected_distances / maximum, exponent)
+                addition_to_entropy = np.sum(power)
 
                 multiplicator_gamma = np.exp(scipyspecial.gammaln(use_index) - scipyspecial.gammaln(use_index + 1 - alpha))
                 multiplicator = multiplicator_gamma * np.power(np.pi, exponent / 2.0) * np.power(number_of_data - 1, 1 - alpha) / number_of_data

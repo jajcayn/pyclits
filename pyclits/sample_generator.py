@@ -78,6 +78,18 @@ def preparation_dataset_for_transfer_entropy(marginal_solution_1, marginal_solut
     else:
         skip_first = 0
 
+    if "history_index_x" in kwargs:
+        history_index_x = kwargs["history_index_x"]
+        history_x = max(history_index_x)
+
+    if "history_index_y" in kwargs:
+        history_index_y = kwargs["history_index_y"]
+        history_y = max(history_index_y)
+
+    if "future_index_x" in kwargs:
+        future_index_x = kwargs["future_index_x"]
+        furure_x = max(future_index_x)
+
     # time lag between X and Y
     if "time_shift_between_X_Y" in kwargs:
         time_shift_between_X_Y = kwargs["time_shift_between_X_Y"]
@@ -105,11 +117,11 @@ def preparation_dataset_for_transfer_entropy(marginal_solution_1, marginal_solut
     kwargs["skip_last"] = time_shift_between_X_Y
     samples_marginal_2 = samples_from_arrays(marginal_solution_2_selected, **kwargs)
 
-    y = samples_marginal_1[:shape[0], :]
+    y_fut = samples_marginal_1[:shape[0], :]
     y_history = samples_marginal_1[shape[0]:, :]
     z = samples_marginal_2
 
-    return (y, y_history, z)
+    return (y_fut, y_history, z)
 
 
 def check_timesteps(data):
@@ -118,12 +130,25 @@ def check_timesteps(data):
 
 
 if __name__ == "__main__":
-    kwargs = {"method": "RK45"}
-    kwargs["tStop"] = 100
-    sol = roessler_oscillator(**kwargs)
-    print(sol)
-    check_timesteps(sol.t)
+    test_sample = "transfer_entropy"
+    if test_sample in ["sample_array"]:
+        kwargs = {"method": "RK45"}
+        kwargs["tStop"] = 100
+        sol = roessler_oscillator(**kwargs)
+        print(sol)
+        check_timesteps(sol.t)
 
-    samples = samples_from_arrays(sol.y)
-    print(samples.shape, sol.y.shape)
-    print(sol.y[0:3, :].shape)
+        samples = samples_from_arrays(sol.y)
+        print(samples.shape, sol.y.shape)
+        print(sol.y[0:3, :].shape)
+    elif test_sample in ["transfer_entropy"]:
+        kwargs = {}
+
+        pattern = [list(range(10000, 0, -1))]
+
+        X_solution = np.array(pattern)
+        Y_solution = np.array(pattern)
+
+        solution = preparation_dataset_for_transfer_entropy(X_solution, Y_solution, **kwargs)
+
+        print(solution)
