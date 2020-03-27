@@ -25,6 +25,7 @@ def samples_from_arrays(data, **kwargs):
     if "history" in kwargs:
         history = kwargs["history"]
     else:
+        allocated_space = 5
         history = 5
 
     if "skip_last" in kwargs:
@@ -41,16 +42,18 @@ def samples_from_arrays(data, **kwargs):
         data = data.T
 
     if "select_indices" in kwargs:
-        select_indices = sorted(kwargs["select_indices"])
+        select_indices = kwargs["select_indices"]
+        allocated_space = len(select_indices)
         history = max(select_indices)
-        skip_first = history
+        # skip_first += allocated_space
 
     shape_of_array = data.shape
-    sampled_dataset = np.zeros((shape_of_array[0] * history, shape_of_array[1] - history - skip_first - skip_last))
+    length_of_timeserie = shape_of_array[1] - skip_first - skip_last
+    sampled_dataset = np.zeros((shape_of_array[0] * allocated_space, length_of_timeserie))  # history
 
     range_of_history = select_indices if "select_indices" in kwargs else range(history)
 
-    for position_of_item, item in enumerate(range(skip_first, shape_of_array[1] - history - skip_last)):
+    for position_of_item, item in enumerate(range(skip_first, skip_first + length_of_timeserie)):
         for position_of_history, hist in enumerate(range_of_history):
             for dim_iter in range(shape_of_array[0]):
                 inserted_data = data[dim_iter, item - hist]
@@ -113,6 +116,10 @@ def preparation_dataset_for_transfer_entropy(marginal_solution_1, marginal_solut
     marginal_solution_2_selected = marginal_solution_2[:, skip_last:] if skip_last == 0 else marginal_solution_2[:,
                                                                                              skip_last: -skip_last]
 
+    kwargs["transpose"] = False
+    # additional move in history is there because then actual timeserie is separated
+    kwargs["history"] = history_x
+    kwargs["skip_first"] = time_shift_between_X_Y if history_x > history_y else history_y - history_x + time_shift_between_X_Y
     if "history_index_x" in kwargs:
         if "future_index_x" in kwargs:
             indices = [max(future_index_x) - item for item in future_index_x]
@@ -122,27 +129,30 @@ def preparation_dataset_for_transfer_entropy(marginal_solution_1, marginal_solut
             indices = [1 + item for item in history_index_x]
 
         kwargs["select_indices"] = indices
+        kwargs["skip_first"] = max(history_index_y + history_index_x) + max(future_index_x)
+        kwargs["history"] = history_x
 
-    kwargs["transpose"] = False
-    # additional move in history is there because then actual timeserie is separated
-    kwargs["history"] = history_x
-    kwargs["skip_first"] = time_shift_between_X_Y if history_x > history_y else history_y - history_x + time_shift_between_X_Y
     samples_marginal_1 = samples_from_arrays(marginal_solution_1_selected, **kwargs)
 
+    kwargs["history"] = history_y
+    kwargs["skip_first"] = max(history_index_y + history_index_x) + max(future_index_x)
+    kwargs["skip_last"] = 0
     if "history_index_y" in kwargs:
-        indices = [max(history_index_y) + item for item in history_index_y]
+        indices = [max(future_index_x) + item for item in history_index_y]
 
         kwargs["select_indices"] = indices
     else:
         del kwargs["select_indices"]
 
-    kwargs["history"] = history_y
-    kwargs["skip_first"] = 0 if history_y > history_x else history_x - history_y
-    kwargs["skip_last"] = time_shift_between_X_Y
     samples_marginal_2 = samples_from_arrays(marginal_solution_2_selected, **kwargs)
 
-    y_fut = samples_marginal_1[:shape[0], :]
-    y_history = samples_marginal_1[shape[0]:, :]
+    if "future_index_x" in kwargs:
+        y_fut = samples_marginal_1[:shape[0] * len(future_index_x), :]
+        y_history = samples_marginal_1[shape[0] * len(future_index_x):, :]
+    else:
+        y_fut = samples_marginal_1[:shape[0], :]
+        y_history = samples_marginal_1[shape[0]:, :]
+
     z = samples_marginal_2
 
     return (y_fut, y_history, z)
@@ -157,7 +167,7 @@ if __name__ == "__main__":
     test_sample = "transfer_entropy"
     if test_sample in ["sample_array"]:
         kwargs = {"method": "RK45"}
-        kwargs["tStop"] = 100
+        kwargs["tStop"] = 30
         sol = roessler_oscillator(**kwargs)
         print(sol)
         check_timesteps(sol.t)
@@ -166,9 +176,9 @@ if __name__ == "__main__":
         print(samples.shape, sol.y.shape)
         print(sol.y[0:3, :].shape)
     elif test_sample in ["transfer_entropy"]:
-        kwargs = {"history_index_x": [0, 1, 2], "history_index_y": [2], "future_index_x": [2]}
+        kwargs = {"history_index_x": [0, 1, 2], "history_index_y": [1], "future_index_x": [2, 3]}
 
-        pattern = [list(range(0, 100, 1))]
+        pattern = [list(range(0, 20, 1))]
 
         X_solution = np.array(pattern)
         Y_solution = np.array(pattern)
