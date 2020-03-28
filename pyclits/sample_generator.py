@@ -176,7 +176,7 @@ if __name__ == "__main__":
         print(samples.shape, sol.y.shape)
         print(sol.y[0:3, :].shape)
     elif test_sample in ["transfer_entropy"]:
-        kwargs = {"history_index_x": [0, 1, 2], "history_index_y": [1], "future_index_x": [2, 3]}
+        kwargs = {"history_index_x": [0, 1, 2], "history_index_y": [1, 2], "future_index_x": [2, 5]}
 
         pattern = [list(range(0, 20, 1))]
 

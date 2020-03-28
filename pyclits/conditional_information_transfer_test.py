@@ -1,240 +1,200 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-import math
-import sys
+import argparse
+import logging
+import pickle
 import time
+from pathlib import Path
 
 import numpy as np
-import scipy.special as spec
-import scipy.stats as stat
+import scipy.interpolate
 
-import mutual_inf
-
-time_start = time.process_time()
-
-
-def sample_normal_distribution(sigma, size_sample):
-    if isinstance(sigma, np.ndarray) and len(sigma.shape) == 2 and (sigma.shape[0] == sigma.shape[1]):
-        dimension = sigma.shape[0]
-        uncorrelated_sample = np.random.normal(0, 1.0, (dimension, size_sample))
-        eigenvalues, eigenvectors = np.linalg.eig(sigma)
-        standard_deviations = np.sqrt(eigenvalues)
-        identity_sqrt = np.diag(standard_deviations)
-        scaled_sample = identity_sqrt.dot(uncorrelated_sample)
-        correlated_sample = eigenvectors.dot(scaled_sample)
-
-        return correlated_sample.T
-    else:
-        raise ArithmeticError("sigma parameter has wrong type")
+import data_plugin
+from mutual_inf import renyi_transfer_entropy
+from roessler_system import roessler_oscillator
+from sample_generator import preparation_dataset_for_transfer_entropy, shuffle_sample
 
 
-def Renyi_normal_distribution(sigma, alpha):
-    if isinstance(sigma, float):
-        return Renyi_normal_distribution_1D(sigma, alpha)
-    elif isinstance(sigma, np.matrix):
-        return Renyi_normal_distribution_ND(sigma, alpha)
-    else:
-        raise ArithmeticError("sigma parameter has wrong type")
+def prepare_dataset(args, index_epsilon, datasets=None, shuffle_dataset=False):
+    if not args.dataset:
+        # calculate Rössler coupled oscilators
+        t0 = time.process_time()
+        sol = roessler_oscillator(**configuration)
+        t1 = time.process_time()
+        duration = t1 - t0
+        print(f"Solution duration [s]: {duration}", flush=True)
 
+        if args.interpolate:
+            number = int((args.t_stop - args.skip) * args.interpolate_samples_per_unit_time)
 
-def Renyi_normal_distribution_1D(sigma_number, alpha):
-    if alpha == 1:
-        return math.log2(2 * math.pi * math.exp(1) * np.power(sigma_number, 2)) / 2
-    else:
-        return math.log2(2 * math.pi) / 2 + math.log2(sigma_number) + math.log2(alpha) / (alpha - 1) / 2
+            new_t = np.linspace(args.skip, args.t_stop, num=number, endpoint=True)
+            solution = []
+            for dimension in range(sol.y.shape[0]):
+                function = scipy.interpolate.interp1d(sol.t, sol.y[dimension], kind='cubic')
 
+                solution.append(function(new_t))
 
-def Renyi_normal_distribution_ND(sigma_matrix: np.matrix, alpha):
-    dimension = sigma_matrix.shape[0]
-    if alpha == 1:
-        return math.log2(2 * math.pi * math.exp(1)) * dimension / 2.0 + math.log2(math.sqrt(np.linalg.det(sigma_matrix)))
-    else:
-        return math.log2(2 * math.pi) * dimension / 2 + math.log2(np.linalg.det(sigma_matrix)) / 2.0 + dimension * math.log2(alpha) / (alpha - 1) / 2
-
-
-def Renyi_student_t_distribution_1D(sigma, degrees_of_freedom, alpha):
-    if isinstance(sigma, float) or isinstance(sigma, int):
-        dimension = 1
-        determinant = sigma
-    elif isinstance(sigma, np.matrix):
-        if len(sigma.shape) == 2 and (sigma.shape[0] == sigma.shape[1]):
-            dimension = sigma.shape[0]
-            determinant = np.linalg.det(sigma)
+            filtrated_solution = np.vstack(solution)
         else:
-            raise ArithmeticError("sigma parameter has wrong type")
+            # preparation of sources
+            if args.skip_real_t:
+                indices = np.where(sol.t >= args.skip)
+                if len(indices) > 0:
+                    filtrated_solution = sol.y[:, indices[0]:]
+                else:
+                    logging.error("Skipping is too large and no data were selected for processing")
+                    raise AssertionError("No data selected")
+            else:
+                filtrated_solution = sol.y[:, args.skip:]
+
+        print(f"Shape of solution: {filtrated_solution.shape}", flush=True)
+        joint_solution = filtrated_solution
+        marginal_solution_1 = filtrated_solution[0:3, :].T
+        marginal_solution_2 = filtrated_solution[3:6, :].T
     else:
-        raise ArithmeticError("sigma parameter has wrong type")
+        filtrated_solution = datasets[index_epsilon][1].T
 
-    if alpha == 1:
-        return (degrees_of_freedom + 1.0) / 2 * (spec.digamma((degrees_of_freedom + 1.0) / 2) - spec.digamma((degrees_of_freedom) / 2)) + np.log2(
-            np.sqrt(degrees_of_freedom) * spec.beta(0.5, degrees_of_freedom / 2.0))
-    else:
-        nominator = spec.beta(dimension / 2.0, alpha * (dimension + degrees_of_freedom) / 2.0 - dimension / 2.0)
-        denominator = math.pow(spec.beta(degrees_of_freedom / 2.0, dimension / 2.0), alpha)
-        beta_factor = math.log2(nominator / denominator)
-        return 1 / (1 - alpha) * beta_factor * math.log2(math.pow(np.pi * degrees_of_freedom, dimension) * determinant) - math.log2(spec.gamma(dimension / 2.0))
+        print(f"Shape of solution: {filtrated_solution.shape}", flush=True)
+        joint_solution = filtrated_solution
+        marginal_solution_2 = filtrated_solution[0:1, :].T
+        marginal_solution_1 = filtrated_solution[1:2, :].T
 
+    if shuffle_dataset:
+        marginal_solution_1 = shuffle_sample(marginal_solution_1)
 
-def Renyi_beta_distribution(a, b, alpha):
-    return 1 / (1 - alpha) * math.log2(spec.beta(alpha * a + alpha - 1, alpha * b + alpha - 1) / math.pow(spec.beta(a, b), alpha))
+    return marginal_solution_1, marginal_solution_2
 
 
-def complete_test_1D(filename="statistics.txt", samples=1000,
-                     alphas=[0.1, 0.2, 0.3, 0.5, 0.6, 0.7, 0.8, 0.9, 0.95, 0.99, 1.0, 1.01, 1.05, 1.1, 1.2, 1.3, 1.4, 1.5, 1.7, 1.8, 1.9],
-                     mu=0, sigmas=[0.1, 0.5, 1.0, 5.0, 10.0, 50, 100],
-                     sizes_of_sample=[10, 20, 50, 100, 200, 500, 1000, 2000, 5000, 10000, 20000, 50000],
-                     theoretical_value_function=lambda sigma, alpha: Renyi_normal_distribution_1D(sigma, alpha),
-                     sample_generator=lambda mu, sigma, size_sample: np.random.normal(mu, sigma, (size_sample, 1)),
-                     sample_estimator=lambda data_samples, alpha: mutual_inf.renyi_entropy(data_samples, method="LeonenkoProzanto",
-                                                                                           indices_to_use=[1, 2, 3, 4, 5], alpha=alpha)):
-    with open(filename, "wt") as fd:
-        entropy_samples = {}
-        duration_samples = {}
-        difference_samples = {}
+def load_static_dataset(args):
+    print("Load dataset", flush=True)
+    datasets = data_plugin.load_datasets()
 
-        for sigma in sigmas:
-            for alpha in alphas:
-                for size_sample in sizes_of_sample:
-                    sample_position = (alpha, size_sample, sigma)
-                    theoretical_value = theoretical_value_function(sigma, alpha)
+    if args.dataset_range:
+        dataset_start = int(args.dataset_range.split("-")[0])
+        dataset_end = int(args.dataset_range.split("-")[1])
+        datasets = datasets[dataset_start:dataset_end]
 
-                    entropy_samples[sample_position] = []
-                    duration_samples[sample_position] = []
-                    difference_samples[sample_position] = []
+    epsilons = []
+    for dataset in datasets:
+        epsilons.append(dataset[0]["eps1"])
+    print(f"Epsilons: {epsilons}", flush=True)
 
-                    for sample in range(1, samples + 1):
-                        if sample % 10 == 0:
-                            print(f"alpha = {alpha}, size_sample = {size_sample}, sigma={sigma}, sample = {sample}")
-
-                        data_samples = sample_generator(mu, sigma, size_sample)
-
-                        time_start = time.process_time()
-                        entropy = sample_estimator(data_samples, alpha=alpha)
-                        time_end = time.process_time()
-
-                        duration = time_end - time_start
-                        difference = theoretical_value - entropy
-
-                        entropy_samples[sample_position].append(entropy)
-                        duration_samples[sample_position].append(duration)
-                        difference_samples[sample_position].append(difference)
-
-                        # print(f"samples={size_sample}, duration={time_end-time_start}, alpha={alpha}, tested_estimator={entropy}, theoretical_calculation={theoretical_value}, difference={difference}")
-
-                    print(
-                        f"{alpha} {size_sample} {sigma} {np.mean(entropy_samples[sample_position])} {np.std(entropy_samples[sample_position])} {np.mean(duration_samples[sample_position])} {np.std(duration_samples[sample_position])} {np.mean(difference_samples[sample_position])} {np.std(difference_samples[sample_position])}",
-                        file=fd)
-
-
-def complete_test_ND(filename="statistics.txt", samples=1000, sigma_skeleton=np.identity(10),
-                     alphas=[0.1, 0.2, 0.3, 0.5, 0.6, 0.7, 0.8, 0.9, 0.95, 0.99, 1.0, 1.01, 1.05, 1.1, 1.2, 1.3, 1.4, 1.5, 1.7, 1.8, 1.9],
-                     mu=0, sigmas=[0.1, 0.5, 1.0, 5.0, 10.0, 50, 100],
-                     sizes_of_sample=[10, 20, 50, 100, 200, 500, 1000, 2000, 5000, 10000, 20000, 50000], indices_to_use=[1, 2, 3, 4, 5, 6, 7, 8, 9],
-                     theoretical_value_function=lambda sigma, alpha: Renyi_normal_distribution_ND(sigma, alpha),
-                     sample_generator=lambda mu, sigma, size_sample: sample_normal_distribution(sigma, size_sample),
-                     sample_estimator=lambda data_samples, alpha, indices_to_use: mutual_inf.renyi_entropy(data_samples, method="LeonenkoProzanto",
-                                                                                                           indices_to_use=indices_to_use, alpha=alpha)):
-    with open(filename, "wt") as fd:
-        real_indeces = []
-        print("alpha\tsample size\tsigma\ttheoretical value\t", file=fd, end="")
-        for index in indices_to_use:
-            print(
-                f"mean Renyi entropy {index}\tstd Renyi entropy {index}\tmean computer time {index}\tstd computer time {index}\tmean difference {index}\tstd of difference {index}\t3rd moment of difference {index}\t",
-                file=fd, end="")
-            real_indeces.append([index])
-        print("mean Renyi entropy\tstd Renyi entropy\tmean computer time\tstd computer time\tmean difference\tstd of difference\t3rd moment of difference",
-              file=fd)
-        real_indeces.append(indices_to_use)
-
-        # collections of results
-        entropy_samples = {}
-        duration_samples = {}
-        difference_samples = {}
-
-        for sigma in sigmas:
-            matrix_sigma = sigma * sigma_skeleton
-            for alpha in alphas:
-                for size_sample in sizes_of_sample:
-                    for indices_to_use in real_indeces:
-                        theoretical_value = theoretical_value_function(matrix_sigma, alpha)
-
-                        print(f"{alpha}\t{size_sample}\t{sigma}\t{theoretical_value}\t", file=fd, end="")
-
-                        sample_position = (alpha, size_sample, sigma)
-
-                        entropy_samples[sample_position] = []
-                        duration_samples[sample_position] = []
-                        difference_samples[sample_position] = []
-
-                        for sample in range(1, samples + 1):
-                            if sample % 10 == 0:
-                                print(f"alpha = {alpha}, size_sample = {size_sample}, sigma={sigma}, sample = {sample}, indices_to_use={indices_to_use}")
-
-                            data_samples = sample_generator(mu, matrix_sigma, size_sample)
-
-                            time_start = time.process_time()
-                            entropy = sample_estimator(data_samples, alpha=alpha, indices_to_use=indices_to_use)
-                            time_end = time.process_time()
-
-                            duration = time_end - time_start
-                            difference = theoretical_value - entropy
-
-                            entropy_samples[sample_position].append(entropy)
-                            duration_samples[sample_position].append(duration)
-                            difference_samples[sample_position].append(difference)
-
-                        # save data for samples
-                        print(
-                            f"{np.mean(entropy_samples[sample_position])}\t{np.std(entropy_samples[sample_position])}\t{np.mean(duration_samples[sample_position])}\t{np.std(duration_samples[sample_position])}\t{np.mean(difference_samples[sample_position])}\t{np.std(difference_samples[sample_position])}\t{stat.moment(difference_samples[sample_position], moment=3)}",
-                            file=fd, end="")
-                    print("", file=fd, flush=True)
-
-
-def small_test():
-    sample_array = np.array([[1], [2], [3], [4], [5], [6], [7], [8], [9]], dtype=float)
-    input_sample = np.ndarray(shape=sample_array.shape, buffer=sample_array)
-    # print(input_sample)
-    # print(mutual_inf.renyi_entropy(np.matrix([[1],[2],[3],[4],[5],[6],[7],[8],[9]]), method="LeonenkoProzanto"))
-    # print(mutual_inf.renyi_entropy(input_sample, method="Paly"))
-
-    mu = 0
-    sigma = 10
-
-    number_samples = 100
-    alpha = 0.98
-    alphas = [0.1, 0.2, 0.3, 0.5, 0.6, 0.7, 0.8, 0.9, 0.95, 0.99, 1.0, 1.01, 1.05, 1.1, 1.2, 1.3, 1.4, 1.5, 1.7, 1.8, 1.9]
-    for alpha in alphas:
-        for number_samples in [10, 20, 50, 100, 200, 500, 1000, 2000, 5000, 10000, 20000, 50000, 100000]:
-            entropy = 0
-            data_samples = np.random.normal(mu, sigma, (number_samples, 1))
-            time_start = time.process_time()
-            # entropy = mutual_inf.renyi_entropy(samples, method="Lavicka", indices_to_use=[1])
-            time_end = time.process_time()
-            # print(number_samples, time_end-time_start, entropy, Renyi_normal_distribution_1D(sigma, alpha))
-
-            time_start = time.process_time()
-            entropy = mutual_inf.renyi_entropy(data_samples, method="LeonenkoProzanto", indices_to_use=[1, 2, 3, 4, 5], alpha=alpha)
-            theoretical_value = Renyi_normal_distribution_1D(sigma, alpha)
-            difference = abs(theoretical_value - entropy)
-            time_end = time.process_time()
-            print(
-                f"samples={number_samples}, duration={time_end - time_start}, alpha={alpha}, tested_estimator={entropy}, theoretical_calculation={theoretical_value}, difference={difference}")
+    return datasets, epsilons
 
 
 if __name__ == "__main__":
-    # small_test()
-    # complete_test_1D(samples=10, sigmas=[10.0, 50, 100], theoretical_value_function=lambda sigma, alpha: Renyi_student_t_distribution_1D(sigma, sigma, alpha), sample_generator=lambda mu, sigma, size_sample: np.random.standard_t(sigma, size=(size_sample, 1)))
-    # sigma_skeleton = np.matrix("5 1; 1 10")
-    if len(sys.argv) >= 2:
-        dimensions = [int(sys.argv[1])]
+    parser = argparse.ArgumentParser(description='Calculates transfer entropy for coupled Rössler systems with strength of coupling epsilon.')
+    parser.add_argument('--epsilon', metavar='XXX', type=float, nargs='+', help='Epsilons')
+    parser.add_argument('--t_stop', metavar='XXX', type=float, default=10000.0, help='T stop')
+    parser.add_argument('--t_inc', metavar='XXX', type=float, default=0.01, help='T increment')
+    parser.add_argument('--no_cache', action='store_true', help='Skips cached results of the Rössler system')
+    parser.add_argument('--skip', metavar='XXX', type=int, default=2000, help='Skipped results of integration')
+    parser.add_argument('--blockwise', metavar='XXX', type=int, default=0, help='Blockwise calculation of distances to prevent excessive memory usage')
+    parser.add_argument('--skip_real_t', action='store_true', help='Indicates skip in time')
+    parser.add_argument('--history_first', metavar='XXX', type=int, nargs='+', help='History to take into account')
+    parser.add_argument('--history_second', metavar='XXX', type=int, nargs='+', help='History to take into account')
+    parser.add_argument('--future_first', metavar='XXX', type=int, nargs='+', help='Future to take into account')
+    parser.add_argument('--method', metavar='XXX', type=str, default="LSODA", help='Method of integration')
+    parser.add_argument('--maximal_neighborhood', metavar='XXX', type=int, default=2, help='Maximal neighborhood')
+    parser.add_argument('--arbitrary_precision', action='store_true', help='Calculates the main part in arbitrary precision')
+    parser.add_argument('--arbitrary_precision_decimal_places', metavar='XXX', type=int, default=100,
+                        help='Sets number saved in arbitrary precision arithmetic')
+    parser.add_argument('--interpolate', action='store_true', help='Switch on intepolation')
+    parser.add_argument('--interpolate_samples_per_unit_time', metavar='XXX', type=int, default=10, help='Number of samples generated per unit time')
+    parser.add_argument('--dataset', action='store_true', help='Use dataset provided by dr. Paluš')
+    parser.add_argument('--dataset_range', metavar='XXX-YYY', type=str, help='Dataset with range')
+    args = parser.parse_args()
+    # print(args.epsilon, flush=True)
+
+    if args.epsilon:
+        epsilons = args.epsilon
     else:
-        dimensions = [2, 3, 5, 10, 20, 50]
+        epsilons = [0.01, 0.02, 0.03, 0.04, 0.05, 0.06, 0.07, 0.08, 0.09, 0.1, 0.11, 0.12, 0.13]
 
-    print(f"Calculation for dimensions {dimensions}")
+    if args.history_first:
+        histories_first = args.history_first
+    else:
+        histories_first = range(2, 25)
 
-    for dimension in dimensions:
-        complete_test_ND(filename=f"complete_statistics_{dimension}.txt", samples=100, sigmas=[0.1, 1, 10, 100],
-                         sigma_skeleton=np.identity(dimension), sizes_of_sample=[10, 20, 50, 100, 200, 500, 1000],
-                         theoretical_value_function=lambda sigma, alpha: Renyi_normal_distribution_ND(sigma, alpha),
-                         sample_generator=lambda mu, sigma, size_sample: sample_normal_distribution(sigma, size_sample))
+    if args.history_second:
+        histories_second = args.history_second
+    else:
+        histories_second = range(2, 25)
+
+    if args.future_first:
+        future_first = args.future_first
+    else:
+        future_first = range(2, 10)
+
+    # load static dataset
+    if args.dataset:
+        datasets, epsilons = load_static_dataset(args)
+    else:
+        datasets = None
+
+    # loop over different realizations for various epsilon
+    for index_epsilon, epsilon in enumerate(epsilons):
+        configuration = {"method": args.method, "tInc": args.t_inc, "tStop": args.t_stop, "cache": True, "epsilon": epsilon,
+                         "arbitrary_precision": args.arbitrary_precision, "arbitrary_precision_decimal_numbers": args.arbitrary_precision_decimal_places}
+
+        # create structure for results
+        results = {}
+
+        # loop over shuffling
+        for shuffle_dataset in [True, False]:
+            # prepare dataset that is been processed
+            marginal_solution_1, marginal_solution_2 = prepare_dataset(args, index_epsilon=index_epsilon, datasets=datasets, shuffle_dataset=shuffle_dataset)
+
+            # create alphas that are been calculated
+            alphas = np.round(np.linspace(0.1, 1.9, 54), 3)
+
+            # looping history of X timeserie
+            for history_first in histories_first:
+
+                # looping history of Y timeserie
+                for history_second in histories_second:
+                    print(f"History first: {history_first}, future first: {future_first} history second: {history_second} and epsilon: {epsilon} is processed",
+                          flush=True)
+
+                    # preparation of the configuration dictionary
+                    # additional +1 is there for separation
+                    configuration = {"transpose": True, "blockwise": args.blockwise,
+                                     "history_index_x": history_first, "history_index_y": history_second, "future_index_x": future_first}
+
+                    # prepare samples to be used to calculate transfer entropy
+                    t0 = time.process_time()
+                    y_fut, y_hist, z_hist = preparation_dataset_for_transfer_entropy(marginal_solution_2, marginal_solution_1, **configuration)
+                    t1 = time.process_time()
+                    duration = t1 - t0
+                    print(f" * Preparation of datasets [s]: {duration}", flush=True)
+
+                    # create range of indices that will be used for calculation
+                    indices_to_use = list(range(1, args.maximal_neighborhood + 1))
+                    configuration = {"transpose": True, "axis_to_join": 0, "method": "LeonenkoProzanto", "alphas": alphas,
+                                     "enhanced_calculation": True, "indices_to_use": indices_to_use, "arbitrary_precision": args.arbitrary_precision,
+                                     "arbitrary_precision_decimal_numbers": args.arbitrary_precision_decimal_places}
+
+                    # calculation of transfer entropy
+                    print(
+                        f" * Transfer entropy for history first: {history_first}, history second: {history_second} and epsilon: {epsilon} shuffling; {shuffle_dataset} is calculated",
+                        flush=True)
+                    t0 = time.process_time()
+                    transfer_entropy = renyi_transfer_entropy(y, y_hist, z, **configuration)
+                    t1 = time.process_time()
+                    duration = t1 - t0
+                    print(f" * Duration of calculation of transfer entropy [s]: {duration}", flush=True)
+                    # print(f" * Transfer Renyi entropy with {history} {epsilon}: {transfer_entropy}", flush=True)
+
+                    # store transfer entropy to the result structure
+                    results[(epsilon, history_first, history_second, shuffle_dataset)] = transfer_entropy
+                    print(
+                        f" * Transfer entropy calculation for history first: {history_first}, history second: {history_second} and epsilon: {epsilon}, shuffling; {shuffle_dataset} is finished",
+                        flush=True)
+
+        # save result structure to the file
+        path = Path(f"transfer_entropy/Transfer_entropy_dataset-{epsilon}.bin")
+        print(f"Save to file {path}", flush=True)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        with open(path, "wb") as fb:
+            pickle.dump(results, fb)
