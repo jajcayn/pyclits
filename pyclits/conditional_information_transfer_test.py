@@ -84,7 +84,7 @@ def load_static_dataset(args):
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description='Calculates transfer entropy for coupled Rössler systems with strength of coupling epsilon.')
+    parser = argparse.ArgumentParser(description='Calculates conditional information transfer for coupled Rössler systems with strength of coupling epsilon.')
     parser.add_argument('--epsilon', metavar='XXX', type=float, nargs='+', help='Epsilons')
     parser.add_argument('--t_stop', metavar='XXX', type=float, default=10000.0, help='T stop')
     parser.add_argument('--t_inc', metavar='XXX', type=float, default=0.01, help='T increment')

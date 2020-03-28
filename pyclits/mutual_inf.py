@@ -937,7 +937,7 @@ def renyi_transfer_entropy(data_x, data_x_hist, data_y, **kwargs):
         return results
 
 
-def renyi_conditional_information_transfer(data_x, data_x_hist, data_y, **kwargs):
+def renyi_conditional_information_transfer(data_x_fut, data_x_hist, data_y, **kwargs):
     if "enhanced_calculation" in kwargs:
         enhanced_calculation = kwargs["enhanced_calculation"]
     else:
@@ -950,16 +950,16 @@ def renyi_conditional_information_transfer(data_x, data_x_hist, data_y, **kwargs
 
     results = {}
     if enhanced_calculation:
-        joint_dataset = np.concatenate((data_x, data_x_hist), axis=axis_to_join)
+        joint_dataset = np.concatenate((data_x_fut, data_x_hist), axis=axis_to_join)
         entropy_present_X_history_X = renyi_entropy(joint_dataset, **kwargs)
 
         joint_dataset = np.concatenate((data_x_hist, data_y), axis=axis_to_join)
         entropy_history_X_history_Y = renyi_entropy(joint_dataset, **kwargs)
 
-        joint_dataset = np.concatenate((data_x, data_x_hist, data_y), axis=axis_to_join)
+        joint_dataset = np.concatenate((data_x_fut, data_x_hist, data_y), axis=axis_to_join)
         entropy_joint = renyi_entropy(joint_dataset, **kwargs)
 
-        entropy_history_X = renyi_entropy(data_x_hist, **kwargs)
+        entropy_history_X = renyi_entropy(data_x_fut, **kwargs)
 
         for alpha in kwargs["alphas"]:
             result = [
@@ -971,8 +971,8 @@ def renyi_conditional_information_transfer(data_x, data_x_hist, data_y, **kwargs
     else:
         joint_dataset = np.concatenate((data_x_hist, data_y), axis=axis_to_join)
 
-        joint_part = renyi_mutual_entropy(data_x, joint_dataset, **kwargs)
-        marginal_part = renyi_mutual_entropy(data_x, data_x_hist, **kwargs)
+        joint_part = renyi_mutual_entropy(data_x_fut, joint_dataset, **kwargs)
+        marginal_part = renyi_mutual_entropy(data_x_fut, data_x_hist, **kwargs)
 
         results = {}
         for alpha in kwargs["alphas"]:
