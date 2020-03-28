@@ -11,7 +11,7 @@ import numpy as np
 import scipy.interpolate
 
 import data_plugin
-from mutual_inf import renyi_transfer_entropy
+from mutual_inf import renyi_conditional_information_transfer
 from roessler_system import roessler_oscillator
 from sample_generator import preparation_dataset_for_transfer_entropy, shuffle_sample
 
@@ -180,7 +180,7 @@ if __name__ == "__main__":
                         f" * Transfer entropy for history first: {history_first}, history second: {history_second} and epsilon: {epsilon} shuffling; {shuffle_dataset} is calculated",
                         flush=True)
                     t0 = time.process_time()
-                    transfer_entropy = renyi_transfer_entropy(y, y_hist, z, **configuration)
+                    transfer_entropy = renyi_conditional_information_transfer(y_fut, y_hist, z_hist, **configuration)
                     t1 = time.process_time()
                     duration = t1 - t0
                     print(f" * Duration of calculation of transfer entropy [s]: {duration}", flush=True)

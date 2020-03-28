@@ -937,6 +937,51 @@ def renyi_transfer_entropy(data_x, data_x_hist, data_y, **kwargs):
         return results
 
 
+def renyi_conditional_information_transfer(data_x, data_x_hist, data_y, **kwargs):
+    if "enhanced_calculation" in kwargs:
+        enhanced_calculation = kwargs["enhanced_calculation"]
+    else:
+        enhanced_calculation = True
+
+    if "axis_to_join" in kwargs:
+        axis_to_join = kwargs["axis_to_join"]
+    else:
+        axis_to_join = 0
+
+    results = {}
+    if enhanced_calculation:
+        joint_dataset = np.concatenate((data_x, data_x_hist), axis=axis_to_join)
+        entropy_present_X_history_X = renyi_entropy(joint_dataset, **kwargs)
+
+        joint_dataset = np.concatenate((data_x_hist, data_y), axis=axis_to_join)
+        entropy_history_X_history_Y = renyi_entropy(joint_dataset, **kwargs)
+
+        joint_dataset = np.concatenate((data_x, data_x_hist, data_y), axis=axis_to_join)
+        entropy_joint = renyi_entropy(joint_dataset, **kwargs)
+
+        entropy_history_X = renyi_entropy(data_x_hist, **kwargs)
+
+        for alpha in kwargs["alphas"]:
+            result = [
+                entropy_present_X_history_X[alpha][index] + entropy_history_X_history_Y[alpha][index] - entropy_joint[alpha][index] - entropy_history_X[alpha][
+                    index]
+                for index in range(len(kwargs["indices_to_use"]))]
+            results[alpha] = result
+        return results
+    else:
+        joint_dataset = np.concatenate((data_x_hist, data_y), axis=axis_to_join)
+
+        joint_part = renyi_mutual_entropy(data_x, joint_dataset, **kwargs)
+        marginal_part = renyi_mutual_entropy(data_x, data_x_hist, **kwargs)
+
+        results = {}
+        for alpha in kwargs["alphas"]:
+            result = [joint_part[alpha][index] - marginal_part[alpha][index] for index in range(len(kwargs["indices_to_use"]))]
+            results[alpha] = result
+
+        return results
+
+
 def conditional_transfer_entropy(data_x, data_y, data_z, **kwargs):
     joint_dataset_xz = np.concatenate(data_x, data_z, axis=1)
     marginal_entropy_xz = renyi_entropy(joint_dataset_xz, **kwargs)
