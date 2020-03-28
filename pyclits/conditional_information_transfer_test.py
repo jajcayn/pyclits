@@ -93,8 +93,8 @@ if __name__ == "__main__":
     parser.add_argument('--blockwise', metavar='XXX', type=int, default=0, help='Blockwise calculation of distances to prevent excessive memory usage')
     parser.add_argument('--skip_real_t', action='store_true', help='Indicates skip in time')
     parser.add_argument('--history_first', metavar='XXX', type=int, nargs='+', help='History to take into account')
+    parser.add_argument('--future_first', metavar='XXX', type=int, nargs='+', help='History to take into account')
     parser.add_argument('--history_second', metavar='XXX', type=int, nargs='+', help='History to take into account')
-    parser.add_argument('--future_first', metavar='XXX', type=int, nargs='+', help='Future to take into account')
     parser.add_argument('--method', metavar='XXX', type=str, default="LSODA", help='Method of integration')
     parser.add_argument('--maximal_neighborhood', metavar='XXX', type=int, default=2, help='Maximal neighborhood')
     parser.add_argument('--arbitrary_precision', action='store_true', help='Calculates the main part in arbitrary precision')
@@ -117,15 +117,15 @@ if __name__ == "__main__":
     else:
         histories_first = range(2, 25)
 
+    if args.future_first:
+        future_first = args.future_first
+    else:
+        future_first = range(2, 25)
+
     if args.history_second:
         histories_second = args.history_second
     else:
         histories_second = range(2, 25)
-
-    if args.future_first:
-        future_first = args.future_first
-    else:
-        future_first = range(2, 10)
 
     # load static dataset
     if args.dataset:
@@ -149,48 +149,43 @@ if __name__ == "__main__":
             # create alphas that are been calculated
             alphas = np.round(np.linspace(0.1, 1.9, 54), 3)
 
-            # looping history of X timeserie
-            for history_first in histories_first:
+            print(f"History first: {histories_first}, future first: {future_first}, history second: {histories_second} and epsilon: {epsilon} is processed",
+                  flush=True)
 
-                # looping history of Y timeserie
-                for history_second in histories_second:
-                    print(f"History first: {history_first}, future first: {future_first} history second: {history_second} and epsilon: {epsilon} is processed",
-                          flush=True)
+            # preparation of the configuration dictionary
+            # additional +1 is there for separation
+            configuration = {"transpose": True, "blockwise": args.blockwise,
+                             "history_index_x": histories_first, "history_index_y": histories_second, "future_index_x": future_first}
 
-                    # preparation of the configuration dictionary
-                    # additional +1 is there for separation
-                    configuration = {"transpose": True, "blockwise": args.blockwise,
-                                     "history_index_x": history_first, "history_index_y": history_second, "future_index_x": future_first}
+            # prepare samples to be used to calculate transfer entropy
+            t0 = time.process_time()
+            y_fut, y_hist, z_hist = preparation_dataset_for_transfer_entropy(marginal_solution_2, marginal_solution_1, **configuration)
+            t1 = time.process_time()
+            duration = t1 - t0
+            print(f" * Preparation of datasets [s]: {duration}", flush=True)
 
-                    # prepare samples to be used to calculate transfer entropy
-                    t0 = time.process_time()
-                    y_fut, y_hist, z_hist = preparation_dataset_for_transfer_entropy(marginal_solution_2, marginal_solution_1, **configuration)
-                    t1 = time.process_time()
-                    duration = t1 - t0
-                    print(f" * Preparation of datasets [s]: {duration}", flush=True)
+            # create range of indices that will be used for calculation
+            indices_to_use = list(range(1, args.maximal_neighborhood + 1))
+            configuration = {"transpose": True, "axis_to_join": 0, "method": "LeonenkoProzanto", "alphas": alphas,
+                             "enhanced_calculation": True, "indices_to_use": indices_to_use, "arbitrary_precision": args.arbitrary_precision,
+                             "arbitrary_precision_decimal_numbers": args.arbitrary_precision_decimal_places}
 
-                    # create range of indices that will be used for calculation
-                    indices_to_use = list(range(1, args.maximal_neighborhood + 1))
-                    configuration = {"transpose": True, "axis_to_join": 0, "method": "LeonenkoProzanto", "alphas": alphas,
-                                     "enhanced_calculation": True, "indices_to_use": indices_to_use, "arbitrary_precision": args.arbitrary_precision,
-                                     "arbitrary_precision_decimal_numbers": args.arbitrary_precision_decimal_places}
+            # calculation of transfer entropy
+            print(
+                f" * Transfer entropy for history first: {histories_first}, future first: {future_first}, history second: {histories_second} and epsilon: {epsilon} shuffling; {shuffle_dataset} is calculated",
+                flush=True)
+            t0 = time.process_time()
+            transfer_entropy = renyi_conditional_information_transfer(y_fut, y_hist, z_hist, **configuration)
+            t1 = time.process_time()
+            duration = t1 - t0
+            print(f" * Duration of calculation of transfer entropy [s]: {duration}", flush=True)
+            # print(f" * Transfer Renyi entropy with {history} {epsilon}: {transfer_entropy}", flush=True)
 
-                    # calculation of transfer entropy
-                    print(
-                        f" * Transfer entropy for history first: {history_first}, history second: {history_second} and epsilon: {epsilon} shuffling; {shuffle_dataset} is calculated",
-                        flush=True)
-                    t0 = time.process_time()
-                    transfer_entropy = renyi_conditional_information_transfer(y_fut, y_hist, z_hist, **configuration)
-                    t1 = time.process_time()
-                    duration = t1 - t0
-                    print(f" * Duration of calculation of transfer entropy [s]: {duration}", flush=True)
-                    # print(f" * Transfer Renyi entropy with {history} {epsilon}: {transfer_entropy}", flush=True)
-
-                    # store transfer entropy to the result structure
-                    results[(epsilon, history_first, history_second, shuffle_dataset)] = transfer_entropy
-                    print(
-                        f" * Transfer entropy calculation for history first: {history_first}, history second: {history_second} and epsilon: {epsilon}, shuffling; {shuffle_dataset} is finished",
-                        flush=True)
+            # store transfer entropy to the result structure
+            results[(epsilon, histories_first, future_first, histories_second, shuffle_dataset)] = transfer_entropy
+            print(
+                f" * Transfer entropy calculation for history first: {histories_first}, future first: {future_first}, history second: {histories_second} and epsilon: {epsilon}, shuffling; {shuffle_dataset} is finished",
+                flush=True)
 
         # save result structure to the file
         path = Path(f"transfer_entropy/Transfer_entropy_dataset-{epsilon}.bin")
