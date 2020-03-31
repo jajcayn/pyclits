@@ -808,7 +808,7 @@ def entropy_sum_Shannon_LeonenkoProzanto(dataset_x: np.matrix, distances, **kwar
             addition_to_entropy = mpmath.mpf('0.0')
             shape = subselected_distances.shape
             for index in range(shape[0]):
-                addition_to_entropy += mpmath.log2(subselected_distances[index])
+                addition_to_entropy += mpmath.log(subselected_distances[index])
 
             addition_to_entropy *= dimension_of_data / number_of_data
 
