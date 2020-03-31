@@ -114,24 +114,45 @@ def process_datasets(processed_datasets, result_dataset, new_columns_base_name="
         # print(frame)
 
         old_columns = frame.columns
+
         for item in old_columns[:-1]:
             mean_column_name = f"{new_columns_base_name}_{item[1]}_{item[2]}"
             std_column_name = f"{new_columns_base_name}_{item[1]}_{item[2]}"
 
+            if isinstance(item[3], bool):
+                bool_column = 3
+            else:
+                bool_column = 4
+
             # add mean of entropy
-            frame[mean_column_name, "mean", "", item[3]] = frame.apply(lambda row: np.mean(row[item]), axis=1, raw=True)
+            calculation = frame.apply(lambda row: np.mean(row[item]), axis=1, raw=True)
+            if bool_column == 3:
+                frame[mean_column_name, "mean", "", item[bool_column]] = calculation
+            else:
+                frame[mean_column_name, "mean", "", "", item[bool_column]] = calculation
 
             # add std of entropy
-            frame[std_column_name, "std", "", item[3]] = frame.apply(lambda row: np.std(row[item]), axis=1, raw=True)
+            calculation = frame.apply(lambda row: np.std(row[item]), axis=1, raw=True)
+            if bool_column == 3:
+                frame[std_column_name, "std", "", item[bool_column]] = frame.apply(lambda row: np.std(row[item]), axis=1, raw=True)
+            else:
+                frame[mean_column_name, "mean", "", "", item[bool_column]] = calculation
 
         # effective transfer entropy
-        for item in [item for item in frame.columns.tolist() if item[3] == False and "entropy" not in str(item[0])]:
+        for item in [item for item in frame.columns.tolist() if item[bool_column] is False and "entropy" not in str(item[0])]:
             mean_column_name = f"effective_{new_columns_base_name}_{item[1]}_{item[2]}"
             std_column_name = f"effective_{new_columns_base_name}_{item[1]}_{item[2]}"
 
-            frame[mean_column_name, "mean", "", ""] = frame.apply(lambda row: np.mean(row[item]) - np.mean(row[item[0], item[1], item[2], True]), axis=1,
-                                                                  raw=True)
-            frame[mean_column_name, "std", "", ""] = frame.apply(lambda row: np.std(row[item]) + np.std(row[item[0], item[1], item[2], True]), axis=1, raw=True)
+            if bool_column == 3:
+                frame[mean_column_name, "mean", "", ""] = frame.apply(lambda row: np.mean(row[item]) - np.mean(row[item[0], item[1], item[2], True]), axis=1,
+                                                                      raw=True)
+                frame[mean_column_name, "std", "", ""] = frame.apply(lambda row: np.std(row[item]) + np.std(row[item[0], item[1], item[2], True]), axis=1,
+                                                                     raw=True)
+            else:
+                frame[mean_column_name, "mean", "", "", ""] = frame.apply(
+                    lambda row: np.mean(row[item]) - np.mean(row[item[0], item[1], item[2], item[3], True]), axis=1, raw=True)
+                frame[mean_column_name, "std", "", "", ""] = frame.apply(lambda row: np.std(row[item]) + np.std(row[item[0], item[1], item[2], item[3], True]),
+                                                                         axis=1, raw=True)
 
         # dropping the index
         frame = frame.reset_index()

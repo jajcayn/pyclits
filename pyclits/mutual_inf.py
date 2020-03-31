@@ -712,10 +712,10 @@ def renyi_entropy_LeonenkoProzanto(dataset_x: np.matrix, **kwargs):
                 entropy_sum = entropy_sum_generic_LeonenkoProzanto(dataset_x, distances, alpha, **kwargs)
 
                 if kwargs["arbitrary_precision"]:
-                    result = [mpmath.log(item) / (1 - alpha) for item in entropy_sum]
+                    result = [mpmath.log(item) / (1.0 - alpha) for item in entropy_sum]
                 else:
                     entropy_sum = entropy_sum.tolist()
-                    result = [np.log2(item) / (1 - alpha) for item in entropy_sum]
+                    result = [np.log2(item) / (1.0 - alpha) for item in entropy_sum]
 
             results[alpha] = result
         except Exception as exc:
@@ -768,7 +768,12 @@ def entropy_sum_generic_LeonenkoProzanto(dataset_x: np.matrix, distances, alpha=
                 log_gamma_dim = scipyspecial.gammaln(dimension_of_data / 2.0 + 1)
                 maximum = max(subselected_distances)
                 exponent = dimension_of_data * (1 - alpha)
-                power = np.power(subselected_distances / maximum, exponent)
+                scaled_distances = subselected_distances / maximum
+                if exponent < 0:
+                    # dealing with distance 0
+                    scaled_distances = np.array([item for item in scaled_distances if item > 0])
+
+                power = np.power(scaled_distances, exponent)
                 addition_to_entropy = np.sum(power)
 
                 multiplicator_gamma = np.exp(scipyspecial.gammaln(use_index) - scipyspecial.gammaln(use_index + 1 - alpha))
@@ -811,8 +816,11 @@ def entropy_sum_Shannon_LeonenkoProzanto(dataset_x: np.matrix, distances, **kwar
             argument_log = mpmath.power(mpmath.pi, dimension_of_data / 2.0) / mpmath.gamma(dimension_of_data / 2.0 + 1) * mpmath.exp(-digamma) * (
                     number_of_data - 1)
 
-            entropy[index_of_distances] += addition_to_entropy + mpmath.log2(argument_log)
+            entropy[index_of_distances] += addition_to_entropy + mpmath.log(argument_log)
         else:
+            # dealing with distance 0 - log then diverges
+            subselected_distances = np.array([item for item in subselected_distances if item > 0])
+
             addition_to_entropy = np.sum(np.log2(subselected_distances)) * dimension_of_data / number_of_data
 
             digamma = scipyspecial.digamma(use_index)

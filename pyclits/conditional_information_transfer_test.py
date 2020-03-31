@@ -127,6 +127,9 @@ if __name__ == "__main__":
     else:
         histories_second = range(2, 25)
 
+    # create alphas that are been calculated
+    alphas = np.round(np.linspace(0.1, 1.9, 37, endpoint=True), 3)
+
     # load static dataset
     if args.dataset:
         datasets, epsilons = load_static_dataset(args)
@@ -145,9 +148,6 @@ if __name__ == "__main__":
         for shuffle_dataset in [True, False]:
             # prepare dataset that is been processed
             marginal_solution_1, marginal_solution_2 = prepare_dataset(args, index_epsilon=index_epsilon, datasets=datasets, shuffle_dataset=shuffle_dataset)
-
-            # create alphas that are been calculated
-            alphas = np.round(np.linspace(0.1, 1.9, 54), 3)
 
             print(f"History first: {histories_first}, future first: {future_first}, history second: {histories_second} and epsilon: {epsilon} is processed",
                   flush=True)
@@ -182,7 +182,7 @@ if __name__ == "__main__":
             # print(f" * Transfer Renyi entropy with {history} {epsilon}: {transfer_entropy}", flush=True)
 
             # store transfer entropy to the result structure
-            results[(epsilon, histories_first, future_first, histories_second, shuffle_dataset)] = transfer_entropy
+            results[(epsilon, f"{max(histories_first)}_{max(future_first)}", max(histories_second), shuffle_dataset)] = transfer_entropy
             print(
                 f" * Transfer entropy calculation for history first: {histories_first}, future first: {future_first}, history second: {histories_second} and epsilon: {epsilon}, shuffling; {shuffle_dataset} is finished",
                 flush=True)
