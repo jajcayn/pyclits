@@ -975,11 +975,15 @@ def renyi_conditional_information_transfer(data_x_fut, data_x_hist, data_y, **kw
         entropy_history_X = renyi_entropy(data_x_fut, **kwargs)
 
         for alpha in kwargs["alphas"]:
-            result = [
-                entropy_present_X_history_X[alpha][index] + entropy_history_X_history_Y[alpha][index] - entropy_joint[alpha][index] - entropy_history_X[alpha][
-                    index]
-                for index in range(len(kwargs["indices_to_use"]))]
-            results[alpha] = result
+            try:
+                result = [
+                    entropy_present_X_history_X[alpha][index] + entropy_history_X_history_Y[alpha][index] - entropy_joint[alpha][index] -
+                    entropy_history_X[alpha][
+                        index]
+                    for index in range(len(kwargs["indices_to_use"]))]
+                results[alpha] = result
+            except KeyError as exc:
+                print(f"Key {alpha} is missing: {exc.with_traceback()}")
         return results
     else:
         joint_dataset = np.concatenate((data_x_hist, data_y), axis=axis_to_join)
