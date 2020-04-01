@@ -753,21 +753,25 @@ def entropy_sum_generic_LeonenkoProzanto(dataset_x: np.matrix, distances, alpha=
 
         try:
             if kwargs["arbitrary_precision"]:
-                exponent = dimension_of_data * (1 - alpha)
+                exponent = dimension_of_data * (1.0 - alpha)
                 addition_to_entropy = mpmath.mpf('0.0')
+                if exponent < 0:
+                    # dealing with distance 0
+                    subselected_distances = np.array([item for item in subselected_distances if item > 0])
+
                 shape = subselected_distances.shape
                 for index in range(shape[0]):
                     addition_to_entropy += mpmath.power(subselected_distances[index], exponent)
 
                 multiplicator_gamma = mpmath.gammaprod([use_index], [use_index + 1 - alpha])
                 multiplicator = multiplicator_gamma * mpmath.power(mpmath.pi, exponent / 2.0) * mpmath.power(number_of_data - 1, 1 - alpha) / number_of_data
-                power_gamma_dim = mpmath.power(mpmath.gamma(dimension_of_data / 2.0 + 1), (1 - alpha))
+                power_gamma_dim = mpmath.power(mpmath.gamma(dimension_of_data / 2.0 + 1), (1.0 - alpha))
 
                 entropy[index_of_distances] += multiplicator * addition_to_entropy / power_gamma_dim
             else:
-                log_gamma_dim = scipyspecial.gammaln(dimension_of_data / 2.0 + 1)
+                log_gamma_dim = scipyspecial.gammaln(dimension_of_data / 2.0 + 1.0)
                 maximum = max(subselected_distances)
-                exponent = dimension_of_data * (1 - alpha)
+                exponent = dimension_of_data * (1.0 - alpha)
                 scaled_distances = subselected_distances / maximum
                 if exponent < 0:
                     # dealing with distance 0
@@ -806,6 +810,7 @@ def entropy_sum_Shannon_LeonenkoProzanto(dataset_x: np.matrix, distances, **kwar
 
         if kwargs["arbitrary_precision"]:
             addition_to_entropy = mpmath.mpf('0.0')
+            subselected_distances = np.array([item for item in subselected_distances if item > 0])
             shape = subselected_distances.shape
             for index in range(shape[0]):
                 addition_to_entropy += mpmath.log(subselected_distances[index])
