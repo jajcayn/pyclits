@@ -92,9 +92,9 @@ if __name__ == "__main__":
     parser.add_argument('--skip', metavar='XXX', type=int, default=2000, help='Skipped results of integration')
     parser.add_argument('--blockwise', metavar='XXX', type=int, default=0, help='Blockwise calculation of distances to prevent excessive memory usage')
     parser.add_argument('--skip_real_t', action='store_true', help='Indicates skip in time')
-    parser.add_argument('--history_first', metavar='XXX', type=int, nargs='+', help='History to take into account')
-    parser.add_argument('--future_first', metavar='XXX', type=int, nargs='+', help='History to take into account')
-    parser.add_argument('--history_second', metavar='XXX', type=int, nargs='+', help='History to take into account')
+    parser.add_argument('--history_first', metavar='XXX', type=str, nargs='+', help='History to take into account')
+    parser.add_argument('--future_first', metavar='XXX', type=str, nargs='+', help='History to take into account')
+    parser.add_argument('--history_second', metavar='XXX', type=str, nargs='+', help='History to take into account')
     parser.add_argument('--method', metavar='XXX', type=str, default="LSODA", help='Method of integration')
     parser.add_argument('--maximal_neighborhood', metavar='XXX', type=int, default=2, help='Maximal neighborhood')
     parser.add_argument('--arbitrary_precision', action='store_true', help='Calculates the main part in arbitrary precision')
@@ -113,19 +113,46 @@ if __name__ == "__main__":
         epsilons = [0.01, 0.02, 0.03, 0.04, 0.05, 0.06, 0.07, 0.08, 0.09, 0.1, 0.11, 0.12, 0.13]
 
     if args.history_first:
-        histories_first = args.history_first
+        histories_firsts = []
+        set_of_history = []
+        for item in args.history_first:
+            if item == "|":
+                histories_firsts.append(set_of_history)
+                set_of_history = []
+            else:
+                set_of_history.append(int(item))
+
+        histories_firsts.append(set_of_history)
     else:
-        histories_first = range(2, 25)
+        histories_firsts = range(2, 25)
 
     if args.future_first:
-        future_first = args.future_first
+        future_firsts = []
+        set_of_future = []
+        for item in args.future_first:
+            if item == "|":
+                future_firsts.append(set_of_future)
+                set_of_future = []
+            else:
+                set_of_future.append(int(item))
+
+        future_firsts.append(set_of_future)
     else:
-        future_first = range(2, 25)
+        future_firsts = range(2, 25)
 
     if args.history_second:
-        histories_second = args.history_second
+        histories_seconds = []
+        set_of_history = []
+        for item in args.history_second:
+            if item == "|":
+                histories_seconds.append(set_of_history)
+                set_of_history = []
+            else:
+                set_of_history.append(int(item))
+
+        histories_seconds.append(set_of_history)
     else:
-        histories_second = range(2, 25)
+        histories_seconds = range(2, 25)
 
     # create alphas that are been calculated
     alphas = np.round(np.linspace(0.1, 1.9, 37, endpoint=True), 3)
@@ -149,43 +176,50 @@ if __name__ == "__main__":
             # prepare dataset that is been processed
             marginal_solution_1, marginal_solution_2 = prepare_dataset(args, index_epsilon=index_epsilon, datasets=datasets, shuffle_dataset=shuffle_dataset)
 
-            print(f"History first: {histories_first}, future first: {future_first}, history second: {histories_second} and epsilon: {epsilon} is processed",
-                  flush=True)
+            for future_first in future_firsts:
+                for histories_first in histories_firsts:
+                    for histories_second in histories_seconds:
+                        print(
+                            f"History first: {histories_first}, future first: {future_first}, history second: {histories_second} and epsilon: {epsilon} is processed",
+                            flush=True)
 
-            # preparation of the configuration dictionary
-            # additional +1 is there for separation
-            configuration = {"transpose": True, "blockwise": args.blockwise,
-                             "history_index_x": histories_first, "history_index_y": histories_second, "future_index_x": future_first}
+                        # preparation of the configuration dictionary
+                        # additional +1 is there for separation
+                        configuration = {"transpose": True, "blockwise": args.blockwise,
+                                         "history_index_x": histories_first, "history_index_y": histories_second, "future_index_x": future_first}
 
-            # prepare samples to be used to calculate transfer entropy
-            t0 = time.process_time()
-            y_fut, y_hist, z_hist = preparation_dataset_for_transfer_entropy(marginal_solution_2, marginal_solution_1, **configuration)
-            t1 = time.process_time()
-            duration = t1 - t0
-            print(f" * Preparation of datasets [s]: {duration}", flush=True)
+                        # prepare samples to be used to calculate transfer entropy
+                        t0 = time.process_time()
+                        y_fut, y_hist, z_hist = preparation_dataset_for_transfer_entropy(marginal_solution_2, marginal_solution_1, **configuration)
+                        t1 = time.process_time()
+                        duration = t1 - t0
+                        print(f" * Preparation of datasets [s]: {duration}", flush=True)
 
-            # create range of indices that will be used for calculation
-            indices_to_use = list(range(1, args.maximal_neighborhood + 1))
-            configuration = {"transpose": True, "axis_to_join": 0, "method": "LeonenkoProzanto", "alphas": alphas,
-                             "enhanced_calculation": True, "indices_to_use": indices_to_use, "arbitrary_precision": args.arbitrary_precision,
-                             "arbitrary_precision_decimal_numbers": args.arbitrary_precision_decimal_places}
+                        # create range of indices that will be used for calculation
+                        indices_to_use = list(range(1, args.maximal_neighborhood + 1))
+                        configuration = {"transpose": True, "axis_to_join": 0, "method": "LeonenkoProzanto", "alphas": alphas,
+                                         "enhanced_calculation": True, "indices_to_use": indices_to_use, "arbitrary_precision": args.arbitrary_precision,
+                                         "arbitrary_precision_decimal_numbers": args.arbitrary_precision_decimal_places}
 
-            # calculation of transfer entropy
-            print(
-                f" * Transfer entropy for history first: {histories_first}, future first: {future_first}, history second: {histories_second} and epsilon: {epsilon} shuffling; {shuffle_dataset} is calculated",
-                flush=True)
-            t0 = time.process_time()
-            transfer_entropy = renyi_conditional_information_transfer(y_fut, y_hist, z_hist, **configuration)
-            t1 = time.process_time()
-            duration = t1 - t0
-            print(f" * Duration of calculation of transfer entropy [s]: {duration}", flush=True)
-            # print(f" * Transfer Renyi entropy with {history} {epsilon}: {transfer_entropy}", flush=True)
+                        # calculation of transfer entropy
+                        print(
+                            f" * Transfer entropy for history first: {histories_first}, future first: {future_first}, history second: {histories_second} and epsilon: {epsilon} shuffling; {shuffle_dataset} is calculated",
+                            flush=True)
+                        t0 = time.process_time()
+                        transfer_entropy = renyi_conditional_information_transfer(y_fut, y_hist, z_hist, **configuration)
+                        t1 = time.process_time()
+                        duration = t1 - t0
+                        print(f" * Duration of calculation of transfer entropy [s]: {duration}", flush=True)
+                        # print(f" * Transfer Renyi entropy with {history} {epsilon}: {transfer_entropy}", flush=True)
 
-            # store transfer entropy to the result structure
-            results[(epsilon, f"{max(histories_first)}_{max(future_first)}", max(histories_second), shuffle_dataset)] = transfer_entropy
-            print(
-                f" * Transfer entropy calculation for history first: {histories_first}, future first: {future_first}, history second: {histories_second} and epsilon: {epsilon}, shuffling; {shuffle_dataset} is finished",
-                flush=True)
+                        # store transfer entropy to the result structure
+                        string_histories_first = ",".join(str(x) for x in histories_first)
+                        string_future_first = ",".join(str(x) for x in future_first)
+                        string_histories_second = ",".join(str(x) for x in histories_second)
+                        results[(epsilon, f"{string_histories_first}_{string_future_first}", string_histories_second, shuffle_dataset)] = transfer_entropy
+                        print(
+                            f" * Transfer entropy calculation for history first: {histories_first}, future first: {future_first}, history second: {histories_second} and epsilon: {epsilon}, shuffling; {shuffle_dataset} is finished",
+                            flush=True)
 
         # save result structure to the file
         path = Path(f"transfer_entropy/Transfer_entropy_dataset-{epsilon}.bin")
