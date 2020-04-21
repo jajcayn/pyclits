@@ -16,6 +16,20 @@ from roessler_system import roessler_oscillator
 from sample_generator import preparation_dataset_for_transfer_entropy, shuffle_sample
 
 
+def process_CLI_arguments(arguments):
+    processed_arguments = []
+    neu_set = []
+    for item in arguments:
+        if item == "|":
+            future_firsts.append(neu_set)
+            neu_set = []
+        else:
+            neu_set.append(int(item))
+
+    processed_arguments.append(neu_set)
+    return processed_arguments
+
+
 def prepare_dataset(args, index_epsilon, datasets=None, shuffle_dataset=False):
     if not args.dataset:
         # calculate Rössler coupled oscilators
@@ -113,44 +127,17 @@ if __name__ == "__main__":
         epsilons = [0.01, 0.02, 0.03, 0.04, 0.05, 0.06, 0.07, 0.08, 0.09, 0.1, 0.11, 0.12, 0.13]
 
     if args.history_first:
-        histories_firsts = []
-        set_of_history = []
-        for item in args.history_first:
-            if item == "|":
-                histories_firsts.append(set_of_history)
-                set_of_history = []
-            else:
-                set_of_history.append(int(item))
-
-        histories_firsts.append(set_of_history)
+        histories_firsts = process_CLI_arguments(args.history_first)
     else:
         histories_firsts = range(2, 25)
 
     if args.future_first:
-        future_firsts = []
-        set_of_future = []
-        for item in args.future_first:
-            if item == "|":
-                future_firsts.append(set_of_future)
-                set_of_future = []
-            else:
-                set_of_future.append(int(item))
-
-        future_firsts.append(set_of_future)
+        future_firsts = process_CLI_arguments(args.future_first)
     else:
         future_firsts = range(2, 25)
 
     if args.history_second:
-        histories_seconds = []
-        set_of_history = []
-        for item in args.history_second:
-            if item == "|":
-                histories_seconds.append(set_of_history)
-                set_of_history = []
-            else:
-                set_of_history.append(int(item))
-
-        histories_seconds.append(set_of_history)
+        histories_seconds = process_CLI_arguments(args.history_second)
     else:
         histories_seconds = range(2, 25)
 
