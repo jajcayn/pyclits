@@ -16,11 +16,11 @@ from roessler_system import roessler_oscillator
 from sample_generator import preparation_dataset_for_transfer_entropy, shuffle_sample
 
 
-def process_CLI_arguments(arguments):
+def process_CLI_arguments(arguments, separator=[",", "'", "/"]):
     processed_arguments = []
     neu_set = []
     for item in arguments:
-        if item == "|":
+        if item in separator:
             future_firsts.append(neu_set)
             neu_set = []
         else:
