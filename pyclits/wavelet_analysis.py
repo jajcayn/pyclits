@@ -136,7 +136,7 @@ def continous_wavelet(X, dt, pad = False, wavelet = morlet, **kwargs):
     # wavenumber array
     k = np.arange(1, np.fix(n/2) + 1)
     k *= (2. * np.pi) / (n * dt)
-    k_minus = -k[int(np.fix(n-1))/2 - 1::-1]
+    k_minus = -k[int(np.fix(n - 1)) // 2 - 1::-1]
     k = np.concatenate((np.array([0.]), k, k_minus))
     
     # compute FFT of the (padded) time series
