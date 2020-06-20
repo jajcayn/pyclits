@@ -127,7 +127,8 @@ def figures2d_TE_errorbar(dataset, selector, error_selector, title, ylabel, file
         color = color_map(trasform(alpha))
         row_size = 100
         try:
-            ax.errorbar(ys.values, zs.values, yerr=error_bar.values[:], color=color, linewidth=3, label=r'$\alpha={}$'.format(round(alpha, 3)))
+            ax.errorbar(ys.values, zs.values, yerr=(error_bar.values[:], -error_bar.values[:]), color=color, linewidth=3,
+                        label=r'$\alpha={}$'.format(round(alpha, 3)))
         except Exception as exc:
             print(f"{exc}: Problem D=")
 
@@ -273,6 +274,7 @@ def figures2d_samples_TE(dataset, selector, title, ylabel, filename, suffix, vie
     subselection = dataset.loc[dataset["alpha"] == alphas[0]]
     subselection = subselection.loc[subselection["epsilon"] == epsilons[0]]
 
+    one_subselection = subselection[[selector]]
     number_of_samples = len(subselection[[selector]].values[0, 0])
     mean = int(len(alphas) / 2)
     neghborhood = 5
@@ -331,8 +333,20 @@ if __name__ == "__main__":
     else:
         TE, TE_column_names, TE_raw = load_processed_dataset(processed_dataset, processed_raw_dataset)
 
-    figures2d_samples_TE(TE_raw, "10_4_0_False", r"$\large\rm{Transfer\ entropy - samples}$", "", "TE_sample_{}", "pdf")
-    figures2d_samples_TE(TE_raw, "10_4_0_True", r"$\large\rm{Transfer\ entropy\ shuffled - samples}$", "", "TE_sample_shuffled_{}", "pdf")
+    figures2d_samples_TE(TE_raw, "0,5,10_1_0_False", r"$\large\rm{Transfer\ entropy - samples}$", "", "TE_sample_0,5,10_1_0_{}", "pdf")
+    figures2d_samples_TE(TE_raw, "0,5,10_1_0_True", r"$\large\rm{Transfer\ entropy\ shuffled - samples}$", "", "TE_sample_shuffled_0,5,10_1_0_{}", "pdf")
+
+    figures2d_samples_TE(TE_raw, "0,5,10_2_0_False", r"$\large\rm{Transfer\ entropy - samples}$", "", "TE_sample_0,5,10_2_0_{}", "pdf")
+    figures2d_samples_TE(TE_raw, "0,5,10_2_0_True", r"$\large\rm{Transfer\ entropy\ shuffled - samples}$", "", "TE_sample_shuffled_0,5,10_2_0_{}", "pdf")
+
+    figures2d_samples_TE(TE_raw, "0,5,10_3_0_False", r"$\large\rm{Transfer\ entropy - samples}$", "", "TE_sample_0,5,10_3_0_{}", "pdf")
+    figures2d_samples_TE(TE_raw, "0,5,10_3_0_True", r"$\large\rm{Transfer\ entropy\ shuffled - samples}$", "", "TE_sample_shuffled_0,5,10_3_0_{}", "pdf")
+
+    figures2d_samples_TE(TE_raw, "0,5,10_5_0_False", r"$\large\rm{Transfer\ entropy - samples}$", "", "TE_sample_0,5,10_5_0_{}", "pdf")
+    figures2d_samples_TE(TE_raw, "0,5,10_5_0_True", r"$\large\rm{Transfer\ entropy\ shuffled - samples}$", "", "TE_sample_shuffled_0,5,10_5_0_{}", "pdf")
+
+    figures2d_samples_TE(TE_raw, "0,5,10_20_0_False", r"$\large\rm{Transfer\ entropy - samples}$", "", "TE_sample_0,5,10_20_0_{}", "pdf")
+    figures2d_samples_TE(TE_raw, "0,5,10_20_0_True", r"$\large\rm{Transfer\ entropy\ shuffled - samples}$", "", "TE_sample_shuffled_0,5,10_20_0_{}", "pdf")
 
     for item in TE_column_names:
         item_error = list(item)
