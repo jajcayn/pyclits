@@ -16,12 +16,12 @@ from roessler_system import roessler_oscillator
 from sample_generator import preparation_dataset_for_transfer_entropy, shuffle_sample
 
 
-def process_CLI_arguments(arguments, separator=[",", "'", "/"]):
+def process_CLI_arguments(arguments, separator=[",", "'", "/", "|"]):
     processed_arguments = []
     neu_set = []
     for item in arguments:
         if item in separator:
-            future_firsts.append(neu_set)
+            processed_arguments.append(neu_set)
             neu_set = []
         else:
             neu_set.append(int(item))
@@ -116,7 +116,7 @@ if __name__ == "__main__":
                         help='Sets number saved in arbitrary precision arithmetic')
     parser.add_argument('--interpolate', action='store_true', help='Switch on intepolation')
     parser.add_argument('--interpolate_samples_per_unit_time', metavar='XXX', type=int, default=10, help='Number of samples generated per unit time')
-    parser.add_argument('--dataset', action='store_true', help='Use dataset provided by dr. Paluš')
+    parser.add_argument('--dataset', action='store_false', help='Use dataset provided by dr. Paluš')
     parser.add_argument('--dataset_range', metavar='XXX-YYY', type=str, help='Dataset with range')
     args = parser.parse_args()
     # print(args.epsilon, flush=True)
