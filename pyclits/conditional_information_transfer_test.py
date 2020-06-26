@@ -102,10 +102,10 @@ if __name__ == "__main__":
     parser.add_argument('--epsilon', metavar='XXX', type=float, nargs='+', help='Epsilons')
     parser.add_argument('--t_stop', metavar='XXX', type=float, default=10000.0, help='T stop')
     parser.add_argument('--t_inc', metavar='XXX', type=float, default=0.01, help='T increment')
-    parser.add_argument('--no_cache', action='store_true', help='Skips cached results of the Rössler system')
+    parser.add_argument('--no_cache', action='store_true', help='Skips cached results of the Rössler system', default=False)
     parser.add_argument('--skip', metavar='XXX', type=int, default=2000, help='Skipped results of integration')
     parser.add_argument('--blockwise', metavar='XXX', type=int, default=0, help='Blockwise calculation of distances to prevent excessive memory usage')
-    parser.add_argument('--skip_real_t', action='store_true', help='Indicates skip in time')
+    parser.add_argument('--skip_real_t', action='store_true', help='Indicates skip in time', default=False)
     parser.add_argument('--history_first', metavar='XXX', type=str, nargs='+', help='History to take into account')
     parser.add_argument('--future_first', metavar='XXX', type=str, nargs='+', help='History to take into account')
     parser.add_argument('--history_second', metavar='XXX', type=str, nargs='+', help='History to take into account')
@@ -114,9 +114,9 @@ if __name__ == "__main__":
     parser.add_argument('--arbitrary_precision', action='store_true', help='Calculates the main part in arbitrary precision')
     parser.add_argument('--arbitrary_precision_decimal_places', metavar='XXX', type=int, default=100,
                         help='Sets number saved in arbitrary precision arithmetic')
-    parser.add_argument('--interpolate', action='store_true', help='Switch on intepolation')
+    parser.add_argument('--interpolate', action='store_true', help='Switch on intepolation', default=False)
     parser.add_argument('--interpolate_samples_per_unit_time', metavar='XXX', type=int, default=10, help='Number of samples generated per unit time')
-    parser.add_argument('--dataset', action='store_false', help='Use dataset provided by dr. Paluš')
+    parser.add_argument('--dataset', action='store_true', help='Use dataset provided by dr. Paluš', default=False)
     parser.add_argument('--dataset_range', metavar='XXX-YYY', type=str, help='Dataset with range')
     args = parser.parse_args()
     # print(args.epsilon, flush=True)
@@ -125,6 +125,7 @@ if __name__ == "__main__":
         epsilons = args.epsilon
     else:
         epsilons = [0.01, 0.02, 0.03, 0.04, 0.05, 0.06, 0.07, 0.08, 0.09, 0.1, 0.11, 0.12, 0.13]
+    print(f"Calculated epsilons: {epsilons}")
 
     if args.history_first:
         histories_firsts = process_CLI_arguments(args.history_first)
