@@ -30,11 +30,11 @@ def process_CLI_arguments(arguments, separator=[",", "'", "/", "|"]):
     return processed_arguments
 
 
-def prepare_dataset(args, index_epsilon, datasets=None, shuffle_dataset=False):
+def prepare_dataset(args, index_epsilon, datasets=None, shuffle_dataset=False, configuration_of_integration={}):
     if not args.dataset:
         # calculate Rössler coupled oscilators
         t0 = time.process_time()
-        sol = roessler_oscillator(**configuration)
+        sol = roessler_oscillator(**configuration_of_integration)
         t1 = time.process_time()
         duration = t1 - t0
         print(f"Solution duration [s]: {duration}", flush=True)
@@ -153,16 +153,18 @@ if __name__ == "__main__":
 
     # loop over different realizations for various epsilon
     for index_epsilon, epsilon in enumerate(epsilons):
-        configuration = {"method": args.method, "tInc": args.t_inc, "tStop": args.t_stop, "cache": True, "epsilon": epsilon,
-                         "arbitrary_precision": args.arbitrary_precision, "arbitrary_precision_decimal_numbers": args.arbitrary_precision_decimal_places}
-
         # create structure for results
         results = {}
 
         # loop over shuffling
         for shuffle_dataset in [True, False]:
+            configuration_of_integration = {"method": args.method, "tInc": args.t_inc, "tStop": args.t_stop, "cache": True, "epsilon": epsilon,
+                                            "arbitrary_precision": args.arbitrary_precision,
+                                            "arbitrary_precision_decimal_numbers": args.arbitrary_precision_decimal_places}
+
             # prepare dataset that is been processed
-            marginal_solution_1, marginal_solution_2 = prepare_dataset(args, index_epsilon=index_epsilon, datasets=datasets, shuffle_dataset=shuffle_dataset)
+            marginal_solution_1, marginal_solution_2 = prepare_dataset(args, index_epsilon=index_epsilon, datasets=datasets, shuffle_dataset=shuffle_dataset,
+                                                                       configuration_of_integration=configuration_of_integration)
 
             for future_first in future_firsts:
                 for histories_first in histories_firsts:
