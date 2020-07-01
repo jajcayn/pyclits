@@ -144,9 +144,9 @@ def complete_test_ND(filename="statistics.txt", samples = 1000, sigma_skeleton =
 
         for sigma in sigmas:
             matrix_sigma = sigma * sigma_skeleton
-            for alpha in alphas:
-                for size_sample in sizes_of_sample:
-                    for indices_to_use in real_indeces:
+            for size_sample in sizes_of_sample:
+                for indices_to_use in real_indeces:
+                    for alpha in alphas:
                         theoretical_value = theoretical_value_function(matrix_sigma, alpha)
 
                         print(f"{alpha}\t{size_sample}\t{sigma}\t{theoretical_value}\t", file=fd, end="")
@@ -164,13 +164,14 @@ def complete_test_ND(filename="statistics.txt", samples = 1000, sigma_skeleton =
                             data_samples = sample_generator(mu, matrix_sigma, size_sample)
 
                             time_start = time.process_time()
-                            entropy = sample_estimator(data_samples, alpha=alpha, indices_to_use=indices_to_use)
+                            entropy = sample_estimator(data_samples, alpha={alpha}, indices_to_use=indices_to_use)
+                            entropy_value = entropy[alpha][0]
                             time_end = time.process_time()
 
                             duration = time_end - time_start
-                            difference = theoretical_value - entropy
+                            difference = theoretical_value - entropy_value
 
-                            entropy_samples[sample_position].append(entropy)
+                            entropy_samples[sample_position].append(entropy_value)
                             duration_samples[sample_position].append(duration)
                             difference_samples[sample_position].append(difference)
 
@@ -221,6 +222,10 @@ if __name__ == "__main__":
 
     for dimension in dimensions:
         complete_test_ND(filename=f"complete_statistics_{dimension}.txt", samples=100, sigmas=[0.1, 1, 10, 100],
-                         sigma_skeleton=np.identity(dimension), sizes_of_sample=[10, 20, 50, 100, 200, 500, 1000],
+                         sigma_skeleton=np.identity(dimension), sizes_of_sample=[500, 5000, 50000],
                          theoretical_value_function=lambda sigma, alpha: Renyi_normal_distribution_ND(sigma, alpha),
-                         sample_generator=lambda mu, sigma, size_sample: sample_normal_distribution(sigma, size_sample))
+                         sample_generator=lambda mu, sigma, size_sample: sample_normal_distribution(sigma, size_sample),
+                         sample_estimator=lambda data_samples, alpha, indices_to_use: mutual_inf.renyi_entropy(data_samples, method="LeonenkoProzanto",
+                                                                                                               indices_to_use=indices_to_use, alphas=alpha,
+                                                                                                               **{"arbitrary_precision": True,
+                                                                                                                  "arbitrary_precision_decimal_numbers": 50}))
