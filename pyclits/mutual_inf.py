@@ -848,26 +848,35 @@ def renyi_entropy_Paly(dataset_x: np.matrix, alpha=0.75, leaf_size = 15, metric=
 
     According to D.Pal, B. Poczos, C. Szepesvari, Estimation of Renyi Entropy and Mutual Information Based on Generalized Nearest-Neighbor Graphs, 2010.
     """
-    if 0.5 < alpha < 1:
-        shape_of_data = dataset_x.shape
-        maximal_index = max(indices_to_use) + 1
-        length_of_data = shape_of_data[0]
-        dimension_of_data = shape_of_data[1]
-        power_of_distance_data = dimension_of_data * (1 - alpha)
-
-        L_p_V_data = graph_calculation_Paly(dataset_x, **locals())
-
-        random_sample_of_array = random.uniform(size=(sample_size, dimension_of_data))
-        L_p_V_sample = graph_calculation_Paly(random_sample_of_array, **locals())
-
-        gamma = L_p_V_sample / np.power(sample_size, 1 - power_of_distance_data / dimension_of_data)
-
-        entropy = 1 / (1 - alpha) * np.log(
-            L_p_V_data / (gamma * np.power(length_of_data, 1 - power_of_distance_data / dimension_of_data)))
-
-        return entropy
+    if "alphas" in kwargs:
+        alphas = kwargs["alphas"]
     else:
-        raise Exception("Paly method works for alpha in range (0.5,1)")
+        alphas = [1]
+
+    for alpha in alphas:
+        results = {}
+        if 0.5 < alpha < 1:
+            shape_of_data = dataset_x.shape
+            maximal_index = max(indices_to_use) + 1
+            length_of_data = shape_of_data[0]
+            dimension_of_data = shape_of_data[1]
+            power_of_distance_data = dimension_of_data * (1 - alpha)
+
+            L_p_V_data = graph_calculation_Paly(dataset_x, **locals())
+
+            random_sample_of_array = random.uniform(size=(sample_size, dimension_of_data))
+            L_p_V_sample = graph_calculation_Paly(random_sample_of_array, **locals())
+
+            gamma = L_p_V_sample / np.power(sample_size, 1 - power_of_distance_data / dimension_of_data)
+
+            entropy = 1 / (1 - alpha) * np.log(
+                L_p_V_data / (gamma * np.power(length_of_data, 1 - power_of_distance_data / dimension_of_data)))
+
+            results[alpha] = [entropy]
+        else:
+            raise Exception("Paly method works for alpha in range (0.5,1)")
+
+    return results
 
 
 def renyi_entropy(*args, **kwargs):
