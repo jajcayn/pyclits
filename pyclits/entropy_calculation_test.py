@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
+import argparse
 import math
-import sys
 import time
 
 import numpy as np
@@ -144,11 +144,11 @@ def complete_test_ND(filename="statistics.txt", samples = 1000, sigma_skeleton =
 
         for sigma in sigmas:
             matrix_sigma = sigma * sigma_skeleton
-            for size_sample in sizes_of_sample:
-                for indices_to_use in real_indeces:
-                    for alpha in alphas:
-                        theoretical_value = theoretical_value_function(matrix_sigma, alpha)
+            for alpha in alphas:
+                theoretical_value = theoretical_value_function(matrix_sigma, alpha)
 
+                for size_sample in sizes_of_sample:
+                    for indices_to_use in real_indeces:
                         print(f"{alpha}\t{size_sample}\t{sigma}\t{theoretical_value}\t", file=fd, end="")
 
                         sample_position = (alpha, size_sample, sigma)
@@ -210,22 +210,44 @@ def small_test():
 
 
 if __name__ == "__main__":
-    #small_test()
-    #complete_test_1D(samples=10, sigmas=[10.0, 50, 100], theoretical_value_function=lambda sigma, alpha: Renyi_student_t_distribution_1D(sigma, sigma, alpha), sample_generator=lambda mu, sigma, size_sample: np.random.standard_t(sigma, size=(size_sample, 1)))
-    #sigma_skeleton = np.matrix("5 1; 1 10")
-    if len(sys.argv) >= 2:
-        dimensions = [int(sys.argv[1])]
+    parser = argparse.ArgumentParser(description='Calculation of Renyi entropy using various methods')
+    parser.add_argument('--output', metavar='XXX', type=str, default="complete_statistics_Paly", help='Base filename')
+    parser.add_argument('--dimensions', metavar='XXX', type=int, nargs='+', help='Dimensions')
+    parser.add_argument('--method', metavar='XXX', type=str, default="LeonenkoProzanto", help='Method of Renyi calculation')
+    parser.add_argument('--alphas', metavar='XXX', type=float, nargs='+', help='Alpha')
+    parser.add_argument('--samples', metavar='XXX', type=int, nargs='+', help='Sample sizes')
+
+    args = parser.parse_args()
+
+    output_filename = args.output
+    method = args.method
+
+    if args.dimensions:
+        dimensions = args.dimensions
     else:
         dimensions = [2, 3, 5, 10, 20, 50]
+
+    if args.samples:
+        samples_sizes = args.samples
+    else:
+        samples_sizes = [500, 5000, 50000]
+
+    if args.alphas:
+        alphas = args.alphas
+    else:
+        # alphas = [0.1, 0.2, 0.3, 0.5, 0.6, 0.7, 0.8, 0.9, 0.95, 0.99, 1.0, 1.01, 1.05, 1.1, 1.2, 1.3, 1.4, 1.5, 1.7, 1.8, 1.9]
+        # alphas = [0.51, 0.55, 0.6, 0.7, 0.8, 0.9, 0.95, 0.99]
+
+        alphas = [0.1, 0.2, 0.3, 0.5, 0.6, 0.7, 0.8, 0.9, 0.95, 0.99, 1.0, 1.01, 1.05, 1.1, 1.2, 1.3, 1.4, 1.5, 1.7, 1.8, 1.9]
 
     print(f"Calculation for dimensions {dimensions}")
 
     for dimension in dimensions:
-        complete_test_ND(filename=f"complete_statistics_{dimension}.txt", samples=100, sigmas=[0.1, 1, 10, 100],
-                         sigma_skeleton=np.identity(dimension), sizes_of_sample=[500, 5000, 50000],
+        complete_test_ND(filename=f"{output_filename}_{dimension}.txt", samples=3, sigmas=[1], alphas=alphas,
+                         sigma_skeleton=np.identity(dimension), sizes_of_sample=samples_sizes, indices_to_use=[1, 2, 3],
                          theoretical_value_function=lambda sigma, alpha: Renyi_normal_distribution_ND(sigma, alpha),
                          sample_generator=lambda mu, sigma, size_sample: sample_normal_distribution(sigma, size_sample),
-                         sample_estimator=lambda data_samples, alpha, indices_to_use: mutual_inf.renyi_entropy(data_samples, method="LeonenkoProzanto",
+                         sample_estimator=lambda data_samples, alpha, indices_to_use: mutual_inf.renyi_entropy(data_samples, method=method,
                                                                                                                indices_to_use=indices_to_use, alphas=alpha,
                                                                                                                **{"arbitrary_precision": True,
                                                                                                                   "arbitrary_precision_decimal_numbers": 50}))
