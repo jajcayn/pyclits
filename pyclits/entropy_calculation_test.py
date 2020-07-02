@@ -216,6 +216,7 @@ if __name__ == "__main__":
     parser.add_argument('--method', metavar='XXX', type=str, default="LeonenkoProzanto", help='Method of Renyi calculation')
     parser.add_argument('--alphas', metavar='XXX', type=float, nargs='+', help='Alpha')
     parser.add_argument('--samples', metavar='XXX', type=int, nargs='+', help='Sample sizes')
+    parser.add_argument('--sigmas', metavar='XXX', type=float, nargs='+', help='Sigmas')
 
     args = parser.parse_args()
 
@@ -232,6 +233,11 @@ if __name__ == "__main__":
     else:
         samples_sizes = [500, 5000, 50000]
 
+    if args.sigmas:
+        sigmas = args.sigmas
+    else:
+        sigmas = [1.0]
+
     if args.alphas:
         alphas = args.alphas
     else:
@@ -243,7 +249,7 @@ if __name__ == "__main__":
     print(f"Calculation for dimensions {dimensions}")
 
     for dimension in dimensions:
-        complete_test_ND(filename=f"{output_filename}_{dimension}.txt", samples=3, sigmas=[1], alphas=alphas,
+        complete_test_ND(filename=f"{output_filename}_{dimension}.txt", samples=3, sigmas=sigmas, alphas=alphas,
                          sigma_skeleton=np.identity(dimension), sizes_of_sample=samples_sizes, indices_to_use=[1, 2, 3],
                          theoretical_value_function=lambda sigma, alpha: Renyi_normal_distribution_ND(sigma, alpha),
                          sample_generator=lambda mu, sigma, size_sample: sample_normal_distribution(sigma, size_sample),
