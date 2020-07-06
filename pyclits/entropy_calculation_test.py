@@ -74,8 +74,10 @@ def Renyi_student_t_distribution_1D(sigma, degrees_of_freedom, alpha):
         beta_factor = math.log2(nominator / denominator)
         return 1 / (1 - alpha) * beta_factor * math.log2(math.pow(np.pi*degrees_of_freedom, dimension)*determinant) - math.log2(spec.gamma(dimension/2.0))
 
+
 def Renyi_beta_distribution(a, b, alpha):
     return 1 / (1 - alpha) * math.log2(spec.beta(alpha*a+alpha-1, alpha*b+alpha-1) / math.pow(spec.beta(a, b), alpha))
+
 
 def complete_test_1D(filename="statistics.txt", samples = 1000,
                   alphas=[0.1, 0.2, 0.3, 0.5, 0.6, 0.7, 0.8, 0.9, 0.95, 0.99, 1.0, 1.01, 1.05, 1.1, 1.2, 1.3, 1.4, 1.5, 1.7, 1.8, 1.9],
@@ -148,9 +150,9 @@ def complete_test_ND(filename="statistics.txt", samples = 1000, sigma_skeleton =
                 theoretical_value = theoretical_value_function(matrix_sigma, alpha)
 
                 for size_sample in sizes_of_sample:
-                    for indices_to_use in real_indeces:
-                        print(f"{alpha}\t{size_sample}\t{sigma}\t{theoretical_value}\t", file=fd, end="")
+                    print(f"{alpha}\t{size_sample}\t{sigma}\t{theoretical_value}\t", file=fd, end="")
 
+                    for indices_to_use in real_indeces:
                         sample_position = (alpha, size_sample, sigma)
 
                         entropy_samples[sample_position] = []
@@ -178,6 +180,7 @@ def complete_test_ND(filename="statistics.txt", samples = 1000, sigma_skeleton =
                         # save data for samples
                         print(f"{np.mean(entropy_samples[sample_position])}\t{np.std(entropy_samples[sample_position])}\t{np.mean(duration_samples[sample_position])}\t{np.std(duration_samples[sample_position])}\t{np.mean(difference_samples[sample_position])}\t{np.std(difference_samples[sample_position])}\t{stat.moment(difference_samples[sample_position], moment=3)}", file=fd, end="")
                     print("", file=fd, flush=True)
+
 
 def small_test():
     sample_array = np.array([[1], [2], [3], [4], [5], [6], [7], [8], [9]], dtype=float)
@@ -256,4 +259,5 @@ if __name__ == "__main__":
                          sample_estimator=lambda data_samples, alpha, indices_to_use: mutual_inf.renyi_entropy(data_samples, method=method,
                                                                                                                indices_to_use=indices_to_use, alphas=alpha,
                                                                                                                **{"arbitrary_precision": True,
-                                                                                                                  "arbitrary_precision_decimal_numbers": 50}))
+                                                                                                                  "arbitrary_precision_decimal_numbers": 50,
+                                                                                                                  "metric": "euclidean"}))

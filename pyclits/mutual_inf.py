@@ -761,10 +761,12 @@ def entropy_sum_generic_LeonenkoProzanto(dataset_x: np.matrix, distances, alpha=
 
                 shape = subselected_distances.shape
                 for index in range(shape[0]):
-                    addition_to_entropy += mpmath.power(subselected_distances[index], exponent)
+                    addition = mpmath.power(subselected_distances[index], exponent)
+                    addition_to_entropy += addition
 
                 multiplicator_gamma = mpmath.gammaprod([use_index], [use_index + 1 - alpha])
-                multiplicator = multiplicator_gamma * mpmath.power(mpmath.pi, exponent / 2.0) * mpmath.power(number_of_data - 1, 1 - alpha) / number_of_data
+                multiplicator = multiplicator_gamma * mpmath.power(mpmath.pi, dimension_of_data / 2.0 * (1 - alpha)) * mpmath.power(number_of_data - 1,
+                                                                                                                                    1 - alpha) / number_of_data
                 power_gamma_dim = mpmath.power(mpmath.gamma(dimension_of_data / 2.0 + 1), (1.0 - alpha))
 
                 entropy[index_of_distances] += multiplicator * addition_to_entropy / power_gamma_dim
