@@ -32,7 +32,7 @@ def sample_normal_distribution(sigma, size_sample):
 def Renyi_normal_distribution(sigma, alpha):
     if isinstance(sigma, float):
         return Renyi_normal_distribution_1D(sigma, alpha)
-    elif isinstance(sigma, np.matrix):
+    elif isinstance(sigma, (np.matrix)):
         return Renyi_normal_distribution_ND(sigma, alpha)
     else:
         raise ArithmeticError("sigma parameter has wrong type")
@@ -40,17 +40,17 @@ def Renyi_normal_distribution(sigma, alpha):
 
 def Renyi_normal_distribution_1D(sigma_number, alpha):
     if alpha == 1:
-        return math.log2(2 * math.pi * math.exp(1) * np.power(sigma_number, 2))/2
+        return math.log(2 * math.pi * math.exp(1) * np.power(sigma_number, 2)) / 2
     else:
-        return math.log2(2 * math.pi) / 2 + math.log2(sigma_number) + math.log2(alpha) / (alpha - 1) / 2
+        return math.log(2 * math.pi) / 2 + math.log(sigma_number) + math.log(alpha) / (alpha - 1) / 2
 
 
 def Renyi_normal_distribution_ND(sigma_matrix: np.matrix, alpha):
     dimension = sigma_matrix.shape[0]
     if alpha == 1:
-        return math.log2(2*math.pi*math.exp(1)) * dimension/2.0 + math.log2(math.sqrt(np.linalg.det(sigma_matrix)))
+        return math.log(2 * math.pi * math.exp(1)) * dimension / 2.0 + np.linalg.det(sigma_matrix)
     else:
-        return math.log2(2*math.pi) * dimension / 2 + math.log2(np.linalg.det(sigma_matrix)) / 2.0 + dimension * math.log2(alpha) / (alpha - 1) / 2
+        return math.log(2 * math.pi) * dimension / 2.0 + math.log(np.linalg.det(sigma_matrix)) / 2.0 + dimension * math.log(alpha) / (alpha - 1) / 2
 
 
 def Renyi_student_t_distribution_1D(sigma, degrees_of_freedom, alpha):
