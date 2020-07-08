@@ -48,7 +48,7 @@ def Renyi_normal_distribution_1D(sigma_number, alpha):
 def Renyi_normal_distribution_ND(sigma_matrix: np.matrix, alpha):
     dimension = sigma_matrix.shape[0]
     if alpha == 1:
-        return math.log(2 * math.pi * math.exp(1)) * dimension / 2.0 + np.linalg.det(sigma_matrix)
+        return math.log(2 * math.pi * math.exp(1)) * dimension / 2.0 + np.log(np.sqrt(np.linalg.det(sigma_matrix)))
     else:
         return math.log(2 * math.pi) * dimension / 2.0 + math.log(np.linalg.det(sigma_matrix)) / 2.0 + dimension * math.log(alpha) / (alpha - 1) / 2
 
