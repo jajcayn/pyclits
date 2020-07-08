@@ -178,7 +178,9 @@ def complete_test_ND(filename="statistics.txt", samples = 1000, sigma_skeleton =
                             difference_samples[sample_position].append(difference)
 
                         # save data for samples
-                        print(f"{np.mean(entropy_samples[sample_position])}\t{np.std(entropy_samples[sample_position])}\t{np.mean(duration_samples[sample_position])}\t{np.std(duration_samples[sample_position])}\t{np.mean(difference_samples[sample_position])}\t{np.std(difference_samples[sample_position])}\t{stat.moment(difference_samples[sample_position], moment=3)}", file=fd, end="")
+                        print(
+                        f"{np.mean(entropy_samples[sample_position])}\t{np.std(entropy_samples[sample_position])}\t{np.mean(duration_samples[sample_position])}\t{np.std(duration_samples[sample_position])}\t{np.mean(difference_samples[sample_position])}\t{np.std(difference_samples[sample_position])}\t{stat.moment(difference_samples[sample_position], moment=3)}\t",
+                        file=fd, end="")
                     print("", file=fd, flush=True)
 
 
