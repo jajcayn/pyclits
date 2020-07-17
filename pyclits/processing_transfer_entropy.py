@@ -333,20 +333,8 @@ if __name__ == "__main__":
     else:
         TE, TE_column_names, TE_raw = load_processed_dataset(processed_dataset, processed_raw_dataset)
 
-    figures2d_samples_TE(TE_raw, "0,5,10_1_0_False", r"$\large\rm{Transfer\ entropy - samples}$", "", "TE_sample_0,5,10_1_0_{}", "pdf")
-    figures2d_samples_TE(TE_raw, "0,5,10_1_0_True", r"$\large\rm{Transfer\ entropy\ shuffled - samples}$", "", "TE_sample_shuffled_0,5,10_1_0_{}", "pdf")
-
-    figures2d_samples_TE(TE_raw, "0,5,10_2_0_False", r"$\large\rm{Transfer\ entropy - samples}$", "", "TE_sample_0,5,10_2_0_{}", "pdf")
-    figures2d_samples_TE(TE_raw, "0,5,10_2_0_True", r"$\large\rm{Transfer\ entropy\ shuffled - samples}$", "", "TE_sample_shuffled_0,5,10_2_0_{}", "pdf")
-
-    figures2d_samples_TE(TE_raw, "0,5,10_3_0_False", r"$\large\rm{Transfer\ entropy - samples}$", "", "TE_sample_0,5,10_3_0_{}", "pdf")
-    figures2d_samples_TE(TE_raw, "0,5,10_3_0_True", r"$\large\rm{Transfer\ entropy\ shuffled - samples}$", "", "TE_sample_shuffled_0,5,10_3_0_{}", "pdf")
-
-    figures2d_samples_TE(TE_raw, "0,5,10_5_0_False", r"$\large\rm{Transfer\ entropy - samples}$", "", "TE_sample_0,5,10_5_0_{}", "pdf")
-    figures2d_samples_TE(TE_raw, "0,5,10_5_0_True", r"$\large\rm{Transfer\ entropy\ shuffled - samples}$", "", "TE_sample_shuffled_0,5,10_5_0_{}", "pdf")
-
-    figures2d_samples_TE(TE_raw, "0,5,10_20_0_False", r"$\large\rm{Transfer\ entropy - samples}$", "", "TE_sample_0,5,10_20_0_{}", "pdf")
-    figures2d_samples_TE(TE_raw, "0,5,10_20_0_True", r"$\large\rm{Transfer\ entropy\ shuffled - samples}$", "", "TE_sample_shuffled_0,5,10_20_0_{}", "pdf")
+    figures2d_samples_TE(TE_raw, "0,5,10_4_0_False", r"$\large\rm{Transfer\ entropy - samples}$", "", "TE_sample_0,5,10_1_0_{}", "pdf")
+    figures2d_samples_TE(TE_raw, "0,5,10_4_0_True", r"$\large\rm{Transfer\ entropy\ shuffled - samples}$", "", "TE_sample_shuffled_0,5,10_1_0_{}", "pdf")
 
     for item in TE_column_names:
         item_error = list(item)

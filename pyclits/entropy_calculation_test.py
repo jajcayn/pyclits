@@ -222,11 +222,15 @@ if __name__ == "__main__":
     parser.add_argument('--alphas', metavar='XXX', type=float, nargs='+', help='Alpha')
     parser.add_argument('--samples', metavar='XXX', type=int, nargs='+', help='Sample sizes')
     parser.add_argument('--sigmas', metavar='XXX', type=float, nargs='+', help='Sigmas')
+    parser.add_argument('--correlation', metavar='XXX', type=float, default=0.0, help='Sample sizes')
+    parser.add_argument('--maximal_index', metavar='XXX', type=int, default=3, help='Maximal index')
 
     args = parser.parse_args()
 
     output_filename = args.output
     method = args.method
+    correlation = args.correlation
+    indices = np.arange(1, args.maximal_index + 1)
 
     if args.dimensions:
         dimensions = args.dimensions
@@ -254,8 +258,9 @@ if __name__ == "__main__":
     print(f"Calculation for dimensions {dimensions}")
 
     for dimension in dimensions:
+        sigma_skeleton = np.identity(dimension) + correlation * np.eye(dimension, k=1) + + correlation * np.eye(dimension, k=-1)
         complete_test_ND(filename=f"{output_filename}_{dimension}.txt", samples=3, sigmas=sigmas, alphas=alphas,
-                         sigma_skeleton=np.identity(dimension), sizes_of_sample=samples_sizes, indices_to_use=[1, 2, 3],
+                         sigma_skeleton=sigma_skeleton, sizes_of_sample=samples_sizes, indices_to_use=indices,
                          theoretical_value_function=lambda sigma, alpha: Renyi_normal_distribution_ND(sigma, alpha),
                          sample_generator=lambda mu, sigma, size_sample: sample_normal_distribution(sigma, size_sample),
                          sample_estimator=lambda data_samples, alpha, indices_to_use: mutual_inf.renyi_entropy(data_samples, method=method,
