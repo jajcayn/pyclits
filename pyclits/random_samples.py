@@ -43,6 +43,16 @@ def sample_asymmetric_laplace_distribution(sigma, mean, size_sample):
     return stable_samples
 
 
+def sample_student_t_distribution(sigma, mean, degrees_of_freedom, size_sample):
+    chi_squared_distributed = stat.chi2.rvs(df=degrees_of_freedom, size=size_sample)
+    random_normal = sample_normal_distribution(sigma, size_sample)
+
+    stable_samples = np.array([mean + vector * (np.sqrt(degrees_of_freedom / multiplicator)) for multiplicator, vector in
+                               zip(chi_squared_distributed, random_normal)])
+
+    return stable_samples
+
+
 if __name__ == "__main__":
     sigma = np.array([[1, 0.9], [0.9, 1]])
 
@@ -59,4 +69,9 @@ if __name__ == "__main__":
     samples_laplace = sample_asymmetric_laplace_distribution(sigma, np.array([0, 0]), 10000)
 
     plt.scatter(samples_laplace[:, 0], samples_laplace[:, 1], marker=".")
+    plt.show()
+
+    samples_student = sample_student_t_distribution(sigma, np.array([0, 0]), 2, 10000)
+
+    plt.scatter(samples_student[:, 0], samples_student[:, 1], marker=".")
     plt.show()
