@@ -5,28 +5,10 @@ import argparse
 import math
 import time
 
-import numpy as np
-import scipy.special as spec
-import scipy.stats as stat
-
 import mutual_inf
+from random_samples import *
 
 time_start = time.process_time()
-
-
-def sample_normal_distribution(sigma, size_sample):
-    if isinstance(sigma, np.ndarray) and len(sigma.shape) == 2 and (sigma.shape[0] == sigma.shape[1]):
-        dimension = sigma.shape[0]
-        uncorrelated_sample = np.random.normal(0, 1.0, (dimension, size_sample))
-        eigenvalues, eigenvectors = np.linalg.eig(sigma)
-        standard_deviations = np.sqrt(eigenvalues)
-        identity_sqrt = np.diag(standard_deviations)
-        scaled_sample = identity_sqrt.dot(uncorrelated_sample)
-        correlated_sample = eigenvectors.dot(scaled_sample)
-
-        return correlated_sample.T
-    else:
-        raise ArithmeticError("sigma parameter has wrong type")
 
 
 def Renyi_normal_distribution(sigma, alpha):
@@ -45,12 +27,15 @@ def Renyi_normal_distribution_1D(sigma_number, alpha):
         return math.log(2 * math.pi) / 2 + math.log(sigma_number) + math.log(alpha) / (alpha - 1) / 2
 
 
-def Renyi_normal_distribution_ND(sigma_matrix: np.matrix, alpha):
+def Renyi_normal_distribution_ND(sigma_matrix: np.matrix, alpha, determinant=None):
     dimension = sigma_matrix.shape[0]
     if alpha == 1:
         return math.log(2 * math.pi * math.exp(1)) * dimension / 2.0 + np.log(np.sqrt(np.linalg.det(sigma_matrix)))
     else:
-        return math.log(2 * math.pi) * dimension / 2.0 + math.log(np.linalg.det(sigma_matrix)) / 2.0 + dimension * math.log(alpha) / (alpha - 1) / 2
+        if determinant:
+            return math.log(2 * math.pi) * dimension / 2.0 + math.log(determinant) / 2.0 + dimension * math.log(alpha) / (alpha - 1) / 2
+        else:
+            return math.log(2 * math.pi) * dimension / 2.0 + math.log(np.linalg.det(sigma_matrix)) / 2.0 + dimension * math.log(alpha) / (alpha - 1) / 2
 
 
 def Renyi_student_t_distribution_1D(sigma, degrees_of_freedom, alpha):
