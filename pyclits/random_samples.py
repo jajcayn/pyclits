@@ -71,21 +71,21 @@ def sample_student_t_distribution(degrees_of_freedom, sigma=np.array([1]), mean=
 
 
 if __name__ == "__main__":
-    sigma = np.array([[1, -0.2], [-0.2, 1]])
-    samples = 100000
+    sigma = np.array([[1, -0.1], [-0.1, 1]])
+    samples = 10000000
 
     normal_samples = sample_normal_distribution(sigma=sigma, size_sample=samples)
 
     # plt.scatter(normal_samples[:, 0], normal_samples[:, 1], marker=".")
     # plt.show()
 
-    stable_linear_depended_samples = sample_linear_depended_stable(sigma=sigma, alpha=1.9, beta=np.array([-0.3, 0.2]), delta=np.array([0, 0]),
+    stable_linear_depended_samples = sample_linear_depended_stable(sigma=sigma, alpha=1.99, beta=np.array([0.01, 0.01]), delta=np.array([0, 0]),
                                                                    size_sample=samples)
 
     # plt.scatter(stable_linear_depended_samples[:, 0], stable_linear_depended_samples[:, 1], marker=".")
     # plt.show()
 
-    samples_stable = sample_elliptical_contour_stable(sigma, 1.6, 1.0, np.array([0, 0]), size_sample=samples)
+    samples_stable = sample_elliptical_contour_stable(sigma, 1.95, 1.0, np.array([0, 0]), size_sample=samples)
 
     # plt.scatter(samples_stable[:, 0], samples_stable[:, 1], marker=".")
     # plt.show()
@@ -112,5 +112,6 @@ if __name__ == "__main__":
         ax1.scatter(sample[:, 0], sample[:, 1], marker=".")
         #  mcolors.PowerNorm(gamma)
         ax2.hist2d(sample[:, 0], sample[:, 1], bins=100, norm=mcolors.LogNorm(), cmap='Reds')
+        plt.ion()
         plt.show()
         plt.close()
