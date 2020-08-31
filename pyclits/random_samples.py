@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
+import matplotlib.colors as mcolors
 import matplotlib.pyplot as plt
 import numpy as np
 import scipy.stats as stat
@@ -70,31 +71,45 @@ def sample_student_t_distribution(degrees_of_freedom, sigma=np.array([1]), mean=
 
 
 if __name__ == "__main__":
-    sigma = np.array([[1, -0.7], [-0.7, 1]])
-    samples = 10000
+    sigma = np.array([[1, -0.2], [-0.2, 1]])
+    samples = 1000000
 
     normal_samples = sample_normal_distribution(sigma=sigma, size_sample=samples)
 
-    plt.scatter(normal_samples[:, 0], normal_samples[:, 1], marker=".")
-    plt.show()
+    # plt.scatter(normal_samples[:, 0], normal_samples[:, 1], marker=".")
+    # plt.show()
 
-    stable_linear_depended_samples = sample_linear_depended_stable(sigma=sigma, alpha=1.9, beta=np.array([-0.3, 0.95]), delta=np.array([1, 0]),
+    stable_linear_depended_samples = sample_linear_depended_stable(sigma=sigma, alpha=1.9, beta=np.array([-0.3, 0.2]), delta=np.array([0, 0]),
                                                                    size_sample=samples)
 
-    plt.scatter(stable_linear_depended_samples[:, 0], stable_linear_depended_samples[:, 1], marker=".")
-    plt.show()
+    # plt.scatter(stable_linear_depended_samples[:, 0], stable_linear_depended_samples[:, 1], marker=".")
+    # plt.show()
 
     samples_stable = sample_elliptical_contour_stable(sigma, 1.6, 1.0, np.array([0, 0]), size_sample=samples)
 
-    plt.scatter(samples_stable[:, 0], samples_stable[:, 1], marker=".")
-    plt.show()
+    # plt.scatter(samples_stable[:, 0], samples_stable[:, 1], marker=".")
+    # plt.show()
 
     samples_laplace = sample_asymmetric_laplace_distribution(sigma=sigma, mean=np.array([0, 0]), size_sample=samples)
 
-    plt.scatter(samples_laplace[:, 0], samples_laplace[:, 1], marker=".")
-    plt.show()
+    # plt.scatter(samples_laplace[:, 0], samples_laplace[:, 1], marker=".")
+    # plt.show()
 
     samples_student = sample_student_t_distribution(sigma=sigma, mean=np.array([0, 0]), degrees_of_freedom=2, size_sample=samples)
 
-    plt.scatter(samples_student[:, 0], samples_student[:, 1], marker=".")
-    plt.show()
+    # plt.scatter(samples_student[:, 0], samples_student[:, 1], marker=".")
+    # plt.show()
+
+    datasamples = [[normal_samples, "Normal distribution"], [stable_linear_depended_samples, "Stable linear dependent"],
+                   [samples_stable, "Stable sub-Gaussian"],
+                   [samples_laplace, "Laplace asymmetric"], [samples_student, "Student t-distribution"]]
+
+    gamma = 0.1
+
+    for index, (sample, title) in enumerate(datasamples):
+        fig, (ax1, ax2) = plt.subplots(nrows=2, figsize=(5, 10))
+        ax1.set_title(title)
+        ax1.scatter(sample[:, 0], sample[:, 1], marker=".")
+        ax2.hist2d(sample[:, 0], sample[:, 1], bins=100, norm=mcolors.PowerNorm(gamma))
+        plt.show()
+        plt.close()
