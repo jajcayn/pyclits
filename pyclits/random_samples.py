@@ -70,30 +70,31 @@ def sample_student_t_distribution(degrees_of_freedom, sigma=np.array([1]), mean=
 
 
 if __name__ == "__main__":
-    sigma = np.array([[1, -0.2], [-0.2, 1]])
+    sigma = np.array([[1, -0.7], [-0.7, 1]])
     samples = 10000
 
-    normal_samples = sample_normal_distribution(sigma, size_sample=samples)
+    normal_samples = sample_normal_distribution(sigma=sigma, size_sample=samples)
 
     plt.scatter(normal_samples[:, 0], normal_samples[:, 1], marker=".")
     plt.show()
 
-    stable_linear_depended_samples = sample_linear_depended_stable(sigma, alpha=1.9, beta=np.array([-0.3, 0.95]), delta=np.array([1, 0]), size_sample=samples)
+    stable_linear_depended_samples = sample_linear_depended_stable(sigma=sigma, alpha=1.9, beta=np.array([-0.3, 0.95]), delta=np.array([1, 0]),
+                                                                   size_sample=samples)
 
     plt.scatter(stable_linear_depended_samples[:, 0], stable_linear_depended_samples[:, 1], marker=".")
     plt.show()
 
-    samples_stable = sample_elliptical_contour_stable(sigma, 1.6, 1.0, np.array([0, 0]), samples)
+    samples_stable = sample_elliptical_contour_stable(sigma, 1.6, 1.0, np.array([0, 0]), size_sample=samples)
 
     plt.scatter(samples_stable[:, 0], samples_stable[:, 1], marker=".")
     plt.show()
 
-    samples_laplace = sample_asymmetric_laplace_distribution(sigma, np.array([0, 0]), samples)
+    samples_laplace = sample_asymmetric_laplace_distribution(sigma=sigma, mean=np.array([0, 0]), size_sample=samples)
 
     plt.scatter(samples_laplace[:, 0], samples_laplace[:, 1], marker=".")
     plt.show()
 
-    samples_student = sample_student_t_distribution(sigma, np.array([0, 0]), 2, samples)
+    samples_student = sample_student_t_distribution(sigma=sigma, mean=np.array([0, 0]), degrees_of_freedom=2, size_sample=samples)
 
     plt.scatter(samples_student[:, 0], samples_student[:, 1], marker=".")
     plt.show()
