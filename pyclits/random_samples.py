@@ -72,7 +72,7 @@ def sample_student_t_distribution(degrees_of_freedom, sigma=np.array([1]), mean=
 
 if __name__ == "__main__":
     sigma = np.array([[1, -0.2], [-0.2, 1]])
-    samples = 1000000
+    samples = 100000
 
     normal_samples = sample_normal_distribution(sigma=sigma, size_sample=samples)
 
@@ -90,7 +90,7 @@ if __name__ == "__main__":
     # plt.scatter(samples_stable[:, 0], samples_stable[:, 1], marker=".")
     # plt.show()
 
-    samples_laplace = sample_asymmetric_laplace_distribution(sigma=sigma, mean=np.array([0, 0]), size_sample=samples)
+    samples_laplace = sample_asymmetric_laplace_distribution(sigma=sigma, mean=np.array([1, -1]), size_sample=samples)
 
     # plt.scatter(samples_laplace[:, 0], samples_laplace[:, 1], marker=".")
     # plt.show()
@@ -107,9 +107,10 @@ if __name__ == "__main__":
     gamma = 0.1
 
     for index, (sample, title) in enumerate(datasamples):
-        fig, (ax1, ax2) = plt.subplots(nrows=2, figsize=(5, 10))
+        fig, (ax1, ax2) = plt.subplots(nrows=2, figsize=(8, 10))
         ax1.set_title(title)
         ax1.scatter(sample[:, 0], sample[:, 1], marker=".")
-        ax2.hist2d(sample[:, 0], sample[:, 1], bins=100, norm=mcolors.PowerNorm(gamma))
+        #  mcolors.PowerNorm(gamma)
+        ax2.hist2d(sample[:, 0], sample[:, 1], bins=100, norm=mcolors.LogNorm(), cmap='Reds')
         plt.show()
         plt.close()
