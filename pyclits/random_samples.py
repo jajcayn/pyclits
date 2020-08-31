@@ -21,7 +21,7 @@ def sample_normal_distribution(sigma, size_sample):
         raise ArithmeticError("sigma parameter has wrong type")
 
 
-def sample_elliptical_contour_stable(sigma, alpha, gamma, delta, size_sample):
+def sample_elliptical_contour_stable(sigma, alpha, gamma=1.0, delta=np.array([0, 0]), size_sample=10):
     recalculated_gamma = 2 * np.power(gamma, 2) * np.power(np.cos(np.pi * alpha / 4), (2 / alpha))
     random_stable = stat.levy_stable.rvs(alpha=alpha / 2.0, beta=1.0, loc=0, scale=recalculated_gamma, size=size_sample)
     sqrt_random_stable = np.sqrt(random_stable)
@@ -30,6 +30,22 @@ def sample_elliptical_contour_stable(sigma, alpha, gamma, delta, size_sample):
     stable_samples = np.array([multiplicator * vector - delta for multiplicator, vector in zip(sqrt_random_stable, random_normal)])
 
     return stable_samples
+
+
+def sample_linear_depended_stable(sigma, alpha, beta=np.array([0]), delta=np.array([0]), size_sample=10):
+    dimension = sigma.shape[0]
+    if (dimension == beta.shape[0]) and (dimension == delta.shape[0]):
+        random_stable_sample = np.ndarray(shape=(0, size_sample))
+        for index in range(dimension):
+            random_stable = stat.levy_stable.rvs(alpha=alpha, beta=beta[index], loc=delta[index], scale=1.0, size=size_sample)
+            random_stable_sample = np.vstack([random_stable_sample, random_stable])
+
+        random_stable_sample = np.swapaxes(random_stable_sample, 0, 1)
+        stable_samples = np.array([np.dot(sigma, vector) for vector in random_stable_sample])
+
+        return stable_samples
+    else:
+        raise Exception("Invalid input detected")
 
 
 def sample_asymmetric_laplace_distribution(sigma, mean, size_sample):
@@ -54,11 +70,16 @@ def sample_student_t_distribution(sigma, mean, degrees_of_freedom, size_sample):
 
 
 if __name__ == "__main__":
-    sigma = np.array([[1, 0.9], [0.9, 1]])
+    sigma = np.array([[1, 0.4], [0.4, 1]])
 
     normal_samples = sample_normal_distribution(sigma, 10000)
 
     plt.scatter(normal_samples[:, 0], normal_samples[:, 1], marker=".")
+    plt.show()
+
+    stable_linear_depended_samples = sample_linear_depended_stable(sigma, alpha=1.9, beta=np.array([0, 0.9]), delta=np.array([0, 0]), size_sample=10000)
+
+    plt.scatter(stable_linear_depended_samples[:, 0], stable_linear_depended_samples[:, 1], marker=".")
     plt.show()
 
     samples_stable = sample_elliptical_contour_stable(sigma, 1.6, 1.0, np.array([0, 0]), 10000)
