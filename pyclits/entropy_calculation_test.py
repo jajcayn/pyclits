@@ -5,10 +5,29 @@ import argparse
 import math
 import time
 
+import numpy as np
+from scipy.special import gamma
+
 import mutual_inf
 from random_samples import *
 
 time_start = time.process_time()
+
+
+def Renyi_tstudent(sigma, q: float, p: float, nu: float, determinant=None):
+    if determinant:
+        arg = pow(determinant, 0.5 * (1. - q))
+    else:
+        arg = pow(np.linalg.det(sigma), 0.5 * (1. - q))
+
+    arg2 = pow(nu * np.pi, 0.5 * p(1. - q))
+    arg31 = pow(gamma((nu + p) * 0.5), q)
+    arg32 = gamma(q * (nu + p) * 0.5 - p * 0.5)
+    arg33 = gamma(q * (nu + p) * 0.5)
+    arg34 = pow(gamma(nu * 0.5), q)
+    arg3 = (arg31 * arg32) / (arg33 * arg34)
+
+    return 1. / (1. - q) * np.log2(arg3 * arg * arg2)
 
 
 def Renyi_normal_distribution(sigma, alpha):
