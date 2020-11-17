@@ -161,7 +161,8 @@ if __name__ == "__main__":
     parser.add_argument('--alphas', metavar='XXX', type=float, nargs='+', help='Alpha')
     parser.add_argument('--samples', metavar='XXX', type=int, nargs='+', help='Sample sizes')
     parser.add_argument('--sigmas', metavar='XXX', type=float, nargs='+', help='Sigmas')
-    parser.add_argument('--correlation', metavar='XXX', type=float, default=0.0, help='Sample sizes')
+    parser.add_argument('--correlation', metavar='XXX', type=float, default=0.0, help='Correlation strength')
+    parser.add_argument('--correlation_type', metavar='XXX', type=str, default="identity", help='Correlation matrix type')
     parser.add_argument('--maximal_index', metavar='XXX', type=int, default=3, help='Maximal index')
     parser.add_argument('--noise_type', metavar='XXX', type=str, default="gaussian", help='Type of noise that is to be investigated')
     parser.add_argument('--arbitrary_precision', metavar='XXX', type=bool, default=False, help='Use of the arbitrary precision')
@@ -170,10 +171,14 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
+    correlation_types = ["identity", "weakly_correlated", "strongly_correlated"]
     output_filename = args.output
     method = args.method
     correlation = args.correlation
+    correlation_type = args.correlation_type
     indices = np.arange(1, args.maximal_index + 1)
+    if correlation_type not in correlation_types:
+        raise SystemExit("Wrong type ")
 
     if args.dimensions:
         dimensions = args.dimensions
@@ -198,6 +203,7 @@ if __name__ == "__main__":
 
         alphas = [0.1, 0.2, 0.3, 0.5, 0.6, 0.7, 0.8, 0.9, 0.95, 0.99, 1.0, 1.01, 1.05, 1.1, 1.2, 1.3, 1.4, 1.5, 1.7, 1.8, 1.9]
 
+
     arbitrary_precision = args.arbitrary_precision
     arbitrary_precision_decimal_numbers = args.arbitrary_precision_decimal_numbers
     use_metric = args.metric
@@ -219,7 +225,18 @@ if __name__ == "__main__":
     print(f"Calculation for dimensions {dimensions}")
 
     for dimension in dimensions:
-        sigma_skeleton = np.identity(dimension) + correlation * np.eye(dimension, k=1) + + correlation * np.eye(dimension, k=-1)
+        sigma_skeleton = None
+        determinant = None
+        if correlation_type in correlation_types[0]:
+            sigma_skeleton = np.identity(dimension)
+            determinant = 1.
+        elif correlation_type in correlation_types[1]:
+            sigma_skeleton = np.identity(dimension) + correlation * np.eye(dimension, k=1) + correlation * np.eye(dimension, k=-1)
+            determinant = None
+        elif correlation_type in correlation_types[2]:
+            sigma_skeleton = None
+            determinant = pow(1 - correlation, dimension) * (1 + dimension * correlation)
+
         complete_test_ND(filename=f"{output_filename}_{dimension}.txt", samples=3, sigmas=sigmas, alphas=alphas,
                          sigma_skeleton=sigma_skeleton, sizes_of_sample=samples_sizes, indices_to_use=indices,
                          theoretical_value_function=lambda sigma, alpha: Renyi_normal_distribution_ND(sigma, alpha),
