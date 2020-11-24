@@ -232,7 +232,7 @@ if __name__ == "__main__":
             determinant = 1.
         elif correlation_type in correlation_types[1]:
             sigma_skeleton = np.identity(dimension) + correlation * np.eye(dimension, k=1) + correlation * np.eye(dimension, k=-1)
-            determinant = None
+            determinant = tridiagonal_matrix_determinant(dimension, correlation)
         elif correlation_type in correlation_types[2]:
             sigma_skeleton = None
             determinant = pow(1 - correlation, dimension) * (1 + dimension * correlation)

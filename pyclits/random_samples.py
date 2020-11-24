@@ -11,6 +11,19 @@ import scipy.stats as stat
 from numpy.linalg import inv
 
 
+def tridiagonal_matrix_determinant(dimension: int, q: float):
+    if dimension == 1:
+        return 1
+    elif dimension == 2:
+        return 1 - q ** 2
+    else:
+        sample = [1, 1 - q ** 2]
+        for n in range(2, dimension):
+            result = sample[n - 1] - q ** 2 * sample[n - 2]
+            sample.append(result)
+        return sample[dimension - 1]
+
+
 def sample_laplace_distribution(sigma, q, n, m):
     i_sigma = inv(sigma)
 
