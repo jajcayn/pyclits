@@ -61,10 +61,11 @@ def complete_test_ND(filename="statistics.txt", samples=1000, sigma_skeleton=np.
                      alphas=[0.1, 0.2, 0.3, 0.5, 0.6, 0.7, 0.8, 0.9, 0.95, 0.99, 1.0, 1.01, 1.05, 1.1, 1.2, 1.3, 1.4, 1.5, 1.7, 1.8, 1.9],
                      mu=0, sigmas=[0.1, 0.5, 1.0, 5.0, 10.0, 50, 100],
                      sizes_of_sample=[10, 20, 50, 100, 200, 500, 1000, 2000, 5000, 10000, 20000, 50000], indices_to_use=[1, 2, 3, 4, 5, 6, 7, 8, 9],
-                     theoretical_value_function=lambda sigma, alpha: Renyi_normal_distribution_ND(sigma, alpha),
+                     theoretical_value_function=lambda sigma, alpha, determinant: Renyi_normal_distribution_ND(sigma, alpha, determinant),
                      sample_generator=lambda mu, sigma, size_sample: sample_normal_distribution(sigma, size_sample),
                      sample_estimator=lambda data_samples, alpha, indices_to_use: mutual_inf.renyi_entropy(data_samples, method="LeonenkoProzanto",
-                                                                                                           indices_to_use=indices_to_use, alpha=alpha)):
+                                                                                                           indices_to_use=indices_to_use, alpha=alpha),
+                     determinant=None):
     with open(filename, "wt") as fd:
         real_indeces = []
         print("alpha\tsample size\tsigma\ttheoretical value\t", file=fd, end="")
@@ -85,7 +86,7 @@ def complete_test_ND(filename="statistics.txt", samples=1000, sigma_skeleton=np.
         for sigma in sigmas:
             matrix_sigma = sigma * sigma_skeleton
             for alpha in alphas:
-                theoretical_value = theoretical_value_function(matrix_sigma, alpha)
+                theoretical_value = theoretical_value_function(matrix_sigma, alpha, determinant)
 
                 for size_sample in sizes_of_sample:
                     print(f"{alpha}\t{size_sample}\t{sigma}\t{theoretical_value}\t", file=fd, end="")
@@ -172,13 +173,18 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     correlation_types = ["identity", "weakly_correlated", "strongly_correlated"]
+    noise_types = ["gaussian", "student", "sub_gaussian"]
     output_filename = args.output
     method = args.method
     correlation = args.correlation
     correlation_type = args.correlation_type
+    noise_type = args.noise_type
     indices = np.arange(1, args.maximal_index + 1)
     if correlation_type not in correlation_types:
-        raise SystemExit("Wrong type ")
+        raise SystemExit("Wrong type correlation type")
+
+    if noise_type not in noise_types:
+        raise SystemExit("Wrong type correlation type")
 
     if args.dimensions:
         dimensions = args.dimensions
@@ -211,9 +217,9 @@ if __name__ == "__main__":
     alpha = 2.0
 
     job_dictionary = {"gaussian": {"generator": lambda mu, sigma, size_sample: sample_normal_distribution(sigma, size_sample),
-                                   "theory": lambda sigma, alpha: Renyi_normal_distribution_ND(sigma, alpha)},
+                                   "theory": lambda sigma, alpha, determinant: Renyi_normal_distribution_ND(sigma, alpha, determinant)},
                       "student": {"generator": lambda mu, sigma, size_sample: sample_student_t_distribution(degrees_of_freedom, sigma, mu, size_sample),
-                                  "theory": lambda sigma, alpha: Renyi_student_t_distribution(degrees_of_freedom, sigma, alpha)},
+                                  "theory": lambda sigma, alpha, determinant: Renyi_student_t_distribution(degrees_of_freedom, sigma, alpha, determinant)},
                       "sub_gaussian": {"generator": lambda mu, sigma, size_sample: sample_elliptical_contour_stable(sigma, alpha, mu, size_sample),
                                        "theory": None}}
     estimator_dictionary = {"Renyi": lambda data_samples, alpha, indices_to_use: mutual_inf.renyi_entropy(data_samples, method=method,
@@ -239,6 +245,6 @@ if __name__ == "__main__":
 
         complete_test_ND(filename=f"{output_filename}_{dimension}.txt", samples=3, sigmas=sigmas, alphas=alphas,
                          sigma_skeleton=sigma_skeleton, sizes_of_sample=samples_sizes, indices_to_use=indices,
-                         theoretical_value_function=lambda sigma, alpha: Renyi_normal_distribution_ND(sigma, alpha),
-                         sample_generator=lambda mu, sigma, size_sample: sample_normal_distribution(sigma, size_sample),
-                         sample_estimator=estimator_dictionary["Renyi"])
+                         theoretical_value_function=job_dictionary[noise_type]["theory"],
+                         sample_generator=job_dictionary[noise_type]["generator"],
+                         sample_estimator=estimator_dictionary["Renyi"], determinant=determinant)
