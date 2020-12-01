@@ -66,6 +66,7 @@ def complete_test_ND(filename="statistics.txt", samples=1000, sigma_skeleton=np.
                      sample_estimator=lambda data_samples, alpha, indices_to_use: mutual_inf.renyi_entropy(data_samples, method="LeonenkoProzanto",
                                                                                                            indices_to_use=indices_to_use, alpha=alpha),
                      determinant=None):
+    dimension = sigma_skeleton.shape[0]
     with open(filename, "wt") as fd:
         real_indeces = []
         print("dimension\talpha\tsample size\tsigma\ttheoretical value\t", file=fd, end="")
@@ -85,11 +86,15 @@ def complete_test_ND(filename="statistics.txt", samples=1000, sigma_skeleton=np.
 
         for sigma in sigmas:
             matrix_sigma = sigma * sigma_skeleton
+            if determinant:
+                # if determinant is precalculated the value have to be adjusted for sigma
+                determinant *= pow(sigma, dimension)
+
             for alpha in alphas:
                 theoretical_value = theoretical_value_function(matrix_sigma, alpha, determinant)
 
                 for size_sample in sizes_of_sample:
-                    print(f"{sigma_skeleton.shape[0]}\t{alpha}\t{size_sample}\t{sigma}\t{theoretical_value}\t", file=fd, end="")
+                    print(f"{dimension}\t{alpha}\t{size_sample}\t{sigma}\t{theoretical_value}\t", file=fd, end="")
 
                     for indices_to_use in real_indeces:
                         sample_position = (alpha, size_sample, sigma)
