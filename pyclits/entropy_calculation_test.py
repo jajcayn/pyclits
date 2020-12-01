@@ -68,7 +68,7 @@ def complete_test_ND(filename="statistics.txt", samples=1000, sigma_skeleton=np.
                      determinant=None):
     with open(filename, "wt") as fd:
         real_indeces = []
-        print("alpha\tsample size\tsigma\ttheoretical value\t", file=fd, end="")
+        print("dimension\talpha\tsample size\tsigma\ttheoretical value\t", file=fd, end="")
         for index in indices_to_use:
             print(
                 f"mean Renyi entropy {index}\tstd Renyi entropy {index}\tmean computer time {index}\tstd computer time {index}\tmean difference {index}\tstd of difference {index}\t3rd moment of difference {index}\t",
@@ -89,7 +89,7 @@ def complete_test_ND(filename="statistics.txt", samples=1000, sigma_skeleton=np.
                 theoretical_value = theoretical_value_function(matrix_sigma, alpha, determinant)
 
                 for size_sample in sizes_of_sample:
-                    print(f"{alpha}\t{size_sample}\t{sigma}\t{theoretical_value}\t", file=fd, end="")
+                    print(f"{sigma_skeleton.shape[0]}\t{alpha}\t{size_sample}\t{sigma}\t{theoretical_value}\t", file=fd, end="")
 
                     for indices_to_use in real_indeces:
                         sample_position = (alpha, size_sample, sigma)
