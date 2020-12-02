@@ -86,12 +86,14 @@ def complete_test_ND(filename="statistics.txt", samples=1000, sigma_skeleton=np.
 
         for sigma in sigmas:
             matrix_sigma = sigma * sigma_skeleton
+
+            used_determinant = determinant
             if determinant:
                 # if determinant is precalculated the value have to be adjusted for sigma
-                determinant *= pow(sigma, dimension)
+                used_determinant *= pow(sigma, dimension)
 
             for alpha in alphas:
-                theoretical_value = theoretical_value_function(matrix_sigma, alpha, determinant)
+                theoretical_value = theoretical_value_function(matrix_sigma, alpha, used_determinant)
 
                 for size_sample in sizes_of_sample:
                     print(f"{dimension}\t{alpha}\t{size_sample}\t{sigma}\t{theoretical_value}\t", file=fd, end="")
