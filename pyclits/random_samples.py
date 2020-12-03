@@ -5,6 +5,7 @@ import math
 
 import matplotlib.colors as mcolors
 import matplotlib.pyplot as plt
+import mpmath
 import numpy as np
 import scipy.special as spec
 import scipy.stats as stat
@@ -158,7 +159,7 @@ def Renyi_normal_distribution_ND(sigma_matrix: np.matrix, alpha, determinant=Non
         return math.log(2 * math.pi * math.exp(1)) * dimension / 2.0 + np.log(np.sqrt(np.linalg.det(sigma_matrix)))
     else:
         if determinant:
-            return math.log(2 * math.pi) * dimension / 2.0 + math.log(determinant) / 2.0 + dimension * math.log(alpha) / (alpha - 1) / 2
+            return math.log(2 * math.pi) * dimension / 2.0 + mpmath.log(determinant) / 2.0 + dimension * math.log(alpha) / (alpha - 1) / 2
         else:
             return math.log(2 * math.pi) * dimension / 2.0 + math.log(np.linalg.det(sigma_matrix)) / 2.0 + dimension * math.log(alpha) / (alpha - 1) / 2
 
