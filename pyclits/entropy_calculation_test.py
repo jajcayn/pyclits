@@ -4,8 +4,6 @@
 import argparse
 import time
 
-import mpmath
-
 import mutual_inf
 from random_samples import *
 
@@ -13,9 +11,9 @@ time_start = time.process_time()
 
 
 def complete_test_1D(filename="statistics.txt", samples=1000,
-                     alphas=[0.1, 0.2, 0.3, 0.5, 0.6, 0.7, 0.8, 0.9, 0.95, 0.99, 1.0, 1.01, 1.05, 1.1, 1.2, 1.3, 1.4, 1.5, 1.7, 1.8, 1.9],
-                     mu=0, sigmas=[0.1, 0.5, 1.0, 5.0, 10.0, 50, 100],
-                     sizes_of_sample=[10, 20, 50, 100, 200, 500, 1000, 2000, 5000, 10000, 20000, 50000],
+                     alphas=(0.1, 0.2, 0.3, 0.5, 0.6, 0.7, 0.8, 0.9, 0.95, 0.99, 1.0, 1.01, 1.05, 1.1, 1.2, 1.3, 1.4, 1.5, 1.7, 1.8, 1.9),
+                     mu=0, sigmas=(0.1, 0.5, 1.0, 5.0, 10.0, 50, 100),
+                     sizes_of_sample=(10, 20, 50, 100, 200, 500, 1000, 2000, 5000, 10000, 20000, 50000),
                      theoretical_value_function=lambda sigma, alpha: Renyi_normal_distribution_1D(sigma, alpha),
                      sample_generator=lambda mu, sigma, size_sample: np.random.normal(mu, sigma, (size_sample, 1)),
                      sample_estimator=lambda data_samples, alpha: mutual_inf.renyi_entropy(data_samples, method="LeonenkoProzanto",
@@ -60,9 +58,9 @@ def complete_test_1D(filename="statistics.txt", samples=1000,
 
 
 def complete_test_ND(filename="statistics.txt", samples=1000, sigma_skeleton=np.identity(10),
-                     alphas=[0.1, 0.2, 0.3, 0.5, 0.6, 0.7, 0.8, 0.9, 0.95, 0.99, 1.0, 1.01, 1.05, 1.1, 1.2, 1.3, 1.4, 1.5, 1.7, 1.8, 1.9],
-                     mu=0, sigmas=[0.1, 0.5, 1.0, 5.0, 10.0, 50, 100],
-                     sizes_of_sample=[10, 20, 50, 100, 200, 500, 1000, 2000, 5000, 10000, 20000, 50000], indices_to_use=[1, 2, 3, 4, 5, 6, 7, 8, 9],
+                     alphas=(0.1, 0.2, 0.3, 0.5, 0.6, 0.7, 0.8, 0.9, 0.95, 0.99, 1.0, 1.01, 1.05, 1.1, 1.2, 1.3, 1.4, 1.5, 1.7, 1.8, 1.9),
+                     mu=0, sigmas=(0.1, 0.5, 1.0, 5.0, 10.0, 50, 100),
+                     sizes_of_sample=(10, 20, 50, 100, 200, 500, 1000, 2000, 5000, 10000, 20000, 50000), indices_to_use=(1, 2, 3, 4, 5, 6, 7, 8, 9),
                      theoretical_value_function=lambda sigma, alpha, determinant: Renyi_normal_distribution_ND(sigma, alpha, determinant),
                      sample_generator=lambda mu, sigma, size_sample: sample_normal_distribution(sigma, size_sample),
                      sample_estimator=lambda data_samples, alpha, indices_to_use: mutual_inf.renyi_entropy(data_samples, method="LeonenkoProzanto",
