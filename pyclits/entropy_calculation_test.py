@@ -4,6 +4,8 @@
 import argparse
 import time
 
+import mpmath
+
 import mutual_inf
 from random_samples import *
 
@@ -90,7 +92,8 @@ def complete_test_ND(filename="statistics.txt", samples=1000, sigma_skeleton=np.
             used_determinant = determinant
             if determinant:
                 # if determinant is precalculated the value have to be adjusted for sigma
-                used_determinant *= pow(sigma, dimension)
+                # mpmath is used because of extreme dimensions sizes
+                used_determinant *= mpmath.power(sigma, dimension)
 
             for alpha in alphas:
                 theoretical_value = theoretical_value_function(matrix_sigma, alpha, used_determinant)
