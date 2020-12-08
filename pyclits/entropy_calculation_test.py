@@ -170,7 +170,7 @@ if __name__ == "__main__":
     parser.add_argument('--alphas', metavar='XXX', type=float, nargs='+', help='Alpha')
     parser.add_argument('--samples', metavar='XXX', type=int, nargs='+', help='Sample sizes')
     parser.add_argument('--sigmas', metavar='XXX', type=float, nargs='+', help='Sigmas')
-    parser.add_argument('--correlation', metavar='XXX', type=float, default=0.0, help='Correlation strength')
+    parser.add_argument('--correlation', metavar='XXX', type=float, nargs='+', help='Correlation strength')
     parser.add_argument('--correlation_type', metavar='XXX', type=str, default="identity", help='Correlation matrix type')
     parser.add_argument('--maximal_index', metavar='XXX', type=int, default=3, help='Maximal index')
     parser.add_argument('--noise_type', metavar='XXX', type=str, default="gaussian", help='Type of noise that is to be investigated')
@@ -184,15 +184,15 @@ if __name__ == "__main__":
     noise_types = ["gaussian", "student", "sub_gaussian"]
     output_filename = args.output
     method = args.method
-    correlation = args.correlation
+    correlations = args.correlation
     correlation_type = args.correlation_type
     noise_type = args.noise_type
     indices = np.arange(1, args.maximal_index + 1)
     if correlation_type not in correlation_types:
-        raise SystemExit("Wrong type correlation type")
+        raise SystemExit(f"Wrong type of correlation. Allowed types ae {correlation_types}")
 
     if noise_type not in noise_types:
-        raise SystemExit("Wrong type correlation type")
+        raise SystemExit(f"Wrong type noise. Allowed types ae {noise_types}")
 
     if args.dimensions:
         dimensions = args.dimensions
@@ -241,18 +241,19 @@ if __name__ == "__main__":
     for dimension in dimensions:
         sigma_skeleton = None
         determinant = None
-        if correlation_type in correlation_types[0]:
-            sigma_skeleton = np.identity(dimension)
-            determinant = 1.
-        elif correlation_type in correlation_types[1]:
-            sigma_skeleton = np.identity(dimension) + correlation * np.eye(dimension, k=1) + correlation * np.eye(dimension, k=-1)
-            determinant = tridiagonal_matrix_determinant(dimension, correlation)
-        elif correlation_type in correlation_types[2]:
-            sigma_skeleton = None
-            determinant = pow(1 - correlation, dimension) * (1 + dimension * correlation)
+        for correlation in correlations:
+            if correlation_type in correlation_types[0]:
+                sigma_skeleton = np.identity(dimension)
+                determinant = 1.
+            elif correlation_type in correlation_types[1]:
+                sigma_skeleton = np.identity(dimension) + correlation * np.eye(dimension, k=1) + correlation * np.eye(dimension, k=-1)
+                determinant = tridiagonal_matrix_determinant(dimension, correlation)
+            elif correlation_type in correlation_types[2]:
+                sigma_skeleton = None
+                determinant = pow(1 - correlation, dimension) * (1 + dimension * correlation)
 
-        complete_test_ND(filename=f"{output_filename}_{dimension}.txt", samples=3, sigmas=sigmas, alphas=alphas,
-                         sigma_skeleton=sigma_skeleton, sizes_of_sample=samples_sizes, indices_to_use=indices,
-                         theoretical_value_function=job_dictionary[noise_type]["theory"],
-                         sample_generator=job_dictionary[noise_type]["generator"],
-                         sample_estimator=estimator_dictionary["Renyi"], determinant=determinant)
+            complete_test_ND(filename=f"{output_filename}_{correlation}_{dimension}.txt", samples=3, sigmas=sigmas, alphas=alphas,
+                             sigma_skeleton=sigma_skeleton, sizes_of_sample=samples_sizes, indices_to_use=indices,
+                             theoretical_value_function=job_dictionary[noise_type]["theory"],
+                             sample_generator=job_dictionary[noise_type]["generator"],
+                             sample_estimator=estimator_dictionary["Renyi"], determinant=determinant)
