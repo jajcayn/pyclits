@@ -249,7 +249,11 @@ if __name__ == "__main__":
                 sigma_skeleton = np.identity(dimension) + correlation * np.eye(dimension, k=1) + correlation * np.eye(dimension, k=-1)
                 determinant = tridiagonal_matrix_determinant(dimension, correlation)
             elif correlation_type in correlation_types[2]:
-                sigma_skeleton = None
+                sigma_skeleton = np.identity(dimension)
+                sigma_skeleton.fill(correlation)
+                for index in range(dimension):
+                    sigma_skeleton[index][index] = 1
+
                 determinant = pow(1 - correlation, dimension) * (1 + dimension * correlation)
 
             complete_test_ND(filename=f"{output_filename}_{correlation}_{dimension}.txt", samples=3, sigmas=sigmas, alphas=alphas,
