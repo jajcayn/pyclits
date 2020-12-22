@@ -62,7 +62,7 @@ def sample_normal_distribution(sigma, size_sample=10):
         # check whether eigenvalues are all positive
         for eigenvalue in eigenvalues:
             if eigenvalue <= 0:
-                raise ArithmeticError(f"All eigenvalues have to be positive. Eigenvalue {eigenvalue} breaks the rule.")
+                raise ArithmeticError(f"All eigenvalues have to be positive. Eigenvalue {eigenvalue} breaks the rule. Sigma: {sigma}")
 
         standard_deviations = np.sqrt(eigenvalues)
         identity_sqrt = np.diag(standard_deviations)
