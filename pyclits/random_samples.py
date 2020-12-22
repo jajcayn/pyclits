@@ -58,6 +58,12 @@ def sample_normal_distribution(sigma, size_sample=10):
         dimension = sigma.shape[0]
         uncorrelated_sample = np.random.normal(0, 1.0, (dimension, size_sample))
         eigenvalues, eigenvectors = np.linalg.eig(sigma)
+
+        # check whether eigenvalues are all positive
+        for eigenvalue in eigenvalues:
+            if eigenvalue <= 0:
+                raise ArithmeticError(f"All eigenvalues have to be positive. Eigenvalue {eigenvalue} breaks the rule.")
+
         standard_deviations = np.sqrt(eigenvalues)
         identity_sqrt = np.diag(standard_deviations)
         scaled_sample = identity_sqrt.dot(uncorrelated_sample)
