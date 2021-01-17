@@ -129,15 +129,15 @@ def sample_student_t_distribution(degrees_of_freedom, sigma=np.array([1]), mean=
 def Renyi_student_t_distribution(degrees_of_freedom: float, sigma, q: float, determinant=None):
     dimension = sigma.shape[0]
     if determinant:
-        arg = pow(determinant, 0.5 * (1. - q))
+        arg = pow(determinant, (1. - q) / 2)
     else:
-        arg = pow(np.linalg.det(sigma), 0.5 * (1. - q))
+        arg = pow(np.linalg.det(sigma), (1. - q) / 2)
 
-    arg2 = pow(degrees_of_freedom * np.pi, 0.5 * dimension * (1. - q))
-    arg31 = pow(spec.gamma((degrees_of_freedom + dimension) * 0.5), q)
-    arg32 = spec.gamma(q * (degrees_of_freedom + dimension) * 0.5 - p * 0.5)
-    arg33 = spec.gamma(q * (degrees_of_freedom + dimension) * 0.5)
-    arg34 = pow(spec.gamma(degrees_of_freedom * 0.5), q)
+    arg2 = pow(degrees_of_freedom * np.pi, dimension / 2 * (1. - q))
+    arg31 = pow(spec.gamma((degrees_of_freedom + dimension) / 2), q)
+    arg32 = spec.gamma(q * (degrees_of_freedom + dimension) / 2 - dimension / 2)
+    arg33 = spec.gamma(q * (degrees_of_freedom + dimension) / 2)
+    arg34 = pow(spec.gamma(degrees_of_freedom / 2), q)
     arg3 = (arg31 * arg32) / (arg33 * arg34)
 
     return 1. / (1. - q) * np.log2(arg3 * arg * arg2)
