@@ -54,7 +54,7 @@ def figure(dataset, x_column, comparison_columns, columns, title, xlabel, ylabel
 
     color_map = matplotlib.cm.get_cmap("summer")
 
-    fig = plt.figure(figsize=(13, 8))
+    fig = plt.figure(figsize=(8, 6))
     ax = fig.add_subplot(1, 1, 1)
 
     ax.set_title(title)
@@ -162,4 +162,4 @@ if __name__ == "__main__":
         dimension = key[2]
         figure(filtered_results, "alpha", set_of_theoretical_values, sets_of_mean_results,
                r"\Huge Comparison of calculated Renyi entropy and theoretical value", r"$\alpha$", r"$H_{\alpha}(X)$",
-               f"Entropy_comparison_correlation_{correlation}_sigma_{sigma}_dimension_{dimension}", suffix="jpg")
+               f"Entropy_comparison_correlation_{correlation}_sigma_{sigma}_dimension_{dimension}", suffix="eps")

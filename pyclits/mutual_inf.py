@@ -684,10 +684,6 @@ def renyi_entropy_LeonenkoProzanto(dataset_x: np.matrix, **kwargs):
     if transpose:
         dataset_x = dataset_x.T
 
-    if kwargs["arbitrary_precision"]:
-        mpmath.mp.dps = kwargs["arbitrary_precision_decimal_numbers"]
-        print(mpmath.mp)
-
     shape_of_data = dataset_x.shape
     kwargs["maximal_index"] = max(indices_to_use) + 1
     length_of_data = shape_of_data[0]
