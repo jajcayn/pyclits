@@ -128,6 +128,9 @@ def sample_student_t_distribution(degrees_of_freedom, sigma=np.array([1]), mean=
 
 def Renyi_student_t_distribution(degrees_of_freedom: float, sigma, q: float, determinant=None):
     dimension = sigma.shape[0]
+    if (q * (degrees_of_freedom + dimension) / 2 - dimension / 2 <= 0):
+        raise Exception(f"Wrong parameters")
+
     if determinant:
         arg = pow(determinant, (1. - q) / 2)
     else:
@@ -140,7 +143,10 @@ def Renyi_student_t_distribution(degrees_of_freedom: float, sigma, q: float, det
     arg34 = pow(spec.gamma(degrees_of_freedom / 2), q)
     arg3 = (arg31 * arg32) / (arg33 * arg34)
 
-    return 1. / (1. - q) * np.log2(arg3 * arg * arg2)
+    if isinstance(arg3, mpmath.mpf) or isinstance(arg, mpmath.mpf) or isinstance(arg2, mpmath.mpf):
+        return 1 / (1 - q) * mpmath.log(arg3 * arg * arg2)
+    else:
+        return 1 / (1 - q) * np.log2(arg3 * arg * arg2)
 
 
 def Renyi_normal_distribution(sigma, alpha):

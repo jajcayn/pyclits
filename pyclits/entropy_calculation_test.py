@@ -236,7 +236,7 @@ if __name__ == "__main__":
     arbitrary_precision = args.arbitrary_precision
     arbitrary_precision_decimal_numbers = args.arbitrary_precision_decimal_numbers
     use_metric = args.metric
-    degrees_of_freedom = 3
+    degrees_of_freedom = 20
     alpha = 2.0
 
     job_dictionary = {"gaussian": {"generator": lambda mu, sigma, size_sample: sample_normal_distribution(sigma, size_sample),
