@@ -194,6 +194,7 @@ if __name__ == "__main__":
     parser.add_argument('--arbitrary_precision', metavar='XXX', type=str, default=False, help='Use of the arbitrary precision')
     parser.add_argument('--arbitrary_precision_decimal_numbers', metavar='XXX', type=int, default="30", help='How many decimal numbers are used')
     parser.add_argument('--metric', metavar='XXX', type=str, default="euclidean", help='Metric')
+    parser.add_argument('--degrees_of_freedom', metavar='XXX', type=float, default=2 - .0, help='Degrees of freedom')
 
     args = parser.parse_args()
 
@@ -237,8 +238,7 @@ if __name__ == "__main__":
     arbitrary_precision = ast.literal_eval(args.arbitrary_precision)
     arbitrary_precision_decimal_numbers = args.arbitrary_precision_decimal_numbers
     use_metric = args.metric
-    degrees_of_freedom = 20
-    alpha = 2.0
+    degrees_of_freedom = args.degrees_of_freedom
 
     job_dictionary = {"gaussian": {"generator": lambda mu, sigma, size_sample: sample_normal_distribution(sigma, size_sample),
                                    "theory": lambda sigma, alpha, determinant: Renyi_normal_distribution_ND(sigma, alpha, determinant)},
