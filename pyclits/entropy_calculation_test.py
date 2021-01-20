@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 
 import argparse
+import ast
 import time
 
 import mutual_inf
@@ -83,7 +84,7 @@ def complete_test_ND(filename="statistics.txt", samples=1000, sigma_skeleton=np.
                 f"mean Renyi entropy {index}\tstd Renyi entropy {index}\tmean difference {index}\tstd of difference {index}\t3rd moment of difference {index}\t4th moment of difference {index}\t",
                 file=fd, end="")
             real_indeces.append([index])
-        print("mean Renyi entropy\tstd Renyi entropy\tmean computer time\tstd computer time\tmean difference\tstd of difference\t3rd moment of difference",
+        print("mean Renyi entropy\tstd Renyi entropy\tmean difference\tstd of difference\t3rd moment of difference\t4th moment of difference",
               file=fd)
         real_indeces.append(indices)
         # real_indeces.append(indices_to_use)
@@ -129,19 +130,20 @@ def complete_test_ND(filename="statistics.txt", samples=1000, sigma_skeleton=np.
                     difference_samples[sample] = difference
 
                 for alpha in alphas:
+                    print(f"{dimension}\t{alpha}\t{size_sample}\t{sigma}\t{theoretical_values[alpha]}", file=fd, end="")
                     for index, index_used in enumerate(indices_to_use):
                         entropy_sample = [sample[alpha][index] for sample_number, sample in entropy_samples.items()]
                         difference_sample = [sample[alpha][index] for sample_number, sample in difference_samples.items()]
 
                         # save data for samples
                         print(
-                            f"{dimension}\t{alpha}\t{size_sample}\t{sigma}\t{theoretical_values[alpha]}\t{np.mean(entropy_sample)}\t{np.std(entropy_sample)}\t{np.mean(difference_sample)}\t{np.std(difference_sample)}\t{stat.moment(difference_sample, moment=3)}\t{stat.moment(difference_sample, moment=4)}",
+                            f"\t{np.mean(entropy_sample)}\t{np.std(entropy_sample)}\t{np.mean(difference_sample)}\t{np.std(difference_sample)}\t{stat.moment(difference_sample, moment=3)}\t{stat.moment(difference_sample, moment=4)}",
                             file=fd, end="")
                     entropy_samples_all = [item for sample_number, sample in entropy_samples.items() for item in sample[alpha]]
-                    difference_samples_all = [item for sample_number, sample in entropy_samples.items() for item in sample[alpha]]
+                    difference_samples_all = [item for sample_number, sample in difference_samples.items() for item in sample[alpha]]
 
                     print(
-                        f"{np.mean(entropy_samples_all)}\t{np.std(entropy_samples_all)}\t{np.mean(difference_samples_all)}\t{np.std(difference_samples_all)}\t{stat.moment(difference_samples_all, moment=3)}\t{stat.moment(difference_samples_all, moment=4)}",
+                        f"\t{np.mean(entropy_samples_all)}\t{np.std(entropy_samples_all)}\t{np.mean(difference_samples_all)}\t{np.std(difference_samples_all)}\t{stat.moment(difference_samples_all, moment=3)}\t{stat.moment(difference_samples_all, moment=4)}",
                         file=fd, flush=True)
 
 
@@ -189,7 +191,7 @@ if __name__ == "__main__":
                         help='Correlation matrix type: ["identity", "weakly_correlated", "strongly_correlated"]')
     parser.add_argument('--maximal_index', metavar='XXX', type=int, default=3, help='Maximal index')
     parser.add_argument('--noise_type', metavar='XXX', type=str, default="gaussian", help='Noise type: ["gaussian", "student", "sub_gaussian"]')
-    parser.add_argument('--arbitrary_precision', metavar='XXX', type=bool, default=False, help='Use of the arbitrary precision')
+    parser.add_argument('--arbitrary_precision', metavar='XXX', type=str, default=False, help='Use of the arbitrary precision')
     parser.add_argument('--arbitrary_precision_decimal_numbers', metavar='XXX', type=int, default="30", help='How many decimal numbers are used')
     parser.add_argument('--metric', metavar='XXX', type=str, default="euclidean", help='Metric')
 
@@ -232,8 +234,7 @@ if __name__ == "__main__":
 
         alphas = [0.1, 0.2, 0.3, 0.5, 0.6, 0.7, 0.8, 0.9, 0.95, 0.99, 1.0, 1.01, 1.05, 1.1, 1.2, 1.3, 1.4, 1.5, 1.7, 1.8, 1.9]
 
-
-    arbitrary_precision = args.arbitrary_precision
+    arbitrary_precision = ast.literal_eval(args.arbitrary_precision)
     arbitrary_precision_decimal_numbers = args.arbitrary_precision_decimal_numbers
     use_metric = args.metric
     degrees_of_freedom = 20

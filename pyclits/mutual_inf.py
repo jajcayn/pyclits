@@ -694,7 +694,7 @@ def renyi_entropy_LeonenkoProzanto(dataset_x: np.matrix, **kwargs):
     results = {}
 
     t0 = time.process_time()
-    distances = kdtree.query(dataset_x, k=kwargs["maximal_index"], return_distance=True, dualtree=dualtree)
+    distances = kdtree.query(dataset_x, k=kwargs["maximal_index"], return_distance=True, dualtree=dualtree, breadth_first=True)
     t1 = time.process_time()
     duration = t1 - t0
     print(f" * * Calculation of distances [s]: {duration}", flush=True)
