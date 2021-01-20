@@ -207,10 +207,10 @@ if __name__ == "__main__":
     noise_type = args.noise_type
     indices = np.arange(1, args.maximal_index + 1)
     if correlation_type not in correlation_types:
-        raise SystemExit(f"Wrong type of correlation. Allowed types ae {correlation_types}")
+        raise SystemExit(f"Wrong type of correlation. Allowed types are {correlation_types}")
 
     if noise_type not in noise_types:
-        raise SystemExit(f"Wrong type noise. Allowed types ae {noise_types}")
+        raise SystemExit(f"Wrong type noise. Allowed types are {noise_types}")
 
     if args.dimensions:
         dimensions = args.dimensions
