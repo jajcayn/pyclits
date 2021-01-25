@@ -205,9 +205,20 @@ def Renyi_beta_distribution(a, b, alpha):
 
 if __name__ == "__main__":
     sigma = np.array([[1, -0.1], [-0.1, 1]])
-    samples = 1000000
+    samples = 2000000
+    dimension = 4
+    correlation = 0.2
+    save = True
 
-    normal_samples = sample_normal_distribution(sigma=sigma, size_sample=samples)
+    sigma_skeleton = np.identity(dimension) + correlation * np.eye(dimension, k=1) + correlation * np.eye(dimension, k=-1)
+    normal_samples = sample_normal_distribution(sigma=sigma_skeleton, size_sample=samples)
+    if save:
+        with open("sample_normal.txt", "wt") as fd:
+            for item in normal_samples:
+                for item_element in item:
+                    print(item_element, end=" ", file=fd)
+                print("", file=fd)
+
     stable_linear_depended_samples = sample_linear_depended_stable(sigma=sigma, alpha=1.999, beta=np.array([0.5, -0.5]), delta=np.array([0, 0]),
                                                                    size_sample=samples)
     samples_stable = sample_elliptical_contour_stable(sigma, 1.95, 1.0, np.array([0, 0]), size_sample=samples)
