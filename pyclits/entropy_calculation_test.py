@@ -246,9 +246,13 @@ if __name__ == "__main__":
                                   "theory": lambda sigma, alpha, determinant: Renyi_student_t_distribution(degrees_of_freedom, sigma, alpha, determinant)},
                       "sub_gaussian": {"generator": lambda mu, sigma, size_sample: sample_elliptical_contour_stable(sigma, alpha, mu, size_sample),
                                        "theory": None}}
-    estimator_dictionary = {"Renyi": lambda data_samples, alpha, indices_to_use: mutual_inf.renyi_entropy(data_samples, method=method,
-                                                                                                          indices_to_use=indices_to_use, alphas=alpha,
-                                                                                                          **{"arbitrary_precision": arbitrary_precision,
+    estimator_dictionary = {
+        "Renyi": lambda data_samples, alpha, indices_to_use: mutual_inf.renyi_entropy(data_samples, method=method, indices_to_use=indices_to_use, alphas=alpha,
+                                                                                      **{"arbitrary_precision": arbitrary_precision,
+                                                                                         "arbitrary_precision_decimal_numbers": arbitrary_precision_decimal_numbers,
+                                                                                         "metric": use_metric}),
+        "Renyi_float": lambda data_samples, alpha, indices_to_use: mutual_inf.renyi_entropy(data_samples, method=method, indices_to_use=indices_to_use,
+                                                                                            alphas=alpha, **{"arbitrary_precision": False,
                                                                                                              "arbitrary_precision_decimal_numbers": arbitrary_precision_decimal_numbers,
                                                                                                              "metric": use_metric})}
 

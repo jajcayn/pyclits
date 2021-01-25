@@ -707,11 +707,18 @@ def renyi_entropy_LeonenkoProzanto(dataset_x: np.matrix, **kwargs):
             else:
                 entropy_sum = entropy_sum_generic_LeonenkoProzanto(dataset_x, distances, alpha, **kwargs)
 
+                # here we take natural logarithm instead of
                 if kwargs["arbitrary_precision"]:
-                    result = [mpmath.log(item) / (1.0 - alpha) for item in entropy_sum]
+                    if "base_of_logarithm" in kwargs:
+                        result = [mpmath.log(item, kwargs["base_of_logarithm"]) / (1.0 - alpha) for item in entropy_sum]
+                    else:
+                        result = [mpmath.log(item) / (1.0 - alpha) for item in entropy_sum]
                 else:
                     entropy_sum = entropy_sum.tolist()
-                    result = [np.log2(item) / (1.0 - alpha) for item in entropy_sum]
+                    if "base_of_logarithm" in kwargs:
+                        result = [np.log(item, kwargs["base_of_logarithm"]) / (1.0 - alpha) for item in entropy_sum]
+                    else:
+                        result = [np.log(item) / (1.0 - alpha) for item in entropy_sum]
 
             results[alpha] = result
         except Exception as exc:
@@ -749,7 +756,8 @@ def entropy_sum_generic_LeonenkoProzanto(dataset_x: np.matrix, distances, alpha=
 
         try:
             if kwargs["arbitrary_precision"]:
-                exponent = dimension_of_data * (1.0 - alpha)
+                one_minus_alpha = 1.0 - alpha
+                exponent = dimension_of_data * one_minus_alpha
                 addition_to_entropy = mpmath.mpf('0.0')
                 if exponent < 0:
                     # dealing with distance 0
@@ -760,30 +768,30 @@ def entropy_sum_generic_LeonenkoProzanto(dataset_x: np.matrix, distances, alpha=
                     addition = mpmath.power(subselected_distances[index], exponent)
                     addition_to_entropy += addition
 
-                multiplicator_gamma = mpmath.gammaprod([use_index], [use_index + 1 - alpha])
-                multiplicator = multiplicator_gamma * mpmath.power(mpmath.pi, dimension_of_data / 2.0 * (1 - alpha)) * mpmath.power(number_of_data - 1,
-                                                                                                                                    1 - alpha) / number_of_data
-                power_gamma_dim = mpmath.power(mpmath.gamma(dimension_of_data / 2.0 + 1), (1.0 - alpha))
+                multiplicator_gamma = mpmath.gammaprod([use_index], [use_index + one_minus_alpha])
+                multiplicator = multiplicator_gamma * mpmath.power(mpmath.pi, dimension_of_data / 2.0 * one_minus_alpha) * mpmath.power(number_of_data - 1,
+                                                                                                                                        one_minus_alpha) / number_of_data / mpmath.power(
+                    mpmath.gamma(dimension_of_data / 2.0 + 1), one_minus_alpha)
 
-                entropy[index_of_distances] += multiplicator * addition_to_entropy / power_gamma_dim
+                entropy[index_of_distances] += multiplicator * addition_to_entropy
             else:
-                log_gamma_dim = scipyspecial.gammaln(dimension_of_data / 2.0 + 1.0)
-                maximum = max(subselected_distances)
-                exponent = dimension_of_data * (1.0 - alpha)
-                scaled_distances = subselected_distances / maximum
+                maximum_distance = max(subselected_distances)
+                one_minus_alpha = 1.0 - alpha
+                exponent = dimension_of_data * one_minus_alpha
+                scaled_distances = subselected_distances / maximum_distance
                 if exponent < 0:
                     # dealing with distance 0
                     scaled_distances = np.array([item for item in scaled_distances if item > 0])
 
+                max_multiplicator = np.power(maximum_distance, exponent)
                 power = np.power(scaled_distances, exponent)
-                addition_to_entropy = np.sum(power)
+                sum_of_power_of_distances = np.sum(power) * max_multiplicator
 
-                multiplicator_gamma = np.exp(scipyspecial.gammaln(use_index) - scipyspecial.gammaln(use_index + 1 - alpha))
-                multiplicator = multiplicator_gamma * np.power(np.pi, exponent / 2.0) * np.power(number_of_data - 1, 1 - alpha) / number_of_data
-                log_sum_multiplicator = np.log(maximum) * exponent
-                powered_log_gamma_dim = (1 - alpha) * log_gamma_dim
+                multiplicator_exp_logarithms = np.exp(scipyspecial.gammaln(use_index) - scipyspecial.gammaln(use_index + one_minus_alpha)
+                                                      - one_minus_alpha * scipyspecial.gammaln(dimension_of_data / 2.0 + 1.0))
+                multiplicator = multiplicator_exp_logarithms * np.power(np.pi, exponent / 2.0) * np.power(number_of_data - 1, one_minus_alpha) / number_of_data
 
-                entropy[index_of_distances] += multiplicator * addition_to_entropy * np.exp(log_sum_multiplicator - powered_log_gamma_dim)
+                entropy[index_of_distances] += multiplicator * sum_of_power_of_distances
         except Exception as exc:
             print(f"Exception happened: {exc.exc_info()[0]} {alpha} {use_index}")
 
