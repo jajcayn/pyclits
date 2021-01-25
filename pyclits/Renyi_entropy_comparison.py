@@ -128,12 +128,12 @@ def mean_calculation(results, columns, column_name):
 
 def std_calculation(results, columns, column_name):
     temp_results = results[columns]
-    results[column_name] = temp_results.apply(lambda x: np.std(x), axis=1, raw=True)
+    results[column_name] = temp_results.apply(lambda x: np.mean(x), axis=1, raw=True)
 
 
 if __name__ == "__main__":
-    data_directory = "data"
-    output_filename = "join_dataset.pickle"
+    data_directory = "normal_float/weakly"
+    output_filename = "normal_float/weakly/join_dataset.pickle"
 
     if os.path.isfile(output_filename):
         results = load_dataset(output_filename)
@@ -141,7 +141,9 @@ if __name__ == "__main__":
         results = process_base_datafiles(data_directory, output_filename)
 
     set_of_theoretical_values = [{"column": "theoretical value", "color": "b", "label": "Theoretical value"},
-                                 {"column": "mean", "color": "r", "label": r"Mean of order 95\% bars", "error_column": "std"}]
+                                 {"column": "mean Renyi entropy", "color": "r", "label": r"Mean of order 95\% bars", "error_column": "std Renyi entropy"}]
+    set_of_difference_values = [{"column": "mean difference", "color": "r", "label": r"Mean of order 95\% bars", "error_column": "std of difference"}]
+
     sets_of_mean_results = scan_columns(results, "mean Renyi entropy ")
     sets_of_std_results = scan_columns(results, "std Renyi entropy ")
     sets_of_mean_difference_results = scan_columns(results, "mean difference ")
@@ -150,16 +152,20 @@ if __name__ == "__main__":
     # calculate mean
     mean_calculation(results, sets_of_mean_results, "mean")
     # calculate std
-    std_calculation(results, sets_of_mean_results, "std")
+    std_calculation(results, sets_of_std_difference_results, "std")
 
     # filter dataset
-    filtered_results = filter_by(results, ["correlation", "sigma", "dimension"])
+    filtered_results = filter_by(results, ["correlation", "sigma", "dimension", "sample size"])
 
     # show dataset
     for key, filtered_results in filtered_results.items():
         correlation = key[0]
         sigma = key[1]
         dimension = key[2]
+        sample_size = key[3]
         figure(filtered_results, "alpha", set_of_theoretical_values, sets_of_mean_results,
-               r"\Huge Comparison of calculated Renyi entropy and theoretical value", r"$\alpha$", r"$H_{\alpha}(X)$",
-               f"Entropy_comparison_correlation_{correlation}_sigma_{sigma}_dimension_{dimension}", suffix="eps")
+               r"\Large Comparison of calculated Renyi entropy and theoretical value", r"$\alpha$", r"$H_{\alpha}(X)$",
+               f"{data_directory}/Entropy_comparison_correlation_{correlation}_sigma_{sigma}_dimension_{dimension}_samplesize_{sample_size}", suffix="eps")
+        figure(filtered_results, "alpha", set_of_difference_values, sets_of_mean_difference_results,
+               r"\Large Differences from theoretical value", r"$\alpha$", r"$H^{est}_{\alpha}(X)-H^{theor}_{\alpha}(X)$",
+               f"{data_directory}/differences_comparison_correlation_{correlation}_sigma_{sigma}_dimension_{dimension}_samplesize_{sample_size}", suffix="eps")
