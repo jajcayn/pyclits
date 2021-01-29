@@ -11,6 +11,7 @@ last update on Sep 22, 2017
 
 import collections
 import logging
+import os
 import time
 
 import mpmath
@@ -597,14 +598,14 @@ def graph_calculation_preparation(data, **kwargs):
     if "leaf_size" in kwargs:
         leaf_size = kwargs["leaf_size"]
     else:
-        leaf_size = 15
+        leaf_size = 40
 
     if "metric" in kwargs:
         metric = kwargs["metric"]
     else:
         metric = "euclidean"
 
-    print(f" * shape of data which will be used to construct tree: {data.shape}")
+    print(f"PID:{os.getpid()} * shape of data which will be used to construct tree: {data.shape}", flush=True)
     tree_x = KDTree(data, leaf_size=leaf_size, metric=metric)
 
     return tree_x
@@ -697,7 +698,9 @@ def renyi_entropy_LeonenkoProzanto(dataset_x: np.matrix, **kwargs):
     distances = kdtree.query(dataset_x, k=kwargs["maximal_index"], return_distance=True, dualtree=dualtree, breadth_first=True)
     t1 = time.process_time()
     duration = t1 - t0
-    print(f" * * Calculation of distances [s]: {duration}", flush=True)
+    del kdtree
+
+    print(f"PID:{os.getpid()} * * Calculation of distances [s]: {duration}", flush=True)
 
     t0 = time.process_time()
     for alpha in alphas:
@@ -726,7 +729,7 @@ def renyi_entropy_LeonenkoProzanto(dataset_x: np.matrix, **kwargs):
 
     t1 = time.process_time()
     duration = t1 - t0
-    print(f" * * Calculation of entropy [s]: {duration}", flush=True)
+    print(f"PID:{os.getpid()} * * Calculation of entropy [s]: {duration}", flush=True)
 
     return results
 
@@ -748,6 +751,7 @@ def entropy_sum_generic_LeonenkoProzanto(dataset_x: np.matrix, distances, alpha=
         entropy = np.zeros(len(indices_to_use))
 
     selected_distances = distances[0][:, kwargs["indices_to_use"]]
+    del distances
 
     for index_of_distances, use_index in enumerate(indices_to_use):
         subselected_distances = selected_distances[:, index_of_distances]

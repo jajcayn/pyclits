@@ -3,6 +3,7 @@
 
 import argparse
 import ast
+import os
 import time
 
 import mutual_inf
@@ -73,7 +74,7 @@ def complete_test_ND(filename="statistics.txt", samples=1000, sigma_skeleton=np.
     # set up argitrary precision calculation
     if kwargs["arbitrary_precision"]:
         mpmath.mp.dps = kwargs["arbitrary_precision_decimal_numbers"]
-        print(mpmath.mp)
+        print(f"PID:{os.getpid()} {mpmath.mp}")
 
     # open output file for results of calculation
     with open(filename, "wt") as fd:
@@ -118,8 +119,10 @@ def complete_test_ND(filename="statistics.txt", samples=1000, sigma_skeleton=np.
                     time_start = time.process_time()
                     entropy = sample_estimator(data_samples, alpha=alphas, indices_to_use=indices_to_use)
                     time_end = time.process_time()
+                    del data_samples
 
                     duration = time_end - time_start
+                    print(f"PID:{os.getpid()} Total time of calculation {duration}s", flush=True)
 
                     difference = {}
                     for alpha in alphas:
@@ -256,7 +259,7 @@ if __name__ == "__main__":
                                                                                                              "arbitrary_precision_decimal_numbers": arbitrary_precision_decimal_numbers,
                                                                                                              "metric": use_metric})}
 
-    print(f"Calculation for dimensions {dimensions}")
+    print(f"PID:{os.getpid()} Calculation for dimensions {dimensions}")
 
     for dimension in dimensions:
         sigma_skeleton = None
