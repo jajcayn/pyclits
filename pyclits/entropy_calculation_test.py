@@ -193,7 +193,7 @@ if __name__ == "__main__":
     parser.add_argument('--correlation_type', metavar='XXX', type=str, default="identity",
                         help='Correlation matrix type: ["identity", "weakly_correlated", "strongly_correlated"]')
     parser.add_argument('--maximal_index', metavar='XXX', type=int, default=3, help='Maximal index')
-    parser.add_argument('--noise_type', metavar='XXX', type=str, default="gaussian", help='Noise type: ["gaussian", "student", "sub_gaussian"]')
+    parser.add_argument('--noise_type', metavar='XXX', type=str, default="gaussian", help='Noise type: ["gaussian", "student", "sub_gaussian", "laplace"]')
     parser.add_argument('--arbitrary_precision', metavar='XXX', type=str, default=False, help='Use of the arbitrary precision')
     parser.add_argument('--arbitrary_precision_decimal_numbers', metavar='XXX', type=int, default="30", help='How many decimal numbers are used')
     parser.add_argument('--metric', metavar='XXX', type=str, default="euclidean", help='Metric')
@@ -202,7 +202,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     correlation_types = ["identity", "weakly_correlated", "strongly_correlated"]
-    noise_types = ["gaussian", "student", "sub_gaussian"]
+    noise_types = ["gaussian", "student", "sub_gaussian", "laplace"]
     output_filename = args.output
     method = args.method
     correlations = args.correlation
@@ -242,13 +242,16 @@ if __name__ == "__main__":
     arbitrary_precision_decimal_numbers = args.arbitrary_precision_decimal_numbers
     use_metric = args.metric
     degrees_of_freedom = args.degrees_of_freedom
+    alpha = 2.0
 
     job_dictionary = {"gaussian": {"generator": lambda mu, sigma, size_sample: sample_normal_distribution(sigma, size_sample),
                                    "theory": lambda sigma, alpha, determinant: Renyi_normal_distribution_ND(sigma, alpha, determinant)},
                       "student": {"generator": lambda mu, sigma, size_sample: sample_student_t_distribution(degrees_of_freedom, sigma, mu, size_sample),
                                   "theory": lambda sigma, alpha, determinant: Renyi_student_t_distribution(degrees_of_freedom, sigma, alpha, determinant)},
                       "sub_gaussian": {"generator": lambda mu, sigma, size_sample: sample_elliptical_contour_stable(sigma, alpha, mu, size_sample),
-                                       "theory": None}}
+                                       "theory": None},
+                      "laplace": {"generator": lambda mu, sigma, size_sample: sample_asymmetric_laplace_distribution(sigma, mu, size_sample),
+                                  "theory": None}}
     estimator_dictionary = {
         "Renyi": lambda data_samples, alpha, indices_to_use: mutual_inf.renyi_entropy(data_samples, method=method, indices_to_use=indices_to_use, alphas=alpha,
                                                                                       **{"arbitrary_precision": arbitrary_precision,
@@ -277,7 +280,7 @@ if __name__ == "__main__":
                 for index in range(dimension):
                     sigma_skeleton[index][index] = 1
 
-                determinant = pow(1 - correlation, dimension) * (1 + dimension * correlation)
+                determinant = full_correlation_matrix(dimension, correlation)
 
             complete_test_ND(filename=f"{output_filename}_{correlation}_{dimension}.txt", samples=3, sigmas=sigmas, alphas=alphas,
                              sigma_skeleton=sigma_skeleton, sizes_of_sample=samples_sizes, indices_to_use=indices,

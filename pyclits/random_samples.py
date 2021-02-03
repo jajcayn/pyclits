@@ -12,11 +12,15 @@ import scipy.stats as stat
 from numpy.linalg import inv
 
 
+def full_correlation_matrix(dimension: int, q: float):
+    return pow(1 - q, dimension - 1) * (1 + (dimension - 1) * q)
+
+
 def tridiagonal_matrix_determinant(dimension: int, q: float):
     if dimension == 1:
         return 1
     elif dimension == 2:
-        return 1 - q ** 2
+        return (1 - q ** 2)
     else:
         sample = [1, 1 - q ** 2]
         for n in range(2, dimension):
@@ -25,32 +29,17 @@ def tridiagonal_matrix_determinant(dimension: int, q: float):
         return sample[dimension - 1]
 
 
-def sample_laplace_distribution(sigma, q, n, m):
-    i_sigma = inv(sigma)
+def Renyi_laplace_assymetric_distribution(sigma, mean, alpha, sigma_inversion=None):
+    dimension = sigma.shape[0]
+    if sigma_inversion is None:
+        sigma_inversion = inv(sigma)
 
-    def h(sigma, m, i_sigma):
-        i_sigma = inv(sigma)
+    m_sigma_inv = (mean * sigma_inversion)
+    k = alpha - dimension / 2.0 - 1
+    M = mean * sigma_inversion * mean - m_sigma_inv.T * sigma * m_sigma_inv
+    one_over_2M = 1 / (2 * M)
 
-        arg1 = np.dot(m, i_sigma)
-        arg2 = np.dot(arg1, m)
-        arg3 = np.dot(np.dot(arg1, sigma), arg1)
-
-        return arg2 - arg3
-
-    h_arg = h(sigma, m, i_sigma)
-
-    arg1 = (pow(2 * np.pi, n) * 0.5 / gamma(q)) * pow(q, -n) * np.exp(0.5 / h_arg)
-
-    loop = int(q - 0.5 * n)
-
-    arg2 = 0
-    for l in range(loop):
-        arg21 = pow(2 / h_arg, 0.5 * (q - 0.5 * n - l))
-        arg22 = pow(-1 / h_arg, l)
-        arg23 = gamma(q - 0.5 * n) * gamma(0.5 * (q - 0.5 * n - l)) / (gamma(l + 1) * gamma(q - 0.5 * n - l))
-        arg2 += arg21 * arg22 * arg23
-
-    return arg1 * arg2
+    prefactor = pow(2 * np.pi, dimension) / (2 * pow(alpha, dimension)) * gamma(k + 1) / gamma(alpha) * math.exp(one_over_2M) * pow(2 / M, k + 1) * Fox - H
 
 
 def sample_normal_distribution(sigma, size_sample=10):
@@ -171,7 +160,7 @@ def Renyi_normal_distribution_ND(sigma_matrix: np.matrix, alpha, determinant=Non
         return math.log(2 * math.pi * math.exp(1)) * dimension / 2.0 + np.log(np.sqrt(np.linalg.det(sigma_matrix)))
     else:
         if determinant:
-            return math.log(2 * math.pi) * dimension / 2.0 + mpmath.log(determinant) / 2.0 + dimension * math.log(alpha) / (alpha - 1) / 2
+            return math.log(2 * math.pi) * dimension / 2.0 + math.log(determinant) / 2.0 + dimension * math.log(alpha) / (alpha - 1) / 2
         else:
             return math.log(2 * math.pi) * dimension / 2.0 + math.log(np.linalg.det(sigma_matrix)) / 2.0 + dimension * math.log(alpha) / (alpha - 1) / 2
 
