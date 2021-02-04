@@ -712,16 +712,10 @@ def renyi_entropy_LeonenkoProzanto(dataset_x: np.matrix, **kwargs):
 
                 # here we take natural logarithm instead of
                 if kwargs["arbitrary_precision"]:
-                    if "base_of_logarithm" in kwargs:
-                        result = [mpmath.log(item, kwargs["base_of_logarithm"]) / (1.0 - alpha) for item in entropy_sum]
-                    else:
-                        result = [mpmath.log(item) / (1.0 - alpha) for item in entropy_sum]
+                    result = [kwargs["logarithm"](item) / (1.0 - alpha) for item in entropy_sum]
                 else:
                     entropy_sum = entropy_sum.tolist()
-                    if "base_of_logarithm" in kwargs:
-                        result = [np.log(item, kwargs["base_of_logarithm"]) / (1.0 - alpha) for item in entropy_sum]
-                    else:
-                        result = [np.log(item) / (1.0 - alpha) for item in entropy_sum]
+                    result = [kwargs["logarithm"](item) / (1.0 - alpha) for item in entropy_sum]
 
             results[alpha] = result
         except Exception as exc:
@@ -823,25 +817,25 @@ def entropy_sum_Shannon_LeonenkoProzanto(dataset_x: np.matrix, distances, **kwar
             subselected_distances = np.array([item for item in subselected_distances if item > 0])
             shape = subselected_distances.shape
             for index in range(shape[0]):
-                addition_to_entropy += mpmath.log(subselected_distances[index])
+                addition_to_entropy += kwargs["logarithm"](subselected_distances[index])
 
             addition_to_entropy *= dimension_of_data / number_of_data
 
             digamma = mpmath.digamma(use_index)
             argument_log = mpmath.power(mpmath.pi, dimension_of_data / 2.0) / mpmath.gamma(dimension_of_data / 2.0 + 1) * mpmath.exp(-digamma) * (
-                    number_of_data - 1)
+                        number_of_data - 1)
 
-            entropy[index_of_distances] += addition_to_entropy + mpmath.log(argument_log)
+            entropy[index_of_distances] += addition_to_entropy + kwargs["logarithm"](argument_log)
         else:
             # dealing with distance 0 - log then diverges
             subselected_distances = np.array([item for item in subselected_distances if item > 0])
 
-            addition_to_entropy = np.sum(np.log2(subselected_distances)) * dimension_of_data / number_of_data
+            addition_to_entropy = np.sum(kwargs["logarithm"](subselected_distances)) * dimension_of_data / number_of_data
 
             digamma = scipyspecial.digamma(use_index)
             argument_log = np.power(np.pi, dimension_of_data / 2.0) / scipyspecial.gamma(dimension_of_data / 2.0 + 1) * np.exp(-digamma) * (number_of_data - 1)
 
-            entropy[index_of_distances] += addition_to_entropy + np.log2(argument_log)
+            entropy[index_of_distances] += addition_to_entropy + kwargs["logarithm"](argument_log)
 
     if not kwargs["arbitrary_precision"]:
         entropy = entropy.tolist()
@@ -890,6 +884,18 @@ def renyi_entropy_Paly(dataset_x: np.matrix, alpha=0.75, leaf_size = 15, metric=
 
 
 def renyi_entropy(*args, **kwargs):
+    # preparation of logarithm
+    if kwargs["arbitrary_precision"]:
+        if "base_of_logarithm" in kwargs:
+            kwargs["logarithm"] = lambda x: mpmath.log(x, kwargs["base_of_logarithm"])
+        else:
+            kwargs["logarithm"] = lambda x: mpmath.log(x)
+    else:
+        if "base_of_logarithm" in kwargs:
+            kwargs["logarithm"] = lambda x: np.log(x, kwargs["base_of_logarithm"])
+        else:
+            kwargs["logarithm"] = lambda x: np.log(x)
+
     if "method" in kwargs:
         if kwargs["method"] == "Paly" or kwargs["method"] == "GeneralizedNearestNeighbor":
             return renyi_entropy_Paly(*args, **kwargs)
