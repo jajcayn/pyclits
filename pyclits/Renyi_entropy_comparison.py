@@ -11,6 +11,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
+from random_samples import *
+
 matplotlib.rcParams['text.usetex'] = True
 
 plt.rc('text', usetex=True)
@@ -20,7 +22,7 @@ plt.rc('font', family='serif')
 def process_base_datafiles(data_directory, output_file="join_dataset.pickle", show=False):
     datasets = []
     for item_of_folder in pathlib.Path(data_directory).iterdir():
-        if item_of_folder.is_file():
+        if item_of_folder.is_file() and item_of_folder.name[-3:] == 'txt':
             print(item_of_folder)
             parameter1 = float(item_of_folder.name.split("_")[-2])
             parameter2 = int(item_of_folder.name.split("_")[-1].split(".")[0])
@@ -52,6 +54,7 @@ def load_dataset(output_file):
 def figure(dataset, x_column, comparison_columns, columns, title, xlabel, ylabel, filename, suffix="eps", dpi=300):
     matplotlib.style.use("seaborn")
 
+    empty_dataset = False
     color_map = matplotlib.cm.get_cmap("summer")
 
     fig = plt.figure(figsize=(8, 6))
@@ -64,6 +67,9 @@ def figure(dataset, x_column, comparison_columns, columns, title, xlabel, ylabel
     for index_column, column in enumerate(columns):
         xs = dataset[[x_column]]
         ys = dataset[column]
+
+        if xs.empty:
+            empty_dataset = True
 
         color = color_map(index_column / len(columns))
         try:
@@ -91,7 +97,8 @@ def figure(dataset, x_column, comparison_columns, columns, title, xlabel, ylabel
 
     ax.legend(loc=1)
 
-    plt.savefig(filename + "." + suffix, dpi=dpi)
+    if not empty_dataset:
+        plt.savefig(filename + "." + suffix, dpi=dpi)
     plt.close()
 
 
@@ -131,14 +138,46 @@ def std_calculation(results, columns, column_name):
     results[column_name] = temp_results.apply(lambda x: np.mean(x), axis=1, raw=True)
 
 
+def sigma_and_determinant_for_models(dimension, correlation, correlation_type):
+    if correlation_type in correlation_types[0]:
+        sigma_skeleton = np.identity(dimension)
+        determinant = 1.
+    elif correlation_type in correlation_types[1]:
+        sigma_skeleton = np.identity(dimension) + correlation * np.eye(dimension, k=1) + correlation * np.eye(dimension, k=-1)
+        determinant = tridiagonal_matrix_determinant(dimension, correlation)
+    elif correlation_type in correlation_types[2]:
+        sigma_skeleton = np.identity(dimension)
+        sigma_skeleton.fill(correlation)
+        for index in range(dimension):
+            sigma_skeleton[index][index] = 1
+
+        determinant = full_correlation_matrix(dimension, correlation)
+    return sigma_skeleton, determinant
+
+
+correlation_types = ["identity", "weakly_correlated", "strongly_correlated"]
+
 if __name__ == "__main__":
-    data_directory = "normal_float/weakly"
-    output_filename = "normal_float/weakly/join_dataset.pickle"
+    correlation_type = correlation_types[2]
+    data_directory = "normal_float/strongly"
+    output_filename = data_directory + "/join_dataset.pickle"
 
     if os.path.isfile(output_filename):
         results = load_dataset(output_filename)
     else:
         results = process_base_datafiles(data_directory, output_filename)
+
+    job_dictionary = {"gaussian": {"theory": lambda sigma, alpha, determinant: Renyi_normal_distribution_ND(sigma, alpha, determinant)}}
+
+
+    def line_processing(line):
+        output = sigma_and_determinant_for_models(int(line['dimension']), line['correlation'], correlation_type)
+        prediction = job_dictionary["gaussian"]["theory"](output[0], line["alpha"], output[1])
+        print(f"{np.linalg.det(output[0])} {output[1]}")
+        return prediction
+
+
+    results["theoretical value"] = results.apply(lambda line: line_processing(line), axis=1)
 
     set_of_theoretical_values = [{"column": "theoretical value", "color": "b", "label": "Theoretical value"},
                                  {"column": "mean Renyi entropy", "color": "r", "label": r"Mean of order 95\% bars", "error_column": "std Renyi entropy"}]
