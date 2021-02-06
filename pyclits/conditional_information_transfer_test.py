@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 
 import argparse
+import ast
 import logging
 import pickle
 import time
@@ -151,6 +152,9 @@ if __name__ == "__main__":
     else:
         datasets = None
 
+    arbitrary_precision = ast.literal_eval(args.arbitrary_precision)
+    arbitrary_precision_decimal_numbers = args.arbitrary_precision_decimal_numbers
+
     # loop over different realizations for various epsilon
     for index_epsilon, epsilon in enumerate(epsilons):
         # create structure for results
@@ -159,8 +163,8 @@ if __name__ == "__main__":
         # loop over shuffling
         for shuffle_dataset in [True, False]:
             configuration_of_integration = {"method": args.method, "tInc": args.t_inc, "tStop": args.t_stop, "cache": True, "epsilon": epsilon,
-                                            "arbitrary_precision": args.arbitrary_precision,
-                                            "arbitrary_precision_decimal_numbers": args.arbitrary_precision_decimal_places}
+                                            "arbitrary_precision": arbitrary_precision,
+                                            "arbitrary_precision_decimal_numbers": arbitrary_precision_decimal_numbers}
 
             # prepare dataset that is been processed
             marginal_solution_1, marginal_solution_2 = prepare_dataset(args, index_epsilon=index_epsilon, datasets=datasets, shuffle_dataset=shuffle_dataset,
