@@ -16,7 +16,7 @@ plt.rc('text', usetex=True)
 plt.rc('font', family='serif')
 
 
-def figures3d_TE(dataset, selector, title, zlabel, filename, suffix, view=(70, 280), dpi=300):
+def figures3d_TE(dataset, selector, title, zlabel, filename, suffix, view=(50, -20), dpi=300):
     fig = plt.figure(figsize=(13, 8))
     ax = Axes3D(fig)
 
@@ -52,7 +52,7 @@ def figures3d_TE(dataset, selector, title, zlabel, filename, suffix, view=(70, 2
     plt.close()
 
 
-def figures2d_TE(dataset, selector, title, ylabel, filename, suffix, view=(70, 120), dpi=300):
+def figures2d_TE(dataset, selector, title, ylabel, filename, suffix, view=(40, 40), dpi=300):
     matplotlib.style.use("seaborn")
 
     color_map = matplotlib.cm.get_cmap("summer")
@@ -123,11 +123,15 @@ def figures2d_TE_errorbar(dataset, selector, error_selector, title, ylabel, file
         zs = subselection[[selector]]
         error_bar = subselection[[error_selector]]
 
+        print(error_bar)
+        error_bar["-std"] = error_bar.apply(lambda x: -x, axis=1, raw=True)
+        errors = error_bar.values[:].T
+
         trasform = lambda alpha: (alpha - min(subselected_alphas)) / (max(subselected_alphas) - min(subselected_alphas))
         color = color_map(trasform(alpha))
         row_size = 100
         try:
-            ax.errorbar(ys.values, zs.values, yerr=(error_bar.values[:], -error_bar.values[:]), color=color, linewidth=3,
+            ax.errorbar(ys.values, zs.values, yerr=errors, color=color, linewidth=3,
                         label=r'$\alpha={}$'.format(round(alpha, 3)))
         except Exception as exc:
             print(f"{exc}: Problem D=")
@@ -325,16 +329,17 @@ def load_processed_dataset(dataset, dataset_raw, new_columns_base_name="transfer
 
 
 if __name__ == "__main__":
-    processed_dataset = "transfer_entropy/pivot_dataset.bin"
-    processed_raw_dataset = "transfer_entropy/pivot_dataset_raw.bin"
+    directory = "transfer_entropy"
+    processed_dataset = directory + "/pivot_dataset.bin"
+    processed_raw_dataset = directory + "/pivot_dataset_raw.bin"
     files = glob.glob(processed_dataset)
     if len(files) == 0:
-        TE, TE_column_names, TE_raw = process_datasets("transfer_entropy/Transfer_entropy_dataset-*.bin", processed_dataset, processed_raw_dataset)
+        TE, TE_column_names, TE_raw = process_datasets(directory + "/Transfer_entropy_dataset-*.bin", processed_dataset, processed_raw_dataset)
     else:
         TE, TE_column_names, TE_raw = load_processed_dataset(processed_dataset, processed_raw_dataset)
 
-    figures2d_samples_TE(TE_raw, "0,5,10_4_0_False", r"$\large\rm{Transfer\ entropy - samples}$", "", "TE_sample_0,5,10_1_0_{}", "pdf")
-    figures2d_samples_TE(TE_raw, "0,5,10_4_0_True", r"$\large\rm{Transfer\ entropy\ shuffled - samples}$", "", "TE_sample_shuffled_0,5,10_1_0_{}", "pdf")
+    # figures2d_samples_TE(TE_raw, "0,5,10_4_0_False", r"$\large\rm{Transfer\ entropy - samples}$", "", "TE_sample_0,5,10_1_0_{}", "pdf")
+    # figures2d_samples_TE(TE_raw, "0,5,10_4_0_True", r"$\large\rm{Transfer\ entropy\ shuffled - samples}$", "", "TE_sample_shuffled_0,5,10_1_0_{}", "pdf")
 
     for item in TE_column_names:
         item_error = list(item)

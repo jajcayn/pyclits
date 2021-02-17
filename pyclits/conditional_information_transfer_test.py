@@ -2,8 +2,9 @@
 # -*- coding: utf-8 -*-
 
 import argparse
-import ast
+import datetime
 import logging
+import os
 import pickle
 import time
 from pathlib import Path
@@ -113,7 +114,7 @@ if __name__ == "__main__":
     parser.add_argument('--method', metavar='XXX', type=str, default="LSODA", help='Method of integration')
     parser.add_argument('--maximal_neighborhood', metavar='XXX', type=int, default=2, help='Maximal neighborhood')
     parser.add_argument('--arbitrary_precision', action='store_true', help='Calculates the main part in arbitrary precision')
-    parser.add_argument('--arbitrary_precision_decimal_places', metavar='XXX', type=int, default=100,
+    parser.add_argument('--arbitrary_precision_decimal_numbers', metavar='XXX', type=int, default=100,
                         help='Sets number saved in arbitrary precision arithmetic')
     parser.add_argument('--interpolate', action='store_true', help='Switch on intepolation', default=False)
     parser.add_argument('--interpolate_samples_per_unit_time', metavar='XXX', type=int, default=10, help='Number of samples generated per unit time')
@@ -126,7 +127,7 @@ if __name__ == "__main__":
         epsilons = args.epsilon
     else:
         epsilons = [0.01, 0.02, 0.03, 0.04, 0.05, 0.06, 0.07, 0.08, 0.09, 0.1, 0.11, 0.12, 0.13]
-    print(f"Calculated epsilons: {epsilons}")
+
 
     if args.history_first:
         histories_firsts = process_CLI_arguments(args.history_first)
@@ -146,14 +147,16 @@ if __name__ == "__main__":
     # create alphas that are been calculated
     alphas = np.round(np.linspace(0.1, 1.9, 37, endpoint=True), 3)
 
+    arbitrary_precision = args.arbitrary_precision
+    arbitrary_precision_decimal_numbers = args.arbitrary_precision_decimal_numbers
+
     # load static dataset
     if args.dataset:
         datasets, epsilons = load_static_dataset(args)
     else:
         datasets = None
 
-    arbitrary_precision = ast.literal_eval(args.arbitrary_precision)
-    arbitrary_precision_decimal_numbers = args.arbitrary_precision_decimal_numbers
+    print(f"PID:{os.getpid()} {datetime.datetime.now().isoformat()} Calculated epsilons: {epsilons}")
 
     # loop over different realizations for various epsilon
     for index_epsilon, epsilon in enumerate(epsilons):
@@ -174,7 +177,7 @@ if __name__ == "__main__":
                 for histories_first in histories_firsts:
                     for histories_second in histories_seconds:
                         print(
-                            f"History first: {histories_first}, future first: {future_first}, history second: {histories_second} and epsilon: {epsilon} is processed",
+                            f"PID:{os.getpid()} {datetime.datetime.now().isoformat()} History first: {histories_first}, future first: {future_first}, history second: {histories_second} and epsilon: {epsilon} is processed",
                             flush=True)
 
                         # preparation of the configuration dictionary
@@ -187,23 +190,24 @@ if __name__ == "__main__":
                         y_fut, y_hist, z_hist = preparation_dataset_for_transfer_entropy(marginal_solution_2, marginal_solution_1, **configuration)
                         t1 = time.process_time()
                         duration = t1 - t0
-                        print(f" * Preparation of datasets [s]: {duration}", flush=True)
+                        print(f"PID:{os.getpid()} {datetime.datetime.now().isoformat()} * Preparation of datasets [s]: {duration}", flush=True)
 
                         # create range of indices that will be used for calculation
                         indices_to_use = list(range(1, args.maximal_neighborhood + 1))
                         configuration = {"transpose": True, "axis_to_join": 0, "method": "LeonenkoProzanto", "alphas": alphas,
-                                         "enhanced_calculation": True, "indices_to_use": indices_to_use, "arbitrary_precision": args.arbitrary_precision,
-                                         "arbitrary_precision_decimal_numbers": args.arbitrary_precision_decimal_places}
+                                         "enhanced_calculation": True, "indices_to_use": indices_to_use, "arbitrary_precision": arbitrary_precision,
+                                         "arbitrary_precision_decimal_numbers": arbitrary_precision_decimal_numbers}
 
                         # calculation of transfer entropy
                         print(
-                            f" * Transfer entropy for history first: {histories_first}, future first: {future_first}, history second: {histories_second} and epsilon: {epsilon} shuffling; {shuffle_dataset} is calculated",
+                            f"PID:{os.getpid()} {datetime.datetime.now().isoformat()} * Transfer entropy for history first: {histories_first}, future first: {future_first}, history second: {histories_second} and epsilon: {epsilon} shuffling; {shuffle_dataset} is calculated",
                             flush=True)
                         t0 = time.process_time()
                         transfer_entropy = renyi_conditional_information_transfer(y_fut, y_hist, z_hist, **configuration)
                         t1 = time.process_time()
                         duration = t1 - t0
-                        print(f" * Duration of calculation of transfer entropy [s]: {duration}", flush=True)
+                        print(f"PID:{os.getpid()} {datetime.datetime.now().isoformat()} * Duration of calculation of transfer entropy [s]: {duration}",
+                              flush=True)
                         # print(f" * Transfer Renyi entropy with {history} {epsilon}: {transfer_entropy}", flush=True)
 
                         # store transfer entropy to the result structure
@@ -212,12 +216,12 @@ if __name__ == "__main__":
                         string_histories_second = ",".join(str(x) for x in histories_second)
                         results[(epsilon, f"{string_histories_first}_{string_future_first}", string_histories_second, shuffle_dataset)] = transfer_entropy
                         print(
-                            f" * Transfer entropy calculation for history first: {histories_first}, future first: {future_first}, history second: {histories_second} and epsilon: {epsilon}, shuffling; {shuffle_dataset} is finished",
+                            f"PID:{os.getpid()} {datetime.datetime.now().isoformat()} * Transfer entropy calculation for history first: {histories_first}, future first: {future_first}, history second: {histories_second} and epsilon: {epsilon}, shuffling; {shuffle_dataset} is finished",
                             flush=True)
 
         # save result structure to the file
         path = Path(f"transfer_entropy/Transfer_entropy_dataset-{epsilon}.bin")
-        print(f"Save to file {path}", flush=True)
+        print(f"PID:{os.getpid()} {datetime.datetime.now().isoformat()} Save to file {path}", flush=True)
         path.parent.mkdir(parents=True, exist_ok=True)
         with open(path, "wb") as fb:
             pickle.dump(results, fb)
