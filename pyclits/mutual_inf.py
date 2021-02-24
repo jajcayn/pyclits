@@ -10,6 +10,7 @@ last update on Sep 22, 2017
 """
 
 import collections
+import datetime
 import logging
 import os
 import time
@@ -605,7 +606,7 @@ def graph_calculation_preparation(data, **kwargs):
     else:
         metric = "euclidean"
 
-    print(f"PID:{os.getpid()} * shape of data which will be used to construct tree: {data.shape}", flush=True)
+    print(f"PID:{os.getpid()} {datetime.datetime.now().isoformat()} * shape of data which will be used to construct tree: {data.shape}", flush=True)
     tree_x = KDTree(data, leaf_size=leaf_size, metric=metric)
 
     return tree_x
@@ -700,7 +701,7 @@ def renyi_entropy_LeonenkoProzanto(dataset_x: np.matrix, **kwargs):
     duration = t1 - t0
     del kdtree
 
-    print(f"PID:{os.getpid()} * * Calculation of distances [s]: {duration}", flush=True)
+    print(f"PID:{os.getpid()} {datetime.datetime.now().isoformat()} * * Calculation of distances [s]: {duration}", flush=True)
 
     t0 = time.process_time()
     for alpha in alphas:
@@ -723,7 +724,7 @@ def renyi_entropy_LeonenkoProzanto(dataset_x: np.matrix, **kwargs):
 
     t1 = time.process_time()
     duration = t1 - t0
-    print(f"PID:{os.getpid()} * * Calculation of entropy [s]: {duration}", flush=True)
+    print(f"PID:{os.getpid()} {datetime.datetime.now().isoformat()} * * Calculation of entropy [s]: {duration}", flush=True)
 
     return results
 
