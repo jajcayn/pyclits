@@ -3,104 +3,21 @@
 
 import argparse
 import datetime
-import logging
 import os
 import pickle
 import time
 from pathlib import Path
 
 import numpy as np
-import scipy.interpolate
 
-import data_plugin
+from cli_helpers import process_CLI_arguments
+from data_plugin import load_static_dataset, prepare_dataset
 from mutual_inf import renyi_conditional_information_transfer
-from roessler_system import roessler_oscillator
-from sample_generator import preparation_dataset_for_transfer_entropy, shuffle_sample
-
-
-def process_CLI_arguments(arguments, separator=[",", "'", "/", "|"]):
-    processed_arguments = []
-    neu_set = []
-    for item in arguments:
-        if item in separator:
-            processed_arguments.append(neu_set)
-            neu_set = []
-        else:
-            neu_set.append(int(item))
-
-    processed_arguments.append(neu_set)
-    return processed_arguments
-
-
-def prepare_dataset(args, index_epsilon, datasets=None, shuffle_dataset=False, configuration_of_integration={}):
-    if not args.dataset:
-        # calculate Rössler coupled oscilators
-        t0 = time.process_time()
-        sol = roessler_oscillator(**configuration_of_integration)
-        t1 = time.process_time()
-        duration = t1 - t0
-        print(f"Solution duration [s]: {duration}", flush=True)
-
-        if args.interpolate:
-            number = int((args.t_stop - args.skip) * args.interpolate_samples_per_unit_time)
-
-            new_t = np.linspace(args.skip, args.t_stop, num=number, endpoint=True)
-            solution = []
-            for dimension in range(sol.y.shape[0]):
-                function = scipy.interpolate.interp1d(sol.t, sol.y[dimension], kind='cubic')
-
-                solution.append(function(new_t))
-
-            filtrated_solution = np.vstack(solution)
-        else:
-            # preparation of sources
-            if args.skip_real_t:
-                indices = np.where(sol.t >= args.skip)
-                if len(indices) > 0:
-                    filtrated_solution = sol.y[:, indices[0]:]
-                else:
-                    logging.error("Skipping is too large and no data were selected for processing")
-                    raise AssertionError("No data selected")
-            else:
-                filtrated_solution = sol.y[:, args.skip:]
-
-        print(f"Shape of solution: {filtrated_solution.shape}", flush=True)
-        joint_solution = filtrated_solution
-        marginal_solution_1 = filtrated_solution[0:3, :].T
-        marginal_solution_2 = filtrated_solution[3:6, :].T
-    else:
-        filtrated_solution = datasets[index_epsilon][1].T
-
-        print(f"Shape of solution: {filtrated_solution.shape}", flush=True)
-        joint_solution = filtrated_solution
-        marginal_solution_2 = filtrated_solution[0:1, :].T
-        marginal_solution_1 = filtrated_solution[1:2, :].T
-
-    if shuffle_dataset:
-        marginal_solution_1 = shuffle_sample(marginal_solution_1)
-
-    return marginal_solution_1, marginal_solution_2
-
-
-def load_static_dataset(args):
-    print("Load dataset", flush=True)
-    datasets = data_plugin.load_datasets()
-
-    if args.dataset_range:
-        dataset_start = int(args.dataset_range.split("-")[0])
-        dataset_end = int(args.dataset_range.split("-")[1])
-        datasets = datasets[dataset_start:dataset_end]
-
-    epsilons = []
-    for dataset in datasets:
-        epsilons.append(dataset[0]["eps1"])
-    print(f"Epsilons: {epsilons}", flush=True)
-
-    return datasets, epsilons
-
+from sample_generator import preparation_dataset_for_transfer_entropy
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Calculates conditional information transfer for coupled Rössler systems with strength of coupling epsilon.')
+    parser.add_argument('--directory', type=str, default="conditional_information_transfer", help='Folder to export results')
     parser.add_argument('--epsilon', metavar='XXX', type=float, nargs='+', help='Epsilons')
     parser.add_argument('--t_stop', metavar='XXX', type=float, default=10000.0, help='T stop')
     parser.add_argument('--t_inc', metavar='XXX', type=float, default=0.01, help='T increment')
@@ -220,7 +137,7 @@ if __name__ == "__main__":
                             flush=True)
 
         # save result structure to the file
-        path = Path(f"transfer_entropy/Transfer_entropy_dataset-{epsilon}.bin")
+        path = Path(f"{args.directory}/Conditional_information_transfer-{epsilon}.bin")
         print(f"PID:{os.getpid()} {datetime.datetime.now().isoformat()} Save to file {path}", flush=True)
         path.parent.mkdir(parents=True, exist_ok=True)
         with open(path, "wb") as fb:
