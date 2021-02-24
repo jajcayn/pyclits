@@ -61,6 +61,8 @@ if __name__ == "__main__":
     else:
         histories_seconds = range(2, 25)
 
+    print(f"PID:{os.getpid()} {datetime.datetime.now().isoformat()} History parameters: {histories_firsts} {histories_seconds} {future_firsts}")
+
     # create alphas that are been calculated
     alphas = np.round(np.linspace(0.1, 1.9, 37, endpoint=True), 3)
 

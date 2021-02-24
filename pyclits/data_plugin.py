@@ -75,7 +75,7 @@ def prepare_dataset(args, index_epsilon, datasets=None, shuffle_dataset=False, c
         sol = roessler_oscillator(**configuration_of_integration)
         t1 = time.process_time()
         duration = t1 - t0
-        print(f"Solution duration [s]: {duration}", flush=True)
+        print(f"PID:{os.getpid()} {datetime.datetime.now().isoformat()} Solution duration [s]: {duration}", flush=True)
 
         if args.interpolate:
             number = int((args.t_stop - args.skip) * args.interpolate_samples_per_unit_time)
@@ -100,14 +100,14 @@ def prepare_dataset(args, index_epsilon, datasets=None, shuffle_dataset=False, c
             else:
                 filtrated_solution = sol.y[:, args.skip:]
 
-        print(f"Shape of solution: {filtrated_solution.shape}", flush=True)
+        print(f"PID:{os.getpid()} {datetime.datetime.now().isoformat()} Shape of solution: {filtrated_solution.shape}", flush=True)
         joint_solution = filtrated_solution
         marginal_solution_1 = filtrated_solution[0:3, :].T
         marginal_solution_2 = filtrated_solution[3:6, :].T
     else:
         filtrated_solution = datasets[index_epsilon][1].T
 
-        print(f"Shape of solution: {filtrated_solution.shape}", flush=True)
+        print(f"PID:{os.getpid()} {datetime.datetime.now().isoformat()} Shape of solution: {filtrated_solution.shape}", flush=True)
         joint_solution = filtrated_solution
         marginal_solution_2 = filtrated_solution[0:1, :].T
         marginal_solution_1 = filtrated_solution[1:2, :].T
@@ -130,7 +130,7 @@ def load_static_dataset(args):
     epsilons = []
     for dataset in datasets:
         epsilons.append(dataset[0]["eps1"])
-    print(f"Epsilons: {epsilons}", flush=True)
+    print(f"PID:{os.getpid()} {datetime.datetime.now().isoformat()} Epsilons: {epsilons}", flush=True)
 
     return datasets, epsilons
 
