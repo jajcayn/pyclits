@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 
 import glob
+from collections import Counter
 from pathlib import Path
 
 import matplotlib
@@ -52,7 +53,7 @@ def figures3d_TE(dataset, selector, title, zlabel, filename, suffix, view=(50, -
     plt.close()
 
 
-def figures2d_TE(dataset, selector, title, ylabel, filename, suffix, view=(40, 40), dpi=300):
+def figures2d_TE(dataset, selector, title, ylabel, filename, suffix, dpi=300):
     matplotlib.style.use("seaborn")
 
     color_map = matplotlib.cm.get_cmap("summer")
@@ -121,20 +122,21 @@ def figures2d_TE_errorbar(dataset, selector, error_selector, title, ylabel, file
         subselection = dataset.loc[dataset["alpha"] == alpha]
         ys = subselection[['epsilon']]
         zs = subselection[[selector]]
-        error_bar = subselection[[error_selector]]
+        error_bar = subselection[[error_selector]].copy()
 
-        print(error_bar)
-        error_bar["-std"] = error_bar.apply(lambda x: -x, axis=1, raw=True)
-        errors = error_bar.values[:].T
+        error_selector_negative_std = list(error_selector)
+        error_selector_negative_std[1] = "-std"
+        # error_bar[tuple(error_selector_negative_std)] = error_bar.apply(lambda x: -x, axis=1, raw=True)
+        errors = error_bar.copy().T.to_numpy()
 
         trasform = lambda alpha: (alpha - min(subselected_alphas)) / (max(subselected_alphas) - min(subselected_alphas))
         color = color_map(trasform(alpha))
         row_size = 100
         try:
-            ax.errorbar(ys.values, zs.values, yerr=errors, color=color, linewidth=3,
+            ax.errorbar(ys.values.flatten(), zs.values.flatten(), yerr=errors.flatten(), color=color, linewidth=3,
                         label=r'$\alpha={}$'.format(round(alpha, 3)))
         except Exception as exc:
-            print(f"{exc}: Problem D=")
+            print(f"{exc}: {errors.shape}")
 
     # Add a color bar which maps values to colors.
     # fig.colorbar(surf, shrink=0.5, aspect=5)
@@ -165,6 +167,7 @@ def process_datasets(processed_datasets, result_dataset, result_raw_dataset, new
         old_columns = frame.columns
 
         for item in old_columns[:-1]:
+            reversed_order = item[4]
             mean_column_name = f"{new_columns_base_name}_{item[1]}_{item[2]}"
             std_column_name = f"{new_columns_base_name}_{item[1]}_{item[2]}"
 
@@ -176,16 +179,16 @@ def process_datasets(processed_datasets, result_dataset, result_raw_dataset, new
             # add mean of entropy
             calculation = frame.apply(lambda row: float(np.mean(row[item])), axis=1, raw=True)
             if bool_column == 3:
-                frame[mean_column_name, "mean", "", item[bool_column]] = calculation
+                frame[mean_column_name, "mean", "", item[bool_column], reversed_order] = calculation
             else:
-                frame[mean_column_name, "mean", "", "", item[bool_column]] = calculation
+                frame[mean_column_name, "mean", "", "", item[bool_column], reversed_order] = calculation
 
             # add std of entropy
             calculation = frame.apply(lambda row: float(np.std(row[item])), axis=1, raw=True)
             if bool_column == 3:
-                frame[std_column_name, "std", "", item[bool_column]] = calculation
+                frame[std_column_name, "std", "", item[bool_column], reversed_order] = calculation
             else:
-                frame[mean_column_name, "mean", "", "", item[bool_column]] = calculation
+                frame[mean_column_name, "mean", "", "", item[bool_column], reversed_order] = calculation
 
         # effective transfer entropy
         for item in [item for item in frame.columns.tolist() if item[bool_column] is False and "entropy" not in str(item[0])]:
@@ -193,16 +196,18 @@ def process_datasets(processed_datasets, result_dataset, result_raw_dataset, new
             std_column_name = f"effective_{new_columns_base_name}_{item[1]}_{item[2]}"
 
             if bool_column == 3:
-                frame[mean_column_name, "mean", "", ""] = frame.apply(lambda row: float(np.mean(row[item]) - np.mean(row[item[0], item[1], item[2], True])),
-                                                                      axis=1,
-                                                                      raw=True)
-                frame[mean_column_name, "std", "", ""] = frame.apply(lambda row: float(np.std(row[item]) + np.std(row[item[0], item[1], item[2], True])),
-                                                                     axis=1,
-                                                                     raw=True)
+                frame[mean_column_name, "mean", "", False, item[4]] = frame.apply(
+                    lambda row: float(np.mean(row[item]) - np.mean(row[item[0], item[1], item[2], True, item[4]])),
+                    axis=1,
+                    raw=True)
+                frame[mean_column_name, "std", "", False, item[4]] = frame.apply(
+                    lambda row: float(np.std(row[item]) + np.std(row[item[0], item[1], item[2], True, item[4]])),
+                    axis=1,
+                    raw=True)
             else:
-                frame[mean_column_name, "mean", "", "", ""] = frame.apply(
+                frame[mean_column_name, "mean", "", False, item[4]] = frame.apply(
                     lambda row: float(np.mean(row[item]) - np.mean(row[item[0], item[1], item[2], item[3], True])), axis=1, raw=True)
-                frame[mean_column_name, "std", "", "", ""] = frame.apply(
+                frame[mean_column_name, "std", "", False, item[4]] = frame.apply(
                     lambda row: float(np.std(row[item]) + np.std(row[item[0], item[1], item[2], item[3], True])),
                     axis=1, raw=True)
 
@@ -211,7 +216,7 @@ def process_datasets(processed_datasets, result_dataset, result_raw_dataset, new
 
         # print(frame.columns.tolist())
         column = [("alpha", "", "") if "index" == item[0] else item for item in frame.columns.tolist()]
-        new_columns = pd.MultiIndex.from_tuples([("alpha", "", "", "") if "index" == item[0] else item for item in frame.columns])
+        new_columns = pd.MultiIndex.from_tuples([("alpha", "", "", "", "") if "index" == item[0] else item for item in frame.columns])
         frame.columns = new_columns
 
         # give names to the columns
@@ -329,12 +334,15 @@ def load_processed_dataset(dataset, dataset_raw, new_columns_base_name="transfer
 
 
 if __name__ == "__main__":
-    directory = "transfer_entropy"
+    directory = "conditional_information_transfer"
+    counting_letters = Counter(directory)
     processed_dataset = directory + "/pivot_dataset.bin"
     processed_raw_dataset = directory + "/pivot_dataset_raw.bin"
     files = glob.glob(processed_dataset)
     if len(files) == 0:
-        TE, TE_column_names, TE_raw = process_datasets(directory + "/Transfer_entropy_dataset-*.bin", processed_dataset, processed_raw_dataset)
+        TE, TE_column_names, TE_raw = process_datasets(processed_datasets=directory + "/Conditional_information_transfer-*.bin",
+                                                       result_dataset=processed_dataset, result_raw_dataset=processed_raw_dataset,
+                                                       new_columns_base_name=directory)
     else:
         TE, TE_column_names, TE_raw = load_processed_dataset(processed_dataset, processed_raw_dataset)
 
@@ -342,20 +350,40 @@ if __name__ == "__main__":
     # figures2d_samples_TE(TE_raw, "0,5,10_4_0_True", r"$\large\rm{Transfer\ entropy\ shuffled - samples}$", "", "TE_sample_shuffled_0,5,10_1_0_{}", "pdf")
 
     for item in TE_column_names:
-        item_error = list(item)
-        item_error[1] = "std"
-        if "effective" in item[0]:
-            m = item[0].split("_")[3]
-            l = item[0].split("_")[4]
-        else:
-            m = item[0].split("_")[2]
-            l = item[0].split("_")[3]
+        try:
+            item_error = list(item)
+            column_name = item[0]
+            shuffled_calculation = item[3]
+            reversed_direction_of_dependence = item_error[4]
+            item_error[1] = "std"
 
-        label = "$T^{}_{} ({},{})$".format("{(R, eff)}" if "effective" in item[0] else "{(R)}",
-                                           r"{\alpha: Y_{shuffled}\rightarrow X}" if item[3] else r"{\alpha: Y\rightarrow X}", m, l)
-        figures2d_TE(TE, item, r"$\large\rm{Transfer\ entropy}$", label, item[0] + ("_shuffled" if item[3] else "") + "_2d", "pdf")
-        figures2d_TE_errorbar(TE, item, tuple(item_error), r"$\large\rm{Transfer\ entropy}$", label, item[0] + ("_shuffled" if item[3] else "") + "_2d_bars",
-                              "pdf")
-        figures3d_TE(TE, item, r"$\large\rm{Transfer\ entropy}$", label, item[0] + ("_shuffled" if item[3] else ""), "pdf")
+            if "effective" in item[0]:
+                m = column_name.split("_")[counting_letters['_'] + 1]
+                l = column_name.split("_")[counting_letters['_'] + 2]
+            else:
+                m = column_name.split("_")[counting_letters['_'] + 1]
+                l = column_name.split("_")[counting_letters['_'] + 2]
 
-        figures2d_TE(TE, tuple(item_error), r"$\large\rm{Transfer\ entropy - std}$", label, item[0] + ("_shuffled" if item[3] else "") + "_2d_std", "pdf")
+            title_graph = {"transfer_entropy": r"$\Large\rm{Transfer\ entropy}$",
+                           "conditional_information_transfer": r"$\Large\rm{Conditional\ information\ transfer}$"}
+            filename_direction = {True: "X->Y", False: "Y->X"}
+            title_map = {(False, False): r"{\alpha: Y\rightarrow X}", (True, False): r"{\alpha: Y_{shuffled}\rightarrow X}",
+                         (False, True): r"{\alpha: X\rightarrow Y}", (True, True): r"{\alpha: X_{shuffled}\rightarrow Y}"}
+
+            label = "$T^{}_{} ({},{})$".format("{(R, eff)}" if "effective" in column_name else "{(R)}",
+                                               title_map[(shuffled_calculation, reversed_direction_of_dependence)], m, l)
+            figures2d_TE_errorbar(TE, item, tuple(item_error), title_graph[directory], label,
+                                  column_name + "_" + filename_direction[reversed_direction_of_dependence] + (
+                                      "_shuffled" if shuffled_calculation else "") + "_2d_bars", "pdf")
+            figures2d_TE(TE, item, title_graph[directory], label,
+                         column_name + "_" + filename_direction[reversed_direction_of_dependence] + ("_shuffled" if shuffled_calculation else "") + "_2d",
+                         "pdf")
+            figures3d_TE(TE, item, title_graph[directory], label,
+                         column_name + "_" + filename_direction[reversed_direction_of_dependence] + ("_shuffled" if shuffled_calculation else ""), "pdf")
+            figures2d_TE(TE, tuple(item_error), title_graph[directory] + r"$\large\rm{\ -\ std}$", label,
+                         column_name + "_" + filename_direction[reversed_direction_of_dependence] + ("_shuffled" if shuffled_calculation else "") + "_2d_std",
+                         "pdf")
+        except Exception as exc:
+            print(f"{exc} {item}")
+
+    print("Finished")

@@ -58,17 +58,18 @@ def figures3d(dataset, dimensions, title, zlabel, zaxis_selector, row_sizes, fil
 
 if __name__ == "__main__":
     list_of_tables = []
-    for root, dirs, files in os.walk("."):
+    for root, dirs, files in os.walk("transfer_entropy"):
         for filename in files:
             if "statistics" in filename and "complete" not in filename:
                 print(filename)
-                colnames = ['alpha', 'sample size', 'sigma', 'mean Renyi entropy', 'std Renyi entropy', 'mean computer time', 'std computer time', 'mean difference', 'std of difference']
+                colnames = ['alpha', 'sample size', 'sigma', 'mean Renyi entropy', 'std Renyi entropy', 'mean computer time', 'std computer time',
+                            'mean difference', 'std of difference']
                 table = pd.read_csv(filepath_or_buffer=filename, sep=" ", names=colnames, header=None)
                 number = int(filename.split("_")[1].split(".")[0])
                 table["dimension"] = number
                 list_of_tables.append(table)
-                #print(table)
-                #print(table.reindex(columns=['alpha', 'sample size', 'sigma', 'dimension']))
+                # print(table)
+                # print(table.reindex(columns=['alpha', 'sample size', 'sigma', 'dimension']))
 
     complete_table = pd.concat(list_of_tables, join="inner")
     complete_table_indexed = complete_table.set_index(['dimension', 'sigma', 'alpha', 'sample size'])
