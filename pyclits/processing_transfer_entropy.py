@@ -188,10 +188,12 @@ def process_datasets(processed_datasets, result_dataset, result_raw_dataset, new
             if bool_column == 3:
                 frame[std_column_name, "std", "", item[bool_column], reversed_order] = calculation
             else:
-                frame[mean_column_name, "mean", "", "", item[bool_column], reversed_order] = calculation
+                frame[mean_column_name, "std", "", "", item[bool_column], reversed_order] = calculation
 
         # effective transfer entropy
-        for item in [item for item in frame.columns.tolist() if item[bool_column] is False and "entropy" not in str(item[0])]:
+        column_to_use = [item for item in frame.columns.tolist() if
+                         item[bool_column] is False and not ("entropy" in str(item[0]) or "information" in str(item[0]))]
+        for item in column_to_use:
             mean_column_name = f"effective_{new_columns_base_name}_{item[1]}_{item[2]}"
             std_column_name = f"effective_{new_columns_base_name}_{item[1]}_{item[2]}"
 
@@ -200,14 +202,14 @@ def process_datasets(processed_datasets, result_dataset, result_raw_dataset, new
                     lambda row: float(np.mean(row[item]) - np.mean(row[item[0], item[1], item[2], True, item[4]])),
                     axis=1,
                     raw=True)
-                frame[mean_column_name, "std", "", False, item[4]] = frame.apply(
+                frame[std_column_name, "std", "", False, item[4]] = frame.apply(
                     lambda row: float(np.std(row[item]) + np.std(row[item[0], item[1], item[2], True, item[4]])),
                     axis=1,
                     raw=True)
             else:
                 frame[mean_column_name, "mean", "", False, item[4]] = frame.apply(
                     lambda row: float(np.mean(row[item]) - np.mean(row[item[0], item[1], item[2], item[3], True])), axis=1, raw=True)
-                frame[mean_column_name, "std", "", False, item[4]] = frame.apply(
+                frame[std_column_name, "std", "", False, item[4]] = frame.apply(
                     lambda row: float(np.std(row[item]) + np.std(row[item[0], item[1], item[2], item[3], True])),
                     axis=1, raw=True)
 
@@ -358,8 +360,8 @@ if __name__ == "__main__":
             item_error[1] = "std"
 
             if "effective" in item[0]:
-                m = column_name.split("_")[counting_letters['_'] + 1]
-                l = column_name.split("_")[counting_letters['_'] + 2]
+                m = column_name.split("_")[counting_letters['_'] + 2]
+                l = column_name.split("_")[counting_letters['_'] + 3]
             else:
                 m = column_name.split("_")[counting_letters['_'] + 1]
                 l = column_name.split("_")[counting_letters['_'] + 2]
@@ -372,6 +374,7 @@ if __name__ == "__main__":
 
             label = "$T^{}_{} ({},{})$".format("{(R, eff)}" if "effective" in column_name else "{(R)}",
                                                title_map[(shuffled_calculation, reversed_direction_of_dependence)], m, l)
+            print(column_name, label)
             figures2d_TE_errorbar(TE, item, tuple(item_error), title_graph[directory], label,
                                   column_name + "_" + filename_direction[reversed_direction_of_dependence] + (
                                       "_shuffled" if shuffled_calculation else "") + "_2d_bars", "pdf")
