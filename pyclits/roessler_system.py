@@ -3,11 +3,18 @@
 
 import os.path
 import pickle
+from argparse import Namespace
 from pathlib import Path
 
+import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
 from scipy.integrate import solve_ivp
+
+matplotlib.rcParams['text.usetex'] = True
+
+plt.rc('text', usetex=True)
+plt.rc('font', family='serif')
 
 
 def right_side(y, t, params=[0, 0, 0, 0, 0, 0, 0, 0]):
@@ -192,11 +199,45 @@ def visualization(sol, **kwargs):
     plt.show()
 
 
+def roessler_plot(dataset, title, filename, suffix, dpi=300):
+    fig = plt.figure(figsize=(13, 8))
+    ax = fig.add_subplot(1, 1, 1)
+
+    markers = ['b', '^']
+
+    ax.set_title(title)
+    ax.set_xlabel(r"$X$")
+    ax.set_ylabel(r"$Y$")
+
+    ys = dataset[:, 0]
+    zs = dataset[:, 1]
+
+    try:
+        ax.plot(ys, zs, linewidth=1)
+    except Exception as exc:
+        print(f"{exc}")
+
+    plt.savefig(filename + "." + suffix, dpi=dpi)
+    plt.close()
+
+
 if __name__ == "__main__":
-    sol = roessler_oscillator()
+    dataset = True
+    if (dataset):
+        from data_plugin import load_static_dataset
 
-    print(sol)
-    # print(sol.y)
-    print(sol.y.shape)
+        args = Namespace(dataset_range="0-100")
+        datasets, epsilons = load_static_dataset(args)
 
-    visualization(sol)
+        for dataset_item in datasets:
+            metadata = dataset_item[0]
+            dataset = dataset_item[1]
+            roessler_plot(dataset, r"$\Large\rm{Evolution\ of\ the\ Roessler\ system }$", "roessler-" + str(metadata["eps1"]), "pdf")
+    else:
+        sol = roessler_oscillator()
+
+        print(sol)
+        # print(sol.y)
+        print(sol.y.shape)
+
+        visualization(sol)
