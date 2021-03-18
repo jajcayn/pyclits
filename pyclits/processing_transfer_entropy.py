@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 
 import glob
+import sys
 from collections import Counter
 from pathlib import Path
 
@@ -249,7 +250,13 @@ def process_datasets(processed_datasets, result_dataset, result_raw_dataset, new
 
     # join the table
     join_table = pd.concat(frames, ignore_index=True)
-    join_table_raw = pd.concat(frames_raw, ignore_index=True)
+    try:
+        join_table_raw = pd.concat(frames_raw, ignore_index=True)
+    except:
+        print("Problem with columns")
+        for file, frame in zip(files, frames_raw):
+            print(file, frame.columns)
+        sys.exit(1)
 
     # print(join_table)
     index_alpha = join_table.columns.tolist()
@@ -336,13 +343,13 @@ def load_processed_dataset(dataset, dataset_raw, new_columns_base_name="transfer
 
 
 if __name__ == "__main__":
-    directory = "conditional_information_transfer"
+    directory = "transfer_entropy"
     counting_letters = Counter(directory)
     processed_dataset = directory + "/pivot_dataset.bin"
     processed_raw_dataset = directory + "/pivot_dataset_raw.bin"
     files = glob.glob(processed_dataset)
     if len(files) == 0:
-        TE, TE_column_names, TE_raw = process_datasets(processed_datasets=directory + "/Conditional_information_transfer-*.bin",
+        TE, TE_column_names, TE_raw = process_datasets(processed_datasets=directory + "/Transfer_entropy_*.bin",
                                                        result_dataset=processed_dataset, result_raw_dataset=processed_raw_dataset,
                                                        new_columns_base_name=directory)
     else:

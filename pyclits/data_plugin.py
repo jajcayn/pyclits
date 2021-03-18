@@ -111,12 +111,11 @@ def prepare_dataset(args, index_epsilon, datasets=None, swap_datasets=False, shu
         filtrated_solution = datasets[index_epsilon][1].T
 
         print(f"PID:{os.getpid()} {datetime.datetime.now().isoformat()} Shape of solution: {filtrated_solution.shape}", flush=True)
-        if swap_datasets:
-            marginal_solution_1 = filtrated_solution[0:1, :].T
-            marginal_solution_2 = filtrated_solution[1:2, :].T
-        else:
-            marginal_solution_2 = filtrated_solution[0:1, :].T
-            marginal_solution_1 = filtrated_solution[1:2, :].T
+        marginal_solution_1 = filtrated_solution[0:1, :].T
+        marginal_solution_2 = filtrated_solution[1:2, :].T
+
+    if swap_datasets:
+        marginal_solution_1, marginal_solution_2 = (marginal_solution_2, marginal_solution_1)
 
     if shuffle_dataset:
         marginal_solution_1 = shuffle_sample(marginal_solution_1)
