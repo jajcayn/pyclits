@@ -101,8 +101,12 @@ def prepare_dataset(args, index_epsilon, datasets=None, swap_datasets=False, shu
                 filtrated_solution = sol.y[:, args.skip:]
 
         print(f"PID:{os.getpid()} {datetime.datetime.now().isoformat()} Shape of solution: {filtrated_solution.shape}", flush=True)
-        marginal_solution_1 = filtrated_solution[0:3, :].T
-        marginal_solution_2 = filtrated_solution[3:6, :].T
+        if args.full_system:
+            marginal_solution_1 = filtrated_solution[0:3, :].T
+            marginal_solution_2 = filtrated_solution[3:6, :].T
+        else:
+            marginal_solution_1 = filtrated_solution[0:1, :].T
+            marginal_solution_2 = filtrated_solution[3:4, :].T
     else:
         filtrated_solution = datasets[index_epsilon][1].T
 

@@ -105,6 +105,8 @@ def preparation_dataset_for_transfer_entropy(marginal_solution_1, marginal_solut
     if "future_index_x" in kwargs:
         future_index_x = kwargs["future_index_x"]
         time_shift_between_X_Y = max(future_index_x)
+    else:
+        future_index_x = [0]
 
     if "transpose" in kwargs and kwargs["transpose"]:
         marginal_solution_1 = marginal_solution_1.T

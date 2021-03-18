@@ -25,8 +25,9 @@ if __name__ == "__main__":
     parser.add_argument('--skip', metavar='XXX', type=int, default=2000, help='Skipped results of integration')
     parser.add_argument('--blockwise', metavar='XXX', type=int, default=0, help='Blockwise calculation of distances to prevent excessive memory usage')
     parser.add_argument('--skip_real_t', action='store_true', help='Indicates skip in time')
-    parser.add_argument('--history_first', metavar='XXX', type=int, nargs='+', help='History to take into account')
-    parser.add_argument('--history_second', metavar='XXX', type=int, nargs='+', help='History to take into account')
+    parser.add_argument('--full_system', action='store_true', help='Switches full 6D system and 2D system')
+    parser.add_argument('--history_first', metavar='XXX', type=str, nargs='+', help='History to take into account')
+    parser.add_argument('--history_second', metavar='XXX', type=str, nargs='+', help='History to take into account')
     parser.add_argument('--method', metavar='XXX', type=str, default="LSODA", help='Method of integration')
     parser.add_argument('--maximal_neighborhood', metavar='XXX', type=int, default=2, help='Maximal neighborhood')
     parser.add_argument('--arbitrary_precision', action='store_true', help='Calculates the main part in arbitrary precision')
@@ -68,67 +69,76 @@ if __name__ == "__main__":
 
     # loop over different realizations for various epsilon
     for index_epsilon, epsilon in enumerate(epsilons):
-        configuration = {"method": args.method, "tInc": args.t_inc, "tStop": args.t_stop, "cache": True, "epsilon": epsilon,
-                         "arbitrary_precision": arbitrary_precision, "arbitrary_precision_decimal_numbers": arbitrary_precision_decimal_numbers}
-
         # create structure for results
         results = {}
 
-        # loop over shuffling
-        for shuffle_dataset in [True, False]:
-            # prepare dataset that is been processed
-            marginal_solution_1, marginal_solution_2 = prepare_dataset(args, index_epsilon=index_epsilon, datasets=datasets, shuffle_dataset=shuffle_dataset,
-                                                                       configuration=configuration)
+        for swap_datasets in [False, True]:
 
-            # create alphas that are been calculated
-            alphas = np.round(np.linspace(0.1, 1.9, 54), 3)
+            # loop over shuffling
+            for shuffle_dataset in [True, False]:
+                configuration = {"method": args.method, "tInc": args.t_inc, "tStop": args.t_stop, "cache": True, "epsilon": epsilon,
+                                 "arbitrary_precision": arbitrary_precision, "arbitrary_precision_decimal_numbers": arbitrary_precision_decimal_numbers,
+                                 "full_system": args.full_system}
 
-            # looping history of X timeserie
-            for history_first in histories_firsts:
+                # prepare dataset that is been processed
+                marginal_solution_1, marginal_solution_2 = prepare_dataset(args, index_epsilon=index_epsilon, datasets=datasets, swap_datasets=swap_datasets,
+                                                                           shuffle_dataset=shuffle_dataset,
+                                                                           configuration_of_integration=configuration)
 
-                # looping history of Y timeserie
-                for history_second in histories_seconds:
-                    print(
-                        f"PID:{os.getpid()} {datetime.datetime.now().isoformat()} History first: {history_first}, history second: {history_second} and epsilon: {epsilon} is processed",
-                        flush=True)
+                # create alphas that are been calculated
+                alphas = np.round(np.linspace(0.1, 1.9, 54), 3)
 
-                    # preparation of the configuration dictionary
-                    # additional +1 is there for separation
-                    configuration = {"transpose": True, "history_x": history_first, "history_y": history_second, "blockwise": args.blockwise}
+                # looping history of X timeserie
+                for history_first in histories_firsts:
 
-                    # prepare samples to be used to calculate transfer entropy
-                    t0 = time.process_time()
-                    y, y_hist, z = preparation_dataset_for_transfer_entropy(marginal_solution_2, marginal_solution_1, **configuration)
-                    t1 = time.process_time()
-                    duration = t1 - t0
-                    print(f"PID:{os.getpid()} {datetime.datetime.now().isoformat()} * Preparation of datasets [s]: {duration}", flush=True)
+                    # looping history of Y timeserie
+                    for history_second in histories_seconds:
+                        print(
+                            f"PID:{os.getpid()} {datetime.datetime.now().isoformat()} History first: {history_first}, history second: {history_second} and epsilon: {epsilon} is processed",
+                            flush=True)
 
-                    # create range of indices that will be used for calculation
-                    indices_to_use = list(range(1, args.maximal_neighborhood + 1))
-                    configuration = {"transpose": True, "axis_to_join": 0, "method": "LeonenkoProzanto", "alphas": alphas,
-                                     "enhanced_calculation": True, "indices_to_use": indices_to_use, "arbitrary_precision": args.arbitrary_precision,
-                                     "arbitrary_precision_decimal_numbers": args.arbitrary_precision_decimal_places}
+                        # preparation of the configuration dictionary
+                        # additional +1 is there for separation
+                        configuration = {"transpose": True, "blockwise": args.blockwise, "history_index_x": history_first, "history_index_y": history_second}
 
-                    # calculation of transfer entropy
-                    print(
-                        f"PID:{os.getpid()} {datetime.datetime.now().isoformat()} * Transfer entropy for history first: {history_first}, history second: {history_second} and epsilon: {epsilon} shuffling; {shuffle_dataset} is calculated",
-                        flush=True)
-                    t0 = time.process_time()
-                    transfer_entropy = renyi_transfer_entropy(y, y_hist, z, **configuration)
-                    t1 = time.process_time()
-                    duration = t1 - t0
-                    print(f"PID:{os.getpid()} {datetime.datetime.now().isoformat()} * Duration of calculation of transfer entropy [s]: {duration}", flush=True)
-                    # print(f" * Transfer Renyi entropy with {history} {epsilon}: {transfer_entropy}", flush=True)
+                        # prepare samples to be used to calculate transfer entropy
+                        t0 = time.process_time()
+                        y, y_hist, z = preparation_dataset_for_transfer_entropy(marginal_solution_2, marginal_solution_1, **configuration)
+                        t1 = time.process_time()
+                        duration = t1 - t0
+                        print(f"PID:{os.getpid()} {datetime.datetime.now().isoformat()} * Preparation of datasets [s]: {duration}", flush=True)
 
-                    # store transfer entropy to the result structure
-                    results[(epsilon, history_first, history_second, shuffle_dataset)] = transfer_entropy
-                    print(
-                        f"PID:{os.getpid()} {datetime.datetime.now().isoformat()} * Transfer entropy calculation for history first: {history_first}, history second: {history_second} and epsilon: {epsilon}, shuffling; {shuffle_dataset} is finished",
-                        flush=True)
+                        # create range of indices that will be used for calculation
+                        indices_to_use = list(range(1, args.maximal_neighborhood + 1))
+                        configuration = {"transpose": True, "axis_to_join": 0, "method": "LeonenkoProzanto", "alphas": alphas,
+                                         "enhanced_calculation": True, "indices_to_use": indices_to_use, "arbitrary_precision": args.arbitrary_precision,
+                                         "arbitrary_precision_decimal_numbers": arbitrary_precision_decimal_numbers}
 
-        # save result structure to the file
-        path = Path(f"{args.directory}/Transfer_entropy_dataset-{epsilon}.bin")
-        print(f"PID:{os.getpid()} {datetime.datetime.now().isoformat()} Save to file {path}", flush=True)
-        path.parent.mkdir(parents=True, exist_ok=True)
-        with open(path, "wb") as fb:
-            pickle.dump(results, fb)
+                        # calculation of transfer entropy
+                        print(
+                            f"PID:{os.getpid()} {datetime.datetime.now().isoformat()} * Transfer entropy for history first: {history_first}, history second: {history_second} and epsilon: {epsilon} shuffling; {shuffle_dataset} is calculated",
+                            flush=True)
+                        t0 = time.process_time()
+                        transfer_entropy = renyi_transfer_entropy(y, y_hist, z, **configuration)
+                        t1 = time.process_time()
+                        duration = t1 - t0
+                        print(f"PID:{os.getpid()} {datetime.datetime.now().isoformat()} * Duration of calculation of transfer entropy [s]: {duration}",
+                              flush=True)
+                        # print(f" * Transfer Renyi entropy with {history} {epsilon}: {transfer_entropy}", flush=True)
+
+                        # store transfer entropy to the result structure
+                        string_histories_first = ",".join(str(x) for x in history_first)
+                        string_histories_second = ",".join(str(x) for x in history_second)
+
+                        # store transfer entropy to the result structure
+                        results[(epsilon, f"{string_histories_first}", string_histories_second, shuffle_dataset, swap_datasets)] = transfer_entropy
+                        print(
+                            f"PID:{os.getpid()} {datetime.datetime.now().isoformat()} * Transfer entropy calculation for history first: {history_first}, history second: {history_second} and epsilon: {epsilon}, shuffling; {shuffle_dataset} is finished",
+                            flush=True)
+
+            # save result structure to the file
+            path = Path(f"{args.directory}/Transfer_entropy_dataset-{epsilon}.bin")
+            print(f"PID:{os.getpid()} {datetime.datetime.now().isoformat()} Save to file {path}", flush=True)
+            path.parent.mkdir(parents=True, exist_ok=True)
+            with open(path, "wb") as fb:
+                pickle.dump(results, fb)
