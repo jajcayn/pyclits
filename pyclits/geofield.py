@@ -7,14 +7,13 @@ based on class by Martin Vejmelka -- https://github.com/vejmelkam/ndw-climate --
 last update on Sep 26, 2017
 """
 
-import numpy as np
-from datetime import date, timedelta, datetime
-from dateutil.relativedelta import relativedelta
-from functions import detrend_with_return
 import csv
-from os.path import split
-import os
+from datetime import date, timedelta, datetime
 
+import numpy as np
+from dateutil.relativedelta import relativedelta
+
+from pyclits.functions import detrend_with_return
 
 
 class DataField:

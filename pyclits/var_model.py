@@ -9,13 +9,14 @@ Programmed according to Neumaier and Schneider and heavily inspired by ARFIT too
 Minor changes by Nikola Jajcay
 """
 
-import numpy as np
-from scipy import linalg
 import math
 
-import pyximport; pyximport.install()
-import var_model_acc
+import numpy as np
+import pyximport
+from scipy import linalg
 
+pyximport.install()
+import pyclits.var_model_acc
 
 
 class VARModel:
@@ -87,10 +88,10 @@ class VARModel:
                 eps_noise = np.dot(np.random.normal(size=(ndisc, m)), self.U)
             
             # spin-up to random state, which is captured by vector u
-            var_model_acc.execute_Aupw(A, w, u, eps_noise, eps_noise)
+            pyclits.var_model_acc.execute_Aupw(A, w, u, eps_noise, eps_noise)
         
         # start feeding in residuals and store result in ts, start with vector u as VAR(p) state
-        var_model_acc.execute_Aupw(A, w, u, residuals, ts)
+        pyclits.var_model_acc.execute_Aupw(A, w, u, residuals, ts)
         
         return ts
     
@@ -110,10 +111,10 @@ class VARModel:
         eps_noise = np.dot(np.random.normal(size=(N + ndisc, m)), self.U)
        
         # spin up the model by running it for ndisc samples
-        var_model_acc.execute_Aupw(A, w, u, eps_noise[:ndisc, :], eps_noise[:ndisc, :])
+        pyclits.var_model_acc.execute_Aupw(A, w, u, eps_noise[:ndisc, :], eps_noise[:ndisc, :])
         
         # generate requested number of points
-        var_model_acc.execute_Aupw(A, w, u, eps_noise[ndisc:, :], ts)
+        pyclits.var_model_acc.execute_Aupw(A, w, u, eps_noise[ndisc:, :], ts)
             
         return ts
 
@@ -195,7 +196,7 @@ class VARModel:
         elif crit_type == 'fpe':
             p_opt = np.argmin(fpe[p_min:p_max+1]) + p_min
         else:
-            raise "Invalid criterion."
+            raise Exception("Invalid criterion.")
         
         # retrieve submatrices and intercept (if required)
         R11 = R[:n_p[p_opt], :n_p[p_opt]] 

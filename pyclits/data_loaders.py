@@ -4,21 +4,22 @@ created on Sep 22, 2017
 @author: Nikola Jajcay, jajcay(at)cs.cas.cz
 """
 
-
-from geofield import DataField
 from datetime import date, datetime
 from os.path import split
+
 import numpy as np
 
+from pyclits.geofield import DataField
 
-def load_station_data(filename, start_date, end_date, anom, to_monthly = False, dataset = 'ECA-station', offset = 1):
+
+def load_station_data(filename, start_date, end_date, anom, to_monthly=False, dataset='ECA-station', offset=1):
     """
     Data loader for station data.
     """
-    
+
     print("[%s] Loading station data..." % (str(datetime.now())))
     g = DataField()
-    g.load_station_data(filename, dataset, print_prog = False, offset_in_file = offset)
+    g.load_station_data(filename, dataset, print_prog=False, offset_in_file=offset)
     print("** loaded")
     g.select_date(start_date, end_date)
     if anom:
