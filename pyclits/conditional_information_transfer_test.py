@@ -25,6 +25,7 @@ if __name__ == "__main__":
     parser.add_argument('--skip', metavar='XXX', type=int, default=2000, help='Skipped results of integration')
     parser.add_argument('--blockwise', metavar='XXX', type=int, default=0, help='Blockwise calculation of distances to prevent excessive memory usage')
     parser.add_argument('--skip_real_t', action='store_true', help='Indicates skip in time', default=False)
+    parser.add_argument('--full_system', action='store_true', help='Switches full 6D system and 2D system')
     parser.add_argument('--history_first', metavar='XXX', type=str, nargs='+', help='History to take into account')
     parser.add_argument('--future_first', metavar='XXX', type=str, nargs='+', help='History to take into account')
     parser.add_argument('--history_second', metavar='XXX', type=str, nargs='+', help='History to take into account')

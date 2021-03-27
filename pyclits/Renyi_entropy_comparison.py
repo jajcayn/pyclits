@@ -7,8 +7,6 @@ import pickle
 from itertools import product
 
 import matplotlib
-import matplotlib.pyplot as plt
-import numpy as np
 import pandas as pd
 
 from random_samples import *
@@ -159,7 +157,7 @@ correlation_types = ["identity", "weakly_correlated", "strongly_correlated"]
 
 if __name__ == "__main__":
     correlation_type = correlation_types[2]
-    data_directory = "normal_float/strongly"
+    data_directory = "student_float/strongly"
     output_filename = data_directory + "/join_dataset.pickle"
 
     if os.path.isfile(output_filename):
@@ -167,7 +165,10 @@ if __name__ == "__main__":
     else:
         results = process_base_datafiles(data_directory, output_filename)
 
-    job_dictionary = {"gaussian": {"theory": lambda sigma, alpha, determinant: Renyi_normal_distribution_ND(sigma, alpha, determinant)}}
+    degrees_of_freedom = 5
+
+    job_dictionary = {"gaussian": {"theory": lambda sigma, alpha, determinant: Renyi_normal_distribution_ND(sigma, alpha, determinant)},
+                      "student": {"theory": lambda sigma, alpha, determinant: Renyi_student_t_distribution(degrees_of_freedom, sigma, alpha, determinant)}}
 
 
     def line_processing(line):
@@ -177,7 +178,7 @@ if __name__ == "__main__":
         return prediction
 
 
-    results["theoretical value"] = results.apply(lambda line: line_processing(line), axis=1)
+    # results["theoretical value"] = results.apply(lambda line: line_processing(line), axis=1)
 
     set_of_theoretical_values = [{"column": "theoretical value", "color": "b", "label": "Theoretical value"},
                                  {"column": "mean Renyi entropy", "color": "r", "label": r"Mean of order 95\% bars", "error_column": "std Renyi entropy"}]

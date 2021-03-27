@@ -72,7 +72,7 @@ if __name__ == "__main__":
         # create structure for results
         results = {}
 
-        for swap_datasets in [False, True]:
+        for swap_datasets in [True, False]:
 
             # loop over shuffling
             for shuffle_dataset in [True, False]:
@@ -136,9 +136,9 @@ if __name__ == "__main__":
                             f"PID:{os.getpid()} {datetime.datetime.now().isoformat()} * Transfer entropy calculation for history first: {history_first}, history second: {history_second} and epsilon: {epsilon}, shuffling; {shuffle_dataset} is finished",
                             flush=True)
 
-            # save result structure to the file
-            path = Path(f"{args.directory}/Transfer_entropy_dataset-{epsilon}.bin")
-            print(f"PID:{os.getpid()} {datetime.datetime.now().isoformat()} Save to file {path}", flush=True)
-            path.parent.mkdir(parents=True, exist_ok=True)
-            with open(path, "wb") as fb:
-                pickle.dump(results, fb)
+        # save result structure to the file
+        path = Path(f"{args.directory}/Transfer_entropy_dataset-{epsilon}.bin")
+        print(f"PID:{os.getpid()} {datetime.datetime.now().isoformat()} Save to file {path}", flush=True)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        with open(path, "wb") as fb:
+            pickle.dump(results, fb)

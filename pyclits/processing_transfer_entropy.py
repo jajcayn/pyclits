@@ -254,8 +254,11 @@ def process_datasets(processed_datasets, result_dataset, result_raw_dataset, new
         join_table_raw = pd.concat(frames_raw, ignore_index=True)
     except:
         print("Problem with columns")
+        first_frame = frames_raw[0]
         for file, frame in zip(files, frames_raw):
-            print(file, frame.columns)
+            comparison = len(frame.columns.tolist()) == len(first_frame.columns.tolist())
+            if not comparison:
+                print(file, frame.columns, comparison)
         sys.exit(1)
 
     # print(join_table)
@@ -343,13 +346,15 @@ def load_processed_dataset(dataset, dataset_raw, new_columns_base_name="transfer
 
 
 if __name__ == "__main__":
-    directory = "transfer_entropy"
+    dpi = 150
+    output = "png"
+    directory = "conditional_information_transfer"
     counting_letters = Counter(directory)
     processed_dataset = directory + "/pivot_dataset.bin"
     processed_raw_dataset = directory + "/pivot_dataset_raw.bin"
     files = glob.glob(processed_dataset)
     if len(files) == 0:
-        TE, TE_column_names, TE_raw = process_datasets(processed_datasets=directory + "/Transfer_entropy_*.bin",
+        TE, TE_column_names, TE_raw = process_datasets(processed_datasets=directory + "/Conditional_information_transfer-*.bin",
                                                        result_dataset=processed_dataset, result_raw_dataset=processed_raw_dataset,
                                                        new_columns_base_name=directory)
     else:
@@ -384,16 +389,17 @@ if __name__ == "__main__":
             print(column_name, label)
             figures2d_TE_errorbar(TE, item, tuple(item_error), title_graph[directory], label,
                                   column_name + "_" + filename_direction[reversed_direction_of_dependence] + (
-                                      "_shuffled" if shuffled_calculation else "") + "_2d_bars", "pdf")
+                                      "_shuffled" if shuffled_calculation else "") + "_2d_bars", output, dpi=dpi)
             figures2d_TE(TE, item, title_graph[directory], label,
                          column_name + "_" + filename_direction[reversed_direction_of_dependence] + ("_shuffled" if shuffled_calculation else "") + "_2d",
-                         "pdf")
+                         output, dpi=dpi)
             figures3d_TE(TE, item, title_graph[directory], label,
-                         column_name + "_" + filename_direction[reversed_direction_of_dependence] + ("_shuffled" if shuffled_calculation else ""), "pdf")
+                         column_name + "_" + filename_direction[reversed_direction_of_dependence] + ("_shuffled" if shuffled_calculation else ""), output,
+                         dpi=dpi)
             figures2d_TE(TE, tuple(item_error), title_graph[directory] + r"$\large\rm{\ -\ std}$", label,
                          column_name + "_" + filename_direction[reversed_direction_of_dependence] + ("_shuffled" if shuffled_calculation else "") + "_2d_std",
-                         "pdf")
+                         output, dpi=dpi)
         except Exception as exc:
-            print(f"{exc} {item}")
+            print(f"Problem {exc} {item}")
 
     print("Finished")
