@@ -42,7 +42,7 @@ im = plt.contourf(cs, levels = np.log2(levels))
 # plot cone-of-influence
 plt.plot(time, coi, 'k') 
 # set log scale and revert y-axis
-plt.gca().set_yscale('log', basey=2, subsy=None)
+plt.gca().set_yscale('log', base=2, subs=None)
 plt.ylim([np.min(period), np.max(period)])
 ax = plt.gca().yaxis
 ax.set_major_formatter(matplotlib.ticker.ScalarFormatter())
