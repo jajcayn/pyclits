@@ -2,14 +2,16 @@
 Examples for pyCliTS -- https://github.com/jajcayn/pyclits
 """
 
+from datetime import date
+
+import matplotlib
+
 # import modules
 import pyclits as clt
 import pyclits.mutual_inf as MI
-from datetime import date
-import matplotlib
+
 # change for your favourite backend
 matplotlib.use('TKAgg')
-import matplotlib.pyplot as plt
 import numpy as np
 
 ## WARNING runs approximately 45min, depending on your machine [I'm running it with 5 threads on quadcore 2.2GHz i7]
@@ -21,13 +23,13 @@ sst.load(filename = "example_data/sst.mnmean.nc", variable_name = "sst", dataset
 sst.select_lat_lon(lats = [-30,30], lons = None)
 sst.select_date(date(1900, 1, 1), date(2017, 1, 1), exclusive = False)
 # sst.anomalise(base_period = [date(1981,1,1), date(2010,12,31)])
-print sst.shape()
+print(sst.shape())
 
 # load NINO34
 nino34 = clt.data_loaders.load_enso_index("example_data/nino34raw.txt", "3.4", start_date = date(1900, 1, 1), 
     end_date = date(2017, 8, 1), anom = False)
-nino34.select_date(date(1900, 1, 1), date(2017, 1, 1), exclusive = False)
-print nino34.shape()
+nino34.select_date(date(1900, 1, 1), date(2017, 1, 1), exclusive=False)
+print(nino34.shape())
 
 # since computations per grid point are independent, we can split between threads
 import pathos.multiprocessing as mp
@@ -97,8 +99,8 @@ p_vals = clt.surrogates.get_p_vals(mutual_inf, mutual_inf_surrs, one_tailed = Tr
 # plot -- we are using viridis_r [that is default but reverse], because the lower the p-value is, the better for use
 #   so, we are still looking to see some yellow..
 p_vals = np.squeeze(sst.return_NaNs_to_data(field = p_vals[np.newaxis, :], mask = nan_mask))
-print p_vals
-sst.quick_render(field_to_plot = p_vals, tit = "p-values of MI", cmap = "viridis_r", colormesh = False)
+print(p_vals)
+sst.quick_render(field_to_plot=p_vals, tit="p-values of MI", cmap="viridis_r", colormesh=False)
 
 # just a little note -- here we've done only 100 surrogates and it took forever... now, if you want your results to be
 #   really tested, you need to 1. generate more surrogates, and 2. since we are testing more than 6000 hypotheses at the
