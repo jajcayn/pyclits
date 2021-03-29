@@ -20,7 +20,7 @@ prg = clt.data_loaders.load_station_data("example_data/TG_STAID000027.txt", date
 #   in this case, we want 65k of data, preferably the last 65k of data
 prg.get_data_of_precise_length(length = '65k', end_date = prg.get_date_from_ndx(-1), apply_to_data = True)
 # print shape
-print prg.shape()
+print(prg.shape())
 
 # lets create some surrogates
 # firstly, lets init empty SurrogateField
@@ -32,8 +32,8 @@ prg_mean, prg_var, prg_trend = prg.get_seasonality(detrend = True, base_period =
 # copy field to SurrogateField
 prg_surrs.copy_field(prg)
 # now we can check 
-print prg.data.shape, prg_surrs.original_data.shape
-print np.all(prg.data == prg_surrs.original_data)
+print(prg.data.shape, prg_surrs.original_data.shape)
+print(np.all(prg.data == prg_surrs.original_data))
 
 # now we want to work with raw data [no anom, no varnorm, ...] so lets add back these fields
 prg.return_seasonality(prg_mean, prg_var, prg_trend)
@@ -170,7 +170,7 @@ sst.load(filename = "example_data/sst.mnmean.nc", variable_name = "sst", dataset
 sst.select_lat_lon(lats = [-40,40], lons = None)
 sst.select_date(date(1900, 1, 1), sst.get_date_from_ndx(-1), exclusive = False)
 sst.anomalise(base_period = [date(1981,1,1), date(2010,12,31)])
-print sst.shape()
+print(sst.shape())
 
 # lets get_seasonality and create surrogate field, this time no detrend [SSTs exhibit almost no trend anyway]
 sst_mean, sst_var, _ = sst.get_seasonality(detrend = False, base_period = [date(1981,1,1), date(2010,12,31)])
