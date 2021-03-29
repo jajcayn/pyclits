@@ -7,8 +7,8 @@ last update on Sep 22, 2017
 """
 
 import numpy as np
-from geofield import DataField
 
+from pyclits.geofield import DataField
 
 
 def get_p_vals(field, surr_field, one_tailed = True):
@@ -639,8 +639,6 @@ class SurrogateField(DataField):
         written according to: Palus, M., Phys. Rev. Letters, 101, 2008.
         """
 
-        import pywt
-        
         if self.original_data is not None:
 
             if pool is None:

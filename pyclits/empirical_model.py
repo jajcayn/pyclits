@@ -8,20 +8,20 @@ last update on Sep 22, 2017
 Based on Kondrashov D., Kravtsov S., Robertson A. W. and Ghil M., J. Climate, 18, 2005.
 """
 
-
-from geofield import DataField
-from functions import cross_correlation, kdensity_estimate
 import numpy as np
 import scipy.stats as sts
 
+from pyclits.functions import cross_correlation, kdensity_estimate
+from pyclits.geofield import DataField
 
-def _partial_least_squares(x, y, ux, sx, vx, optimal, intercept = True):
+
+def _partial_least_squares(x, y, ux, sx, vx, optimal, intercept=True):
     """
     Partial least squares for regression with regularization. 
     """
 
-    xm = np.mean(x, axis = 0)
-    ym = np.mean(y, axis = 0)
+    xm = np.mean(x, axis=0)
+    ym = np.mean(y, axis=0)
 
     e = ux * sx
     f = y - ym
