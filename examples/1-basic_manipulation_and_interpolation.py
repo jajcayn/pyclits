@@ -19,17 +19,17 @@ temp = clt.data_loaders.load_NCEP_data_monthly("example_data/air.mon.mean.sig995
 #   None means do not cut anything. This is single level data, so level None and anom is whether we want to anomalise.
 
 # The structure of geofield is as follows:
-print temp.data.shape # this is of shape (time x lats x lons); numpy array
-print temp.lats.shape # this is array of latitudes
-print temp.lons.shape # this is array of longitudes
-print temp.time.shape # this of array of ordinal dates (1 is 1 Jan of year 1)
+print(temp.data.shape) # this is of shape (time x lats x lons); numpy array
+print(temp.lats.shape) # this is array of latitudes
+print(temp.lons.shape) # this is array of longitudes
+print(temp.time.shape) # this of array of ordinal dates (1 is 1 Jan of year 1)
 
 # for temporal mean per grid point do
-print np.mean(temp.data, axis = 0) # shape will be (lats, lons)
+print(np.mean(temp.data, axis = 0)) # shape will be (lats, lons)
 # for spatial mean do
-print np.mean(temp.data, axis = (1,2)) # shape will be (time,)
+print(np.mean(temp.data, axis = (1,2))) # shape will be (time,)
 # for weighted mean [weighted by cosine of latitude] do
-print np.mean(temp.data * temp.latitude_cos_weights(), axis = (1,2)) # shape will be (time,)
+print(np.mean(temp.data * temp.latitude_cos_weights(), axis = (1,2))) # shape will be (time,)
 
 # cut the data only 1950 - 2010, exclusive end date
 temp.select_date(date(1950, 1, 1), date(2011, 1, 1), exclusive = True)
@@ -50,8 +50,8 @@ prague_from_ncep = temp.data[:, prg_la, prg_lo].copy()
 # load Prague station data
 prg = clt.data_loaders.load_station_data("example_data/TG_STAID000027.txt", date(1950, 1, 1), date(2011, 1, 1),
     anom = False, to_monthly = False)
-print prg.data.shape # station data has shape of (time,); lats and lons fields are empty
-print prg.time.shape # same as before -- array of ordinal dates
+print(prg.data.shape) # station data has shape of (time,); lats and lons fields are empty
+print(prg.time.shape) # same as before -- array of ordinal dates
 # this is daily data so make in monthly to match resolution of NCEP, when means is True, makes monthly means, 
 #   False would make monthly sums, e.g. for precipitation
 prg.get_monthly_data(means = True)
@@ -60,8 +60,8 @@ prg.get_monthly_data(means = True)
 prg.anomalise(base_period = [date(1981, 1, 1), date(2010, 12, 31)])
 
 # before plotting lets check the date ranges
-print temp.get_date_from_ndx(0), temp.get_date_from_ndx(-1)
-print prg.get_date_from_ndx(0), prg.get_date_from_ndx(-1)
+print(temp.get_date_from_ndx(0), temp.get_date_from_ndx(-1))
+print(prg.get_date_from_ndx(0), prg.get_date_from_ndx(-1))
 
 # now plot
 plt.plot(prague_from_ncep, label = "NCEP/NCAR: %.2fN x %.2fE" % (temp.lats[prg_la], temp.lons[prg_lo]))
@@ -77,8 +77,8 @@ plt.show()
 #   which we use in our prague_from_ncep array
 DJF_ndx = temp.select_months(months = [12, 1, 2], apply_to_data = False)
 prg.select_months(months = [12, 1, 2], apply_to_data = True)
-print "NCEP variance: ", np.var(prague_from_ncep[DJF_ndx], ddof = 1)
-print "PRG station variance: ", np.var(prg.data, ddof = 1)
+print("NCEP variance: ", np.var(prague_from_ncep[DJF_ndx], ddof = 1))
+print("PRG station variance: ", np.var(prg.data, ddof = 1))
 
 
 # lets try some interpolation -- load CO2 dataset and remove its trend from global anomalies
@@ -92,7 +92,7 @@ noaa.data = raw[:, 1].copy()
 # this creates time array from 'first_date' with monthly sampling
 noaa.create_time_array(date_from = first_date, sampling = 'm')
 # lets check dates
-print noaa.data.shape, noaa.get_date_from_ndx(0), noaa.get_date_from_ndx(-1)
+print(noaa.data.shape, noaa.get_date_from_ndx(0), noaa.get_date_from_ndx(-1))
 
 # now load yearly CO2 data
 co2 = clt.geofield.DataField()
@@ -107,16 +107,16 @@ co2.create_time_array(date(int(raw[0, 0]), 1, 1), sampling = 'y')
 from dateutil.relativedelta import relativedelta
 co2.select_date(noaa.get_date_from_ndx(0), noaa.get_date_from_ndx(-1) + relativedelta(years = +1), exclusive = False)
 # lets check
-print co2.data.shape, co2.get_date_from_ndx(0), co2.get_date_from_ndx(-1)
+print(co2.data.shape, co2.get_date_from_ndx(0), co2.get_date_from_ndx(-1))
 
 # thats fine, now lets interpolate to monthly data
 # in this case, linear and cubic gives almost the same time series, you should try different schemes for e.g. interpolating
 #   monthly to daily etc.
 co2.interpolate_to_finer_temporal_resolution(to_resolution = 'm', kind = 'linear', use_to_data = True)
-print co2.data.shape, co2.get_date_from_ndx(0), co2.get_date_from_ndx(-1)
+print(co2.data.shape, co2.get_date_from_ndx(0), co2.get_date_from_ndx(-1))
 # perfect! now lets do final cut to match time series length
 co2.select_date(noaa.get_date_from_ndx(0), noaa.get_date_from_ndx(-1), exclusive = False)
-print co2.data.shape, co2.get_date_from_ndx(0), co2.get_date_from_ndx(-1)
+print(co2.data.shape, co2.get_date_from_ndx(0), co2.get_date_from_ndx(-1))
 
 # nice! now plot the global anomalies, so we now what's in them
 plt.plot(noaa.data)

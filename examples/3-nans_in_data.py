@@ -16,7 +16,7 @@ sst = clt.geofield.DataField()
 sst.load(filename = "example_data/sst.mnmean.nc", variable_name = "sst", dataset = "NCEP")
 
 # lets check
-print np.any(np.isnan(sst.data)) # print True, so we've got NaNs in the data..
+print(np.any(np.isnan(sst.data))) # print True, so we've got NaNs in the data..
 # there are two options -- 1. either NaNs are spatial (this is the example, since SST is defined only in oceans, so its
 #   NaN over land)
 #   -- 2. the NaN are temporal
@@ -25,7 +25,7 @@ print np.any(np.isnan(sst.data)) # print True, so we've got NaNs in the data..
 #     over the land, with 
 
 NUM_WORKERS = 5 # how many threads you want to initialize
-print sst.check_NaNs_only_spatial() # this prints True, so we are lucky, NaNs are only spatial.. 
+print(sst.check_NaNs_only_spatial()) # this prints True, so we are lucky, NaNs are only spatial..
 # lets cut the field so we dont spend too much time on interpolation
 sst.select_date(date(1950,1,1), date(2010,1,1))
 # lets check how the field looks like and lets try interpolate spatial nans
@@ -52,8 +52,8 @@ plt.show()
 sst.select_lat_lon(lats = [-60,60], lons = None)
 sst.anomalise(base_period = [date(1981,1,1), date(2010,12,31)])
 eofs, pcs, var = sst.pca_components(n_comps = 5)
-print "first 5 EOF components explains: ", np.sum(var)
-print eofs.shape, pcs.shape
+print("first 5 EOF components explains: ", np.sum(var))
+print(eofs.shape, pcs.shape)
 # lets plot
 plt.figure()
 for i in range(eofs.shape[0]):
