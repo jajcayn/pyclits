@@ -298,7 +298,7 @@ class DataField:
             print("Time stamp saved to structure as ordinal values where Jan 1 of year 1 is 1")
 
         if dataset == 'ECA-station':
-            with open(self.data_folder + filename, 'rb') as f:
+            with open(self.data_folder + filename, 'rt') as f:
                 time = []
                 data = []
                 missing = []

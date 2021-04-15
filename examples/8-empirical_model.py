@@ -56,7 +56,7 @@ enso_model.integrate_model(30, int_length = None, sigma = 1., n_workers = 5, dia
 #   we'll get 50 stochastic realizations of NINO3.4 index
 enso_model.reconstruct_simulated_field(lats = [-5, 5], lons = [190, 240], mean = True)
 
-print enso_model.reconstructions.shape
+print(enso_model.reconstructions.shape)
 # in our case, the reconstructions are of shape no_recons x time
 
 # if needed, we can save all model, or just the results [save_all boolean] and either as Matlab *.mat file or pickle
@@ -66,7 +66,7 @@ print enso_model.reconstructions.shape
 # anyway, lets compare with actual NINO3.4!
 nino34 = clt.data_loaders.load_enso_index("example_data/nino34raw.txt", "3.4", start_date = date(1900, 1, 1), 
     end_date = date(2017, 1, 1), anom = False)
-print nino34.shape()
+print(nino34.shape())
 
 # lets plot time series and spectrum!
 import scipy.signal as ss

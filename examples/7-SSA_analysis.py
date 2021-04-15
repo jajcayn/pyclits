@@ -14,13 +14,13 @@ import numpy as np
 # load Prague station data -- monthly for comparison with NCEP
 prg = clt.data_loaders.load_station_data("example_data/TG_STAID000027.txt", date(1948, 1, 1), date(2016, 1, 1),
     anom = False, to_monthly = True)
-print prg.shape()
+print(prg.shape())
 
 # load NCEP and lets focus on small area around Prague -- our station data
 temp = clt.data_loaders.load_NCEP_data_monthly("example_data/air.mon.mean.sig995.nc", "air", start_date = date(1948, 1, 1), 
     end_date = date(2016, 1, 1), lats = [40,60], lons = [0,30], level = None, anom = False)
 temp.subsample_spatial(lat_to = 5, lon_to = 5, start = [temp.lats.min(), temp.lons.min()], average = False)
-print temp.shape()
+print(temp.shape())
 
 # plot, just to see the area we'll work with
 temp.quick_render(mean = True, whole_world = False)
