@@ -998,7 +998,7 @@ def renyi_conditional_information_transfer(data_x_fut, data_x_hist, data_y, **kw
         joint_dataset = np.concatenate((data_x_fut, data_x_hist, data_y), axis=axis_to_join)
         entropy_joint = renyi_entropy(joint_dataset, **kwargs)
 
-        entropy_history_X = renyi_entropy(data_x_fut, **kwargs)
+        entropy_history_X = renyi_entropy(data_x_hist, **kwargs)
 
         for alpha in kwargs["alphas"]:
             try:
