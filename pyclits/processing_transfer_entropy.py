@@ -200,19 +200,43 @@ def process_datasets(processed_datasets, result_dataset, result_raw_dataset, new
 
             if bool_column == 3:
                 frame[mean_column_name, "mean", "", False, item[4]] = frame.apply(
-                    lambda row: float(np.mean(row[item]) - np.mean(row[item[0], item[1], item[2], True, item[4]])),
+                    lambda row: float(np.mean(row[item]) - np.mean(row[item[0], item[1], item[2], not item[3], item[4]])),
                     axis=1,
                     raw=True)
                 frame[std_column_name, "std", "", False, item[4]] = frame.apply(
-                    lambda row: float(np.std(row[item]) + np.std(row[item[0], item[1], item[2], True, item[4]])),
+                    lambda row: float(np.std(row[item]) + np.std(row[item[0], item[1], item[2], not item[3], item[4]])),
                     axis=1,
                     raw=True)
             else:
                 frame[mean_column_name, "mean", "", False, item[4]] = frame.apply(
-                    lambda row: float(np.mean(row[item]) - np.mean(row[item[0], item[1], item[2], item[3], True])), axis=1, raw=True)
+                    lambda row: float(np.mean(row[item]) - np.mean(row[item[0], item[1], item[2], item[3], not item[4]])), axis=1, raw=True)
                 frame[std_column_name, "std", "", False, item[4]] = frame.apply(
-                    lambda row: float(np.std(row[item]) + np.std(row[item[0], item[1], item[2], item[3], True])),
+                    lambda row: float(np.std(row[item]) + np.std(row[item[0], item[1], item[2], item[3], not item[4]])),
                     axis=1, raw=True)
+
+        # balance of entropy
+        balance_names = [item for item in frame.columns.tolist() if not bool(item[4]) and "information" not in str(item[0]) and "epsilon" not in str(item[0])]
+        for item in balance_names:
+            mean_column_name = f"balance_{new_columns_base_name}_{item[1]}_{item[2]}"
+            std_column_name = f"balance_{new_columns_base_name}_{item[1]}_{item[2]}"
+
+            frame[mean_column_name, "mean", "", item[3], False] = frame.apply(
+                lambda row: float(np.mean(row[item]) - np.mean(row[item[0], item[1], item[2], item[3], not item[4]])), axis=1, raw=True)
+            frame[std_column_name, "std", "", item[3], False] = frame.apply(
+                lambda row: float(np.std(row[item]) + np.std(row[item[0], item[1], item[2], item[3], not item[4]])),
+                axis=1, raw=True)
+
+        # balance of effective entropy
+        balance_names = [item for item in frame.columns.tolist() if not bool(item[4]) and "information" not in str(item[0]) and "epsilon" not in str(item[0])]
+        for item in balance_names:
+            mean_column_name = f"balance_effective_{new_columns_base_name}_{item[1]}_{item[2]}"
+            std_column_name = f"balance_effective_{new_columns_base_name}_{item[1]}_{item[2]}"
+
+            frame[mean_column_name, "mean", "", item[3], False] = frame.apply(
+                lambda row: float(np.mean(row[item]) - np.mean(row[item[0], item[1], item[2], not item[3], item[4]]) - np.mean(row[item[0], item[1], item[2], item[3], not item[4]]) + np.mean(row[item[0], item[1], item[2], not item[3], not item[4]]) ), axis=1, raw=True)
+            frame[std_column_name, "std", "", item[3], False] = frame.apply(
+                lambda row: float(np.std(row[item]) + np.std(row[item[0], item[1], item[2], not item[3], item[4]]) + np.std(row[item[0], item[1], item[2], item[3], not item[4]]) + np.std(row[item[0], item[1], item[2], not item[3], not item[4]]) ),
+                axis=1, raw=True)
 
         # dropping the index
         frame = frame.reset_index()
@@ -349,56 +373,68 @@ if __name__ == "__main__":
     dpi = 150
     output = "png"
     directory = "conditional_information_transfer"
-    counting_letters = Counter(directory)
+    name_of_title = "conditional_information_transfer"
+    #directory = "transfer_entropy"
+
     processed_dataset = directory + "/pivot_dataset.bin"
     processed_raw_dataset = directory + "/pivot_dataset_raw.bin"
     files = glob.glob(processed_dataset)
     if len(files) == 0:
         TE, TE_column_names, TE_raw = process_datasets(processed_datasets=directory + "/Conditional_information_transfer-*.bin",
                                                        result_dataset=processed_dataset, result_raw_dataset=processed_raw_dataset,
-                                                       new_columns_base_name=directory)
+                                                       new_columns_base_name=name_of_title)
     else:
         TE, TE_column_names, TE_raw = load_processed_dataset(processed_dataset, processed_raw_dataset)
 
     # figures2d_samples_TE(TE_raw, "0,5,10_4_0_False", r"$\large\rm{Transfer\ entropy - samples}$", "", "TE_sample_0,5,10_1_0_{}", "pdf")
     # figures2d_samples_TE(TE_raw, "0,5,10_4_0_True", r"$\large\rm{Transfer\ entropy\ shuffled - samples}$", "", "TE_sample_shuffled_0,5,10_1_0_{}", "pdf")
 
+    names = {"balance_effective_conditional_information_transfer": 5, "balance_conditional_information_transfer": 4, "effective_conditional_information_transfer": 4, "conditional_information_transfer": 3}
     for item in TE_column_names:
         try:
+            shift = 0
+            for key, value in names.items():
+                if key in item[0]:
+                    shift = value
+                    break
+
             item_error = list(item)
             column_name = item[0]
             shuffled_calculation = item[3]
             reversed_direction_of_dependence = item_error[4]
             item_error[1] = "std"
 
-            if "effective" in item[0]:
-                m = column_name.split("_")[counting_letters['_'] + 2]
-                l = column_name.split("_")[counting_letters['_'] + 3]
-            else:
-                m = column_name.split("_")[counting_letters['_'] + 1]
-                l = column_name.split("_")[counting_letters['_'] + 2]
+            history_first_TS = column_name.split("_")[shift]
+            history_second_TS = column_name.split("_")[shift+1]
+            try:
+                future_first_TS = column_name.split("_")[shift+2]
+            except IndexError as err:
+                future_first_TS = None
 
             title_graph = {"transfer_entropy": r"$\Large\rm{Transfer\ entropy}$",
-                           "conditional_information_transfer": r"$\Large\rm{Conditional\ information\ transfer}$"}
+                           "conditional_information_transfer": r"$\Large\rm{Conditional\ information\ transfer}$", }
             filename_direction = {True: "X->Y", False: "Y->X"}
             title_map = {(False, False): r"{\alpha: Y\rightarrow X}", (True, False): r"{\alpha: Y_{shuffled}\rightarrow X}",
                          (False, True): r"{\alpha: X\rightarrow Y}", (True, True): r"{\alpha: X_{shuffled}\rightarrow Y}"}
 
-            label = "$T^{}_{} ({},{})$".format("{(R, eff)}" if "effective" in column_name else "{(R)}",
-                                               title_map[(shuffled_calculation, reversed_direction_of_dependence)], m, l)
+            if future_first_TS is not None:
+                label = "$T^{}_{} ([{}],[{}],[{}])$".format("{(R, eff)}" if "effective" in column_name else "{(R)}",
+                                                  title_map[(shuffled_calculation, reversed_direction_of_dependence)], history_first_TS, history_second_TS, future_first_TS)
+            else:
+                label = "$T^{}_{} ([{}],[{}])$".format("{(R, eff)}" if "effective" in column_name else "{(R)}",
+                                                  title_map[(shuffled_calculation, reversed_direction_of_dependence)], history_first_TS, history_second_TS)
+
             print(column_name, label)
-            figures2d_TE_errorbar(TE, item, tuple(item_error), title_graph[directory], label,
-                                  column_name + "_" + filename_direction[reversed_direction_of_dependence] + (
-                                      "_shuffled" if shuffled_calculation else "") + "_2d_bars", output, dpi=dpi)
-            figures2d_TE(TE, item, title_graph[directory], label,
-                         column_name + "_" + filename_direction[reversed_direction_of_dependence] + ("_shuffled" if shuffled_calculation else "") + "_2d",
-                         output, dpi=dpi)
-            figures3d_TE(TE, item, title_graph[directory], label,
-                         column_name + "_" + filename_direction[reversed_direction_of_dependence] + ("_shuffled" if shuffled_calculation else ""), output,
-                         dpi=dpi)
-            figures2d_TE(TE, tuple(item_error), title_graph[directory] + r"$\large\rm{\ -\ std}$", label,
-                         column_name + "_" + filename_direction[reversed_direction_of_dependence] + ("_shuffled" if shuffled_calculation else "") + "_2d_std",
-                         output, dpi=dpi)
+
+            errorbar_filename = directory + "/" + column_name + "_" + filename_direction[reversed_direction_of_dependence] + ("_shuffled" if shuffled_calculation else "") + "_2d_bars"
+            standard_filename = directory + "/" + column_name + "_" + filename_direction[reversed_direction_of_dependence] + ("_shuffled" if shuffled_calculation else "") + "_2d"
+            plot_3D_filename = directory + "/" + column_name + "_" + filename_direction[reversed_direction_of_dependence] + ("_shuffled" if shuffled_calculation else "")
+            std_filename = directory + "/" + column_name + "_" + filename_direction[reversed_direction_of_dependence] + ("_shuffled" if shuffled_calculation else "") + "_2d_std"
+
+            figures2d_TE_errorbar(TE, item, tuple(item_error), title_graph[name_of_title], label, errorbar_filename, output, dpi=dpi)
+            figures2d_TE(TE, item, title_graph[name_of_title], label, standard_filename, output, dpi=dpi)
+            figures3d_TE(TE, item, title_graph[name_of_title], label, plot_3D_filename, output, dpi=dpi)
+            figures2d_TE(TE, tuple(item_error), title_graph[name_of_title] + r"$\large\rm{\ -\ std}$", label, std_filename, output, dpi=dpi)
         except Exception as exc:
             print(f"Problem {exc} {item}")
 
