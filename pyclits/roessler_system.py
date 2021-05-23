@@ -221,8 +221,61 @@ def roessler_plot(dataset, title, filename, suffix, dpi=300):
     plt.close()
 
 
+def roessler_3d_plot(dataset, configurations, title, filename, suffix, dpi=300):
+    columns = 3
+    rows = 3
+    fig, ax = plt.subplots(columns, rows, sharey=False, sharex=False, figsize=(13, 8))
+    fig.suptitle(title)
+    plt.subplots_adjust(hspace=0.24, wspace=0.24, left=0.05, right=0.95, top=0.95, bottom=0.03)
+    for row in range(rows):
+        for column in range(columns):
+            configuration = configurations[(row, column)]
+            plot_configuration = {key: value for key, value in configuration.items() if "data_index" not in key}
+            xdataset = dataset[configuration["xdata_index"]]
+            ydataset = dataset[configuration["ydata_index"]]
+            xlim = [min(xdataset), max(xdataset)]
+            ylim = [min(ydataset), max(ydataset)]
+            ax[row, column].set(**plot_configuration)
+            ax[row, column].set(xlim=xlim)
+            ax[row, column].set(ylim=ylim)
+            ax[row, column].plot(xdataset, ydataset)
+
+    #plt.subplot_tool()
+    if not isinstance(suffix, tuple or list):
+        suffix = [suffix]
+    for item_suffix in suffix:
+        plt.savefig(filename + "." + item_suffix, dpi=dpi)
+    plt.close()
+
+def roessler_3d_multocolor_plot(dataset, configurations, title, filename, suffix, dpi=300):
+    columns = 3
+    rows = 3
+    fig, ax = plt.subplots(columns, rows, sharey=False, sharex=False, figsize=(13, 8))
+    fig.suptitle(title)
+    plt.subplots_adjust(hspace=0.24, wspace=0.24, left=0.05, right=0.95)
+    for row in range(rows):
+        for column in range(columns):
+            configuration = configurations[(row, column)]
+            plot_configuration = {key: value for key, value in configuration.items() if "data_index" not in key}
+            xdataset = dataset[configuration["xdata_index"]]
+            ydataset = dataset[configuration["ydata_index"]]
+            xlim = [min(xdataset), max(xdataset)]
+            ylim = [min(ydataset), max(ydataset)]
+            ax[row, column].set(**plot_configuration)
+            ax[row, column].set(xlim=xlim)
+            ax[row, column].set(ylim=ylim)
+            ax[row, column].plot(xdataset, ydataset)
+
+    #plt.subplot_tool()
+    if not isinstance(suffix, tuple or list):
+        suffix = [suffix]
+    for item_suffix in suffix:
+        plt.savefig(filename + "." + item_suffix, dpi=dpi)
+    plt.close()
+
+
 if __name__ == "__main__":
-    dataset = True
+    dataset = False
     if (dataset):
         from data_plugin import load_static_dataset
 
@@ -232,9 +285,23 @@ if __name__ == "__main__":
         for dataset_item in datasets:
             metadata = dataset_item[0]
             dataset = dataset_item[1]
-            roessler_plot(dataset, r"$\Large\rm{Evolution\ of\ the\ Roessler\ system }$", "roessler-" + str(metadata["eps1"]), "pdf")
+            roessler_plot(dataset, r"Evolution of Rössler oscilator $\varepsilon=$", "roessler-" + str(metadata["eps1"]), "pdf")
     else:
-        sol = roessler_oscillator()
+        configuration = {(0, 0): {"xlabel": r"$x_1$", "ylabel": r"$x_1$", "xdata_index": 0, "ydata_index": 1},
+                         (1, 0): {"xlabel": r"$x_2$", "ylabel": r"$x_3$", "xdata_index": 1, "ydata_index": 2},
+                         (2, 0): {"xlabel": r"$x_3$", "ylabel": r"$x_1$", "xdata_index": 2, "ydata_index": 0},
+                         (0, 1): {"xlabel": r"$x_1$", "ylabel": r"$y_1$", "xdata_index": 0, "ydata_index": 3},
+                         (1, 1): {"xlabel": r"$x_2$", "ylabel": r"$y_2$", "xdata_index": 1, "ydata_index": 4},
+                         (2, 1): {"xlabel": r"$x_3$", "ylabel": r"$y_3$", "xdata_index": 2, "ydata_index": 5},
+                         (0, 2): {"xlabel": r"$y_1$", "ylabel": r"$y_2$", "xdata_index": 3, "ydata_index": 4},
+                         (1, 2): {"xlabel": r"$y_2$", "ylabel": r"$y_3$", "xdata_index": 4, "ydata_index": 5},
+                         (2, 2): {"xlabel": r"$y_3$", "ylabel": r"$y_1$", "xdata_index": 5, "ydata_index": 3},
+                         }
+        for epsilon in np.arange(0.0, 0.25, 0.005):
+            print(f"Calculation of epsilon {epsilon}")
+            configuration_of_integration = {"method": "LSODA", "tInc": 0.01, "tStop": 10000, "cache": True, "epsilon": epsilon, "cache": False}
+            sol = roessler_oscillator(**configuration_of_integration)
+            roessler_3d_plot(sol.y, configuration, fr"\Large Evolution of Rössler oscilator $\varepsilon= {epsilon}$", f"roessler-{epsilon}", "png")
 
         print(sol)
         # print(sol.y)

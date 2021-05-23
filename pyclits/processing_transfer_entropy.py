@@ -93,8 +93,6 @@ def figures2d_TE(dataset, selector, title, ylabel, filename, suffix, dpi=300):
     plt.legend(loc=4)
 
     plt.savefig(filename + "." + suffix, dpi=dpi)
-    # plt.draw()
-    # plt.show()
     plt.close()
 
 
