@@ -226,7 +226,7 @@ def roessler_3d_plot(dataset, configurations, title, filename, suffix, dpi=300):
     rows = 3
     fig, ax = plt.subplots(columns, rows, sharey=False, sharex=False, figsize=(13, 8))
     fig.suptitle(title)
-    plt.subplots_adjust(hspace=0.24, wspace=0.24, left=0.05, right=0.95, top=0.95, bottom=0.03)
+    plt.subplots_adjust(hspace=0.24, wspace=0.24, left=0.05, right=0.95, top=0.95, bottom=0.05)
     for row in range(rows):
         for column in range(columns):
             configuration = configurations[(row, column)]
