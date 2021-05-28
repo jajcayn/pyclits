@@ -105,8 +105,8 @@ def prepare_dataset(args, index_epsilon, datasets=None, swap_datasets=False, shu
             marginal_solution_1 = filtrated_solution[0:3, :].T
             marginal_solution_2 = filtrated_solution[3:6, :].T
         else:
-            marginal_solution_1 = filtrated_solution[0:1, :].T
-            marginal_solution_2 = filtrated_solution[3:4, :].T
+            marginal_solution_1 = filtrated_solution[args.dimension_x: 1 + args.dimension_x, :].T
+            marginal_solution_2 = filtrated_solution[3 + args.dimension_y: 4 + args.dimension_y, :].T
     else:
         filtrated_solution = datasets[index_epsilon][1].T
 

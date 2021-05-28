@@ -38,6 +38,8 @@ if __name__ == "__main__":
     parser.add_argument('--interpolate_samples_per_unit_time', metavar='XXX', type=int, default=10, help='Number of samples generated per unit time')
     parser.add_argument('--dataset', action='store_true', help='Use dataset provided by dr. Paluš', default=False)
     parser.add_argument('--dataset_range', metavar='XXX-YYY', type=str, help='Dataset with range')
+    parser.add_argument('--dimension_x', metavar='X', type=int, default=0, help='Dimension of system X')
+    parser.add_argument('--dimension_y', metavar='Y', type=int, default=0, help='Dimension of system Y')
     args = parser.parse_args()
     # print(args.epsilon, flush=True)
 
