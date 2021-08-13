@@ -238,7 +238,7 @@ def roessler_3d_plot(dataset, configurations, title, filename, suffix, dpi=300):
             ax[row, column].set(**plot_configuration)
             ax[row, column].set(xlim=xlim)
             ax[row, column].set(ylim=ylim)
-            ax[row, column].plot(xdataset, ydataset)
+            ax[row, column].plot(xdataset, ydataset, linewidth=0.1)
 
     #plt.subplot_tool()
     if not isinstance(suffix, tuple or list):
@@ -287,7 +287,7 @@ if __name__ == "__main__":
             dataset = dataset_item[1]
             roessler_plot(dataset, r"Evolution of Rössler oscilator $\varepsilon=$", "roessler-" + str(metadata["eps1"]), "pdf")
     else:
-        configuration = {(0, 0): {"xlabel": r"$x_1$", "ylabel": r"$x_1$", "xdata_index": 0, "ydata_index": 1},
+        configuration = {(0, 0): {"xlabel": r"$x_1$", "ylabel": r"$x_2$", "xdata_index": 0, "ydata_index": 1},
                          (1, 0): {"xlabel": r"$x_2$", "ylabel": r"$x_3$", "xdata_index": 1, "ydata_index": 2},
                          (2, 0): {"xlabel": r"$x_3$", "ylabel": r"$x_1$", "xdata_index": 2, "ydata_index": 0},
                          (0, 1): {"xlabel": r"$x_1$", "ylabel": r"$y_1$", "xdata_index": 0, "ydata_index": 3},
@@ -299,7 +299,7 @@ if __name__ == "__main__":
                          }
         for epsilon in np.arange(0.0, 0.25, 0.005):
             print(f"Calculation of epsilon {epsilon}")
-            configuration_of_integration = {"method": "LSODA", "tInc": 0.01, "tStop": 10000, "cache": True, "epsilon": epsilon, "cache": False}
+            configuration_of_integration = {"method": "LSODA", "tInc": 0.01, "tStop": 10000, "cache": True, "epsilon": epsilon, "cache": True}
             sol = roessler_oscillator(**configuration_of_integration)
             roessler_3d_plot(sol.y, configuration, fr"\Large Evolution of Rössler oscilator $\varepsilon= {epsilon}$", f"roessler-{epsilon}", "png")
 
