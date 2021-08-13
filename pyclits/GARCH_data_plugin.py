@@ -33,7 +33,7 @@ def read_dataset(fh, parameter):
 def load_datasets():
     dataset = []
     datafiles = os.listdir(directory)
-    datafiles = [file for file in datafiles if "bin" not in file]
+    datafiles = [file for file in datafiles if "bin" not in file and os.path.isfile(directory / file)]
     for datafile in datafiles:
         try:
             parameters = {"epsilon": float(datafile)}
