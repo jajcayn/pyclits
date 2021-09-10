@@ -226,29 +226,35 @@ def bid_ask_price_analysis(prefix, dataset, dpi=400, bins=250):
     plt.savefig(prefix+"_bids_consequent.png", dpi=dpi)
     plt.close()
 
-    corr = signal.correlate(delta_bids[0:-1], delta_bids[1:], mode='full')
+    corr = signal.correlate(delta_bids, delta_bids, mode='full')
     corr_float = corr / np.max(corr)
     plt.plot(corr_float)
     plt.savefig(prefix+"_bids_autocorrelation.png", dpi=dpi)
     plt.close()
 
-    corr = signal.correlate(np.abs(delta_bids[0:-1]), np.abs(delta_bids[1:]), mode='full')
+    corr = signal.correlate(np.abs(delta_bids), np.abs(delta_bids), mode='full')
     corr_float = corr / np.max(corr)
     plt.plot(corr_float)
     plt.savefig(prefix+"_bids_abs_autocorrelation.png", dpi=dpi)
+    plt.close()
+
+    corr = signal.correlate(np.sign(delta_bids), np.sign(delta_bids), mode='full')
+    corr_float = corr / np.max(corr)
+    plt.plot(corr_float)
+    plt.savefig(prefix+"_bids_sign_autocorrelation.png", dpi=dpi)
     plt.close()
 
     plt.plot(delta_asks[0:-1], delta_asks[1:], '.')
     plt.savefig(prefix+"_ask_consequent.png", dpi=dpi)
     plt.close()
 
-    corr = signal.correlate(delta_asks[0:-1], delta_asks[1:], mode='full')
+    corr = signal.correlate(delta_asks, delta_asks, mode='full')
     corr_float = corr / np.max(corr)
     plt.plot(corr_float)
     plt.savefig(prefix+"_ask_autocorrelation.png", dpi=dpi)
     plt.close()
 
-    corr = signal.correlate(np.abs(delta_asks[0:-1]), np.abs(delta_asks[1:]), mode='full')
+    corr = signal.correlate(np.abs(delta_asks), np.abs(delta_asks), mode='full')
     corr_float = corr / np.max(corr)
     plt.xscale("linear")
     plt.yscale("linear")
@@ -256,13 +262,22 @@ def bid_ask_price_analysis(prefix, dataset, dpi=400, bins=250):
     plt.savefig(prefix+"_ask_abs_autocorrelation.png", dpi=dpi)
     plt.close()
 
-    hist, bins, _ = plt.hist(delta_time, bins='auto')
+    corr = signal.correlate(np.sign(delta_asks), np.sign(delta_asks), mode='full')
+    corr_float = corr / np.max(corr)
+    plt.xscale("linear")
+    plt.yscale("linear")
+    plt.plot(corr_float)
+    plt.savefig(prefix+"_ask_sign_autocorrelation.png", dpi=dpi)
+    plt.close()
+
+    hist, bins, = np.histogram(delta_time, bins='auto')
+    plt.plot(bins[1:], hist)
     plt.yscale('log')
     plt.xscale('log')
     plt.savefig(prefix+"_time.png", dpi=dpi)
     plt.close()
 
-    cumsum = hist.cumsum()
+    cumsum = hist[::-1].cumsum()[::-1]
     plt.yscale('log')
     plt.xscale('log')
     plt.plot(cumsum)
@@ -270,7 +285,8 @@ def bid_ask_price_analysis(prefix, dataset, dpi=400, bins=250):
     plt.close()
 
     logbins = np.logspace(np.log10(bins[1]), np.log10(bins[-1]), 200)
-    plt.hist(delta_time, bins=logbins)
+    hist, bins, = np.histogram(delta_time, bins=logbins)
+    plt.plot(bins[1:], hist)
     plt.yscale('log')
     plt.xscale('log')
     plt.savefig(prefix+"_time_log.png", dpi=dpi)
@@ -281,9 +297,19 @@ def price_analysis(prefix, dataset, dpi=400, bins=250):
     delta_price = [record[1] for time, record in dataset.items()]
     delta_time = [record[2] for time, record in dataset.items()]
 
-    hist, bins_bid, _ = plt.hist(delta_price, bins=bins)
+    hist, bins_bid = np.histogram(delta_price, bins=bins)
+    plt.plot(bins_bid[1:], hist)
     plt.yscale('log')
     plt.savefig(prefix+"_price.png", dpi=dpi)
+    plt.close()
+
+    shape = hist.argmax()
+    plt.plot(bins_bid[:shape+1] * (-1), hist[:shape+1], label="-")
+    plt.plot(bins_bid[shape:], hist[shape-1:], label="+")
+    plt.xscale('log')
+    plt.yscale('log')
+    plt.legend()
+    plt.savefig(prefix+"_price_log_log.png", dpi=dpi)
     plt.close()
 
     cumsum_bid = hist.cumsum()
@@ -293,21 +319,23 @@ def price_analysis(prefix, dataset, dpi=400, bins=250):
     plt.savefig(prefix+"_price_cumsum.png", dpi=dpi)
     plt.close()
 
-    hist, bins, _ = plt.hist(delta_time, bins=bins)
+    hist, bins = np.histogram(delta_time, bins=bins)
+    plt.plot(bins[1:], hist)
     plt.yscale('log')
     plt.xscale('linear')
     plt.savefig(prefix+"_time.png", dpi=dpi)
     plt.close()
 
-    cumsum = hist.cumsum()
+    cumsum = hist[::-1].cumsum()[::-1]
     plt.yscale('log')
-    plt.xscale('linear')
+    plt.xscale('log')
     plt.plot(cumsum)
     plt.savefig(prefix+"_time_cumsum.png", dpi=dpi)
     plt.close()
 
     logbins = np.logspace(np.log10(bins[1]), np.log10(bins[-1]), 200)
-    plt.hist(delta_time, bins=logbins)
+    hist, bins = np.histogram(delta_time, bins=logbins)
+    plt.plot(bins[1:], hist)
     plt.yscale('log')
     plt.xscale('log')
     plt.savefig(prefix+"_time_log.png", dpi=dpi)
@@ -321,9 +349,30 @@ def price_minute_analysis(prefix, dataset, dpi=400, bins=250):
     delta_close_price = [record[7] for time, record in dataset.items()]
     volume = [record[8] for time, record in dataset.items()]
 
-    hist, bins_bid, _ = plt.hist(volume, bins=bins)
+    sign_open_price = np.sign(delta_open_price)
+    corr = signal.correlate(sign_open_price, sign_open_price, mode='full')
+
     plt.xscale("linear")
+    plt.yscale("linear")
+    plt.plot(corr)
+    plt.savefig(prefix+"_sign_open_autocorrelation.png", dpi=dpi)
+    plt.close()
+
+    abs_open_price = np.abs(delta_open_price)
+    corr = signal.correlate(abs_open_price, abs_open_price, mode='full')
+    max_corr = max(corr)
+    shape = corr.shape[0] // 2
+
+    plt.xscale("log")
     plt.yscale("log")
+    plt.plot(corr[shape:] / max_corr)
+    plt.savefig(prefix+"_abs_open_autocorrelation.png", dpi=dpi)
+    plt.close()
+
+    hist, bins_bid = np.histogram(volume, bins=bins)
+    plt.xscale("log")
+    plt.yscale("log")
+    plt.plot(bins_bid[1:], hist)
     plt.savefig(prefix+"_volume.png", dpi=dpi)
     plt.close()
 
@@ -335,19 +384,59 @@ def price_minute_analysis(prefix, dataset, dpi=400, bins=250):
     plt.close()
 
     fig, axs = plt.subplots(2, 2)
-    hist_open, bins_bid_open, _ = axs[0, 0].hist(delta_open_price, bins=bins)
+    hist_open, bins_bid_open = np.histogram(delta_open_price, bins=bins)
+    axs[0, 0].plot(bins_bid_open[1:], hist_open)
     axs[0, 0].set_yscale('log')
     axs[0, 0].set_title('open')
-    hist_max, bins_bid_max, _ = axs[1, 0].hist(delta_max_price, bins=bins)
+    hist_max, bins_bid_max = np.histogram(delta_max_price, bins=bins)
+    axs[1, 0].plot(bins_bid_max[1:], hist_max)
     axs[1, 0].set_yscale('log')
     axs[1, 0].set_title('max')
-    hist_min, bins_bid_min, _ = axs[0, 1].hist(delta_min_price, bins=bins)
+    hist_min, bins_bid_min = np.histogram(delta_min_price, bins=bins)
+    axs[0, 1].plot(bins_bid_min[1:], hist_min)
     axs[0, 1].set_yscale('log')
     axs[0, 1].set_title('min')
-    hist_close, bins_bid_close, _ = axs[1, 1].hist(delta_close_price, bins=bins)
+    hist_close, bins_bid_close = np.histogram(delta_close_price, bins=bins)
+    axs[1, 1].plot(bins_bid_close[1:], hist_close)
     axs[1, 1].set_yscale('log')
     axs[1, 1].set_title('close')
     fig.savefig(prefix + "_prices.png", dpi=dpi)
+    plt.close()
+
+    fig, axs = plt.subplots(2, 2)
+    hist_open, bins_bid_open = np.histogram(delta_open_price, bins=bins)
+    shape = hist_open.argmax()
+    axs[0, 0].plot(bins_bid_open[:shape+1] * (-1), hist_open[:shape+1], label="-")
+    axs[0, 0].plot(bins_bid_open[shape:], hist_open[shape-1:], label="+")
+    axs[0, 0].set_xscale('log')
+    axs[0, 0].set_yscale('log')
+    axs[0, 0].set_title('open')
+    axs[0, 0].legend()
+    hist_max, bins_bid_max = np.histogram(delta_max_price, bins=bins)
+    shape = hist_max.argmax()
+    axs[1, 0].plot(bins_bid_max[:shape+1] * (-1), hist_max[:shape+1], label="-")
+    axs[1, 0].plot(bins_bid_max[shape:], hist_max[shape-1:], label="+")
+    axs[1, 0].set_xscale('log')
+    axs[1, 0].set_yscale('log')
+    axs[1, 0].set_title('max')
+    axs[1, 0].legend()
+    hist_min, bins_bid_min = np.histogram(delta_min_price, bins=bins)
+    shape = hist_min.argmax()
+    axs[0, 1].plot(bins_bid_min[:shape+1] * (-1), hist_min[:shape+1], label="-")
+    axs[0, 1].plot(bins_bid_min[shape:], hist_min[shape-1:], label="+")
+    axs[0, 1].set_xscale('log')
+    axs[0, 1].set_yscale('log')
+    axs[0, 1].set_title('min')
+    axs[0, 1].legend()
+    hist_close, bins_bid_close = np.histogram(delta_close_price, bins=bins)
+    shape = hist_close.argmax()
+    axs[1, 1].plot(bins_bid_close[:shape+1] * (-1), hist_close[:shape+1], label="-")
+    axs[1, 1].plot(bins_bid_close[shape:], hist_close[shape-1:], label="+")
+    axs[1, 1].set_xscale('log')
+    axs[1, 1].set_yscale('log')
+    axs[1, 1].set_title('close')
+    axs[1, 1].legend()
+    fig.savefig(prefix + "_prices_log.png", dpi=dpi)
     plt.close()
 
     fig, axs = plt.subplots(2, 2)
@@ -380,7 +469,8 @@ if __name__ == "__main__":
 
     for data, info in zip(dataset, metadata):
         if info['type'] == 'aggregated':
-            price_minute_analysis(info["code"], data)
+            price_minute_analysis(info["code"], data, bins=250)
+            pass
         elif info['type'] == 'tick':
             bid_ask_price_analysis(info["code"], data)
             pass
