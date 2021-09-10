@@ -16,10 +16,8 @@ from mutual_inf import renyi_conditional_information_transfer
 from sample_generator import preparation_dataset_for_transfer_entropy
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description='Calculates conditional information transfer for coupled Rössler systems with strength of coupling epsilon.')
+    parser = argparse.ArgumentParser(description='Calculates conditional information transfer for GARCH dataset.')
     parser.add_argument('--directory', type=str, default="conditional_information_transfer", help='Folder to export results')
-    parser.add_argument('--epsilon', metavar='XXX', type=float, nargs='+', help='Epsilons')
-    parser.add_argument('--no_cache', action='store_true', help='Skips cached results of the Rössler system', default=False)
     parser.add_argument('--skip', metavar='XXX', type=int, default=2000, help='Skipped results of integration')
     parser.add_argument('--blockwise', metavar='XXX', type=int, default=0, help='Blockwise calculation of distances to prevent excessive memory usage')
     parser.add_argument('--history_first', metavar='XXX', type=str, nargs='+', help='History to take into account')
@@ -29,17 +27,10 @@ if __name__ == "__main__":
     parser.add_argument('--arbitrary_precision', action='store_true', help='Calculates the main part in arbitrary precision')
     parser.add_argument('--arbitrary_precision_decimal_numbers', metavar='XXX', type=int, default=100,
                         help='Sets number saved in arbitrary precision arithmetic')
-    parser.add_argument('--interpolate', action='store_true', help='Switch on intepolation', default=False)
-    parser.add_argument('--interpolate_samples_per_unit_time', metavar='XXX', type=int, default=10, help='Number of samples generated per unit time')
     parser.add_argument('--dataset', action='store_true', help='Use dataset', default=False)
     parser.add_argument('--dataset_range', metavar='XXX-YYY', type=str, help='Dataset with range')
     args = parser.parse_args()
     # print(args.epsilon, flush=True)
-
-    if args.epsilon:
-        epsilons = args.epsilon
-    else:
-        epsilons = [0.01, 0.02, 0.03, 0.04, 0.05, 0.06, 0.07, 0.08, 0.09, 0.1, 0.11, 0.12, 0.13]
 
     if args.history_first:
         histories_firsts = process_CLI_arguments(args.history_first)
