@@ -3,6 +3,8 @@ import pickle
 import csv
 import numpy as np
 import datetime
+from operator import itemgetter
+from typing import Tuple, Dict, Any
 from pathlib import Path
 import matplotlib.pyplot as plt
 from scipy import signal
@@ -153,6 +155,29 @@ def load_datasets():
             pass
 
     return dataset, metadata
+
+
+def prepare_dataset(datasets=None, swap_datasets=False, shuffle_dataset=False, selection1=1, selection2=1):
+    filtrated_solution = datasets
+
+    print(f"PID:{os.getpid()} {datetime.datetime.now().isoformat()} Shape of solution: {filtrated_solution.shape}", flush=True)
+    marginal_solution_1 = filtrated_solution[:, 0:selection1]
+    marginal_solution_2 = filtrated_solution[:, selection1:selection1+selection2]
+
+    if swap_datasets:
+        marginal_solution_1, marginal_solution_2 = (marginal_solution_2, marginal_solution_1)
+
+    if shuffle_dataset:
+        marginal_solution_1 = shuffle_sample(marginal_solution_1)
+
+    return marginal_solution_1, marginal_solution_2
+
+
+def select_dataset_with_code(dataset_with_metadata, code):
+    for dataset, metadata in zip(*dataset_with_metadata):
+        if metadata['code'] == code:
+            return dataset, metadata
+    return None
 
 
 def bid_ask_price_analysis(prefix, dataset, dpi=400, bins=250):
@@ -342,6 +367,37 @@ def price_analysis(prefix, dataset, dpi=400, bins=250):
     plt.close()
 
 
+def time_join_dataset(dataset1: Dict[Any, Tuple], dataset2: Dict[Any, Tuple], select_columns1: Tuple, select_columns2: Tuple):
+    dataset = []
+    set_keys = set()
+    keys1 = dataset1.keys()
+    set_keys.update(tuple(keys1))
+
+    keys2 = dataset2.keys()
+    set_keys.update(tuple(keys2))
+
+    keys = list(set_keys)
+    keys.sort()
+
+    getter1 = itemgetter(*select_columns1)
+    getter2 = itemgetter(*select_columns2)
+    previous_value1 = None
+    previous_value2 = None
+    for key in keys:
+        value1 = dataset1.get(key, None)
+        value2 = dataset2.get(key, None)
+        if value1 is not None:
+            previous_value1 = value1
+        if value2 is not None:
+            previous_value2 = value2
+        if previous_value1 is not None and previous_value2 is not None:
+            new_line = []
+            new_line.extend(getter1(previous_value1))
+            new_line.extend(getter2(previous_value2))
+            dataset.append(new_line)
+    return np.array(dataset)
+
+
 def price_minute_analysis(prefix, dataset, dpi=400, bins=250):
     delta_open_price = [record[4] for time, record in dataset.items()]
     delta_max_price = [record[5] for time, record in dataset.items()]
@@ -466,6 +522,10 @@ if __name__ == "__main__":
         print(f"We aggregated {len(dataset)} records")
         with open(file_pickled, "wb") as fh:
             pickle.dump((dataset, metadata), fh)
+
+    data1, metadata1 = select_dataset_with_code((dataset, metadata), "EURSEK")
+    data2, metadata2 = select_dataset_with_code((dataset, metadata), "EURPLN")
+    joint_dataset = time_join_dataset(data1, data2, (1, 2), (1, 2))
 
     for data, info in zip(dataset, metadata):
         if info['type'] == 'aggregated':
