@@ -1,8 +1,13 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
+import glob
 import traceback
 from collections import Counter
+from pathlib import Path
+import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
 from processing_datasets import *
 
 plt.rcParams.update({
@@ -10,7 +15,6 @@ plt.rcParams.update({
     "font.family": "serif",
     "font.serif": ["Palatino"],
 })
-
 
 def load_processed_dataset(dataset, dataset_raw, new_columns_base_name="transfer_entropy_"):
     TE = pd.read_pickle(dataset)
@@ -24,11 +28,7 @@ def load_processed_dataset(dataset, dataset_raw, new_columns_base_name="transfer
 if __name__ == "__main__":
     dpi = 150
     output = "png"
-    # "conditional_information_transfer", "conditional_information_transfer_Dh=1", "conditional_information_transfer_Dh=2", "conditional_information_transfer_Dh=n",
-    #                       "conditional_information_transfer_full_Dh=1", "conditional_information_transfer_full_Dh=2", "conditional_information_transfer_full_Dh=n",
-    #                    "conditional_information_transfer_GARCH_single", "roessler_oscilator/conditional_information_transfer_X_3_Y_3", "roessler_oscilator/conditional_information_transfer_X_3_Y_1", "roessler_oscilator/conditional_information_transfer_X_1_Y_3", "roessler_oscilator/conditional_information_transfer_X_2_Y_2"
-    directories = ["conditional_information_transfer"]
-    #directory = "transfer_entropy"
+    directories = ["financial_transfer_entropy"]
 
     for directory in directories:
         name_of_title = "conditional_information_transfer"
@@ -38,7 +38,7 @@ if __name__ == "__main__":
         if len(files) == 0:
             TE, TE_column_names, TE_raw = process_datasets(processed_datasets=directory + "/Conditional_information_transfer-*.bin",
                                                            result_dataset=processed_dataset, result_raw_dataset=processed_raw_dataset,
-                                                           new_columns_base_name=name_of_title)
+                                                           new_columns_base_name=name_of_title, converter_epsilon=lambda x: str(x))
         else:
             TE, TE_column_names, TE_raw = load_processed_dataset(processed_dataset, processed_raw_dataset)
 
@@ -68,8 +68,7 @@ if __name__ == "__main__":
                 balance = "balance" in name_of_title
                 latex_title = r"{\Large{" + name_of_title.capitalize().replace("_", " ") + r"}}"
                 latex_title_std = latex_title + r"$\large\rm{\ -\ std}$"
-                latex_title = None
-                latex_title_std = None
+
                 title_graph = {"transfer_entropy": r"$\Large\rm{Transfer\ entropy}$",
                                "conditional_information_transfer": r"$\Large\rm{Conditional\ information\ transfer}$", }
                 filename_direction = {True: "Y->X", False: "X->Y"}
@@ -102,13 +101,8 @@ if __name__ == "__main__":
                 plot_2D_filename_implot_std = directory + "/" + column_name + "_" + filename_direction[swapped_datasets] + ("_shuffled" if shuffled_calculation else "") + "_implot_std"
                 std_filename = directory + "/" + column_name + "_" + filename_direction[swapped_datasets] + ("_shuffled" if shuffled_calculation else "") + "_2d_std"
 
-                figures2d_imshow(TE, item, latex_title, label, plot_2D_filename_implot, output, cmap="rainbow", dpi=dpi)
-                figures2d_imshow(TE, tuple(item_error), latex_title, label, plot_2D_filename_implot_std, output, cmap="rainbow", dpi=dpi)
-                figures3d_surface_TE(TE, item, latex_title, label, plot_3D_surf_filename, output, cmap="rainbow", dpi=dpi)
-                figures2d_TE_errorbar(TE, item, tuple(item_error), latex_title, label, errorbar_filename, output, dpi=dpi)
-                figures2d_TE(TE, item, latex_title, r"$\varepsilon$", label, standard_filename, output, dpi=dpi)
-                figures3d_TE(TE, item, latex_title, label, plot_3D_filename, output, dpi=dpi)
-                figures2d_TE(TE, tuple(item_error), r"$\varepsilon$", latex_title_std, label, std_filename, output, dpi=dpi)
+                figures2d_TE_alpha(TE, item, latex_title, r"$\varepsilon$", label, standard_filename, output, dpi=dpi)
+                figures2d_TE_alpha_errorbar(TE, item, tuple(item_error), latex_title, r"$\varepsilon$", label, errorbar_filename, output, dpi=dpi)
             except Exception as exc:
                 print(f"Problem {exc} {item}")
                 traceback.print_exc()
