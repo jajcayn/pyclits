@@ -426,89 +426,82 @@ def price_minute_analysis(prefix, dataset, dpi=400, bins=250):
     plt.close()
 
     hist, bins_bid = np.histogram(volume, bins=bins)
-    plt.xscale("log")
-    plt.yscale("log")
-    plt.plot(bins_bid[1:], hist)
-    plt.savefig(prefix+"_volume.png", dpi=dpi)
-    plt.close()
+    dataset_dict = {
+        "x": bins_bid[1:], "y": hist, "xscale": "log", "yscale": "log",
+    }
+    quadruple_plot(dataset_dict, prefix + "_volume.png", dpi=dpi)
 
     cumsum_bid = hist.cumsum()
-    plt.plot(bins_bid[1:], cumsum_bid)
-    plt.xscale("log")
-    plt.yscale("linear")
-    plt.savefig(prefix+"_volume_cumsum.png", dpi=dpi)
-    plt.close()
+    dataset_dict = {
+        "x": bins_bid[1:], "y": cumsum_bid, "xscale": "log",
+    }
+    quadruple_plot(dataset_dict, prefix + "_volume_cumsum.png", dpi=dpi)
 
-    fig, axs = plt.subplots(2, 2)
     hist_open, bins_bid_open = np.histogram(delta_open_price, bins=bins)
-    axs[0, 0].plot(bins_bid_open[1:], hist_open)
-    axs[0, 0].set_yscale('log')
-    axs[0, 0].set_title('open')
     hist_max, bins_bid_max = np.histogram(delta_max_price, bins=bins)
-    axs[1, 0].plot(bins_bid_max[1:], hist_max)
-    axs[1, 0].set_yscale('log')
-    axs[1, 0].set_title('max')
     hist_min, bins_bid_min = np.histogram(delta_min_price, bins=bins)
-    axs[0, 1].plot(bins_bid_min[1:], hist_min)
-    axs[0, 1].set_yscale('log')
-    axs[0, 1].set_title('min')
     hist_close, bins_bid_close = np.histogram(delta_close_price, bins=bins)
-    axs[1, 1].plot(bins_bid_close[1:], hist_close)
-    axs[1, 1].set_yscale('log')
-    axs[1, 1].set_title('close')
-    fig.savefig(prefix + "_prices.png", dpi=dpi)
-    plt.close()
+    dataset_dict = {
+        (0, 0): {'x': bins_bid_open[1:], 'y': hist_open, 'title': "open", "yscale": "log"},
+        (1, 0): {'x': bins_bid_max[1:], 'y': hist_max, 'title': "max", "yscale": "log"},
+        (0, 1): {'x': bins_bid_min[1:], 'y': hist_min, 'title': "min", "yscale": "log"},
+        (1, 1): {'x': bins_bid_close[1:], 'y': hist_close, 'title': "close", "yscale": "log"},
+    }
+    quadruple_plot(dataset_dict, prefix+"_prices.png", dpi=dpi)
 
-    fig, axs = plt.subplots(2, 2)
     hist_open, bins_bid_open = np.histogram(delta_open_price, bins=bins)
-    shape = hist_open.argmax()
-    axs[0, 0].plot(bins_bid_open[:shape+1] * (-1), hist_open[:shape+1], label="-")
-    axs[0, 0].plot(bins_bid_open[shape:], hist_open[shape-1:], label="+")
-    axs[0, 0].set_xscale('log')
-    axs[0, 0].set_yscale('log')
-    axs[0, 0].set_title('open')
-    axs[0, 0].legend()
+    shape_open = hist_open.argmax()
     hist_max, bins_bid_max = np.histogram(delta_max_price, bins=bins)
-    shape = hist_max.argmax()
-    axs[1, 0].plot(bins_bid_max[:shape+1] * (-1), hist_max[:shape+1], label="-")
-    axs[1, 0].plot(bins_bid_max[shape:], hist_max[shape-1:], label="+")
-    axs[1, 0].set_xscale('log')
-    axs[1, 0].set_yscale('log')
-    axs[1, 0].set_title('max')
-    axs[1, 0].legend()
+    shape_max = hist_max.argmax()
     hist_min, bins_bid_min = np.histogram(delta_min_price, bins=bins)
-    shape = hist_min.argmax()
-    axs[0, 1].plot(bins_bid_min[:shape+1] * (-1), hist_min[:shape+1], label="-")
-    axs[0, 1].plot(bins_bid_min[shape:], hist_min[shape-1:], label="+")
-    axs[0, 1].set_xscale('log')
-    axs[0, 1].set_yscale('log')
-    axs[0, 1].set_title('min')
-    axs[0, 1].legend()
+    shape_min = hist_min.argmax()
     hist_close, bins_bid_close = np.histogram(delta_close_price, bins=bins)
-    shape = hist_close.argmax()
-    axs[1, 1].plot(bins_bid_close[:shape+1] * (-1), hist_close[:shape+1], label="-")
-    axs[1, 1].plot(bins_bid_close[shape:], hist_close[shape-1:], label="+")
-    axs[1, 1].set_xscale('log')
-    axs[1, 1].set_yscale('log')
-    axs[1, 1].set_title('close')
-    axs[1, 1].legend()
-    fig.savefig(prefix + "_prices_log.png", dpi=dpi)
+    shape_close = hist_close.argmax()
+    dataset_dict = {
+        (0, 0): {'x': (bins_bid_open[:shape_open+1] * (-1), bins_bid_open[shape_open:]), 'y': (hist_open[:shape_open+1], hist_open[shape_open-1:]), 'label': ["-", "+"], 'title': "open", "xscale": "log", "yscale": "log"},
+        (1, 0): {'x': (bins_bid_max[:shape_max+1] * (-1), bins_bid_max[shape_max:]), 'y': (hist_max[:shape_max+1], hist_max[shape_max-1:]), 'label': ["-", "+"], 'title': "max", "xscale": "log", "yscale": "log"},
+        (0, 1): {'x': (bins_bid_min[:shape_min+1] * (-1), bins_bid_min[shape_min:]), 'y': (hist_min[:shape_min+1], hist_min[shape_min-1:]), 'label': ["-", "+"], 'title': "min", "xscale": "log", "yscale": "log"},
+        (1, 1): {'x': (bins_bid_close[:shape_close+1] * (-1), bins_bid_close[shape_close:]), 'y': (hist_close[:shape_close+1], hist_close[shape_close-1:]), 'label': ["-", "+"], 'title': "close", "xscale": "log", "yscale": "log"},
+    }
+    quadruple_plot(dataset_dict, prefix+"_prices_log.png", dpi=dpi)
+
+    dataset_dict = {
+        (0, 0): {'x': bins_bid_open[1:], 'y': hist_open.cumsum() / max(hist_open.cumsum()), 'title': "open"},
+        (1, 0): {'x': bins_bid_max[1:], 'y': hist_max.cumsum() / max(hist_max.cumsum()), 'title': "max"},
+        (0, 1): {'x': bins_bid_min[1:], 'y': hist_min.cumsum() / max(hist_min.cumsum()), 'title': "min"},
+        (1, 1): {'x': bins_bid_min[1:], 'y': hist_min.cumsum() / max(hist_min.cumsum()), 'title': "close"},
+    }
+    quadruple_plot(dataset_dict, prefix+"_price_cumsum.png", dpi=dpi)
+
+
+def quadruple_plot(datasets, name, dpi=300):
+    fig, axs = plt.subplots(2, 2)
+    for row in range(2):
+        for column in range(2):
+            dataset = datasets[(row, column)]
+            if isinstance(dataset['x'], (tuple, list)):
+                for item_x, item_y, label in zip(dataset['x'], dataset['y'], dataset.get('label', [])):
+                    axs[row, column].plot(item_x, item_y, label=label)
+            else:
+                axs[row, column].plot(dataset['x'], dataset['y'])
+            axs[row, column].set_title(dataset.get('title', None))
+            axs[row, column].set_xscale(dataset.get('xscale', 'linear'))
+            axs[row, column].set_yscale(dataset.get('yscale', 'linear'))
+
+    plt.savefig(name, dpi=dpi)
     plt.close()
 
-    fig, axs = plt.subplots(2, 2)
-    hist_open_cumsum = hist_open.cumsum()
-    axs[0, 0].plot(bins_bid_open[1:], hist_open_cumsum)
-    axs[0, 0].set_title('open')
-    hist_max_cumsum = hist_max.cumsum()
-    axs[1, 0].plot(bins_bid_max[1:], hist_max_cumsum)
-    axs[1, 0].set_title('max')
-    hist_min_cumsum = hist_min.cumsum()
-    axs[0, 1].plot(bins_bid_min[1:], hist_min_cumsum)
-    axs[0, 1].set_title('min')
-    hist_close_cumsum = hist_close.cumsum()
-    axs[1, 1].plot(bins_bid_close[1:], hist_close_cumsum)
-    axs[1, 1].set_title('close')
-    plt.savefig(prefix+"_price_cumsum.png", dpi=dpi)
+
+def single_plot(dataset, name, dpi=300):
+    if isinstance(dataset['x'], (tuple, list)):
+        for item_x, item_y, label in zip(dataset['x'], dataset['y'], dataset.get('label', [])):
+            plt.plot(item_x, item_y, label=label)
+    else:
+        plt.plot(dataset['x'], dataset['y'])
+    plt.title(dataset.get('title', None))
+    plt.xscale(dataset.get('xscale', 'linear'))
+    plt.yscale(dataset.get('yscale', 'linear'))
+    plt.savefig(name, dpi=dpi)
     plt.close()
 
 
@@ -523,17 +516,17 @@ if __name__ == "__main__":
         with open(file_pickled, "wb") as fh:
             pickle.dump((dataset, metadata), fh)
 
-    data1, metadata1 = select_dataset_with_code((dataset, metadata), "EURSEK")
-    data2, metadata2 = select_dataset_with_code((dataset, metadata), "EURPLN")
-    joint_dataset = time_join_dataset(data1, data2, (1, 2), (1, 2))
-
     for data, info in zip(dataset, metadata):
         if info['type'] == 'aggregated':
             price_minute_analysis(info["code"], data, bins=250)
             pass
         elif info['type'] == 'tick':
-            bid_ask_price_analysis(info["code"], data)
+            #bid_ask_price_analysis(info["code"], data)
             pass
         elif info['type'] == 'shortened':
-            price_analysis(info["code"], data)
+            #price_analysis(info["code"], data)
             pass
+
+    data1, metadata1 = select_dataset_with_code((dataset, metadata), "EURSEK")
+    data2, metadata2 = select_dataset_with_code((dataset, metadata), "EURPLN")
+    joint_dataset = time_join_dataset(data1, data2, (1, 2), (1, 2))
