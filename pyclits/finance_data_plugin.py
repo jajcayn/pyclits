@@ -8,6 +8,7 @@ from typing import Tuple, Dict, Any
 from pathlib import Path
 import matplotlib.pyplot as plt
 from scipy import signal
+from scipy.optimize import curve_fit
 
 from sample_generator import shuffle_sample
 
@@ -323,48 +324,42 @@ def price_analysis(prefix, dataset, dpi=400, bins=250):
     delta_time = [record[2] for time, record in dataset.items()]
 
     hist, bins_bid = np.histogram(delta_price, bins=bins)
-    plt.plot(bins_bid[1:], hist)
-    plt.yscale('log')
-    plt.savefig(prefix+"_price.png", dpi=dpi)
-    plt.close()
+    dataset_dict = {
+        "x": bins_bid[1:], "y": hist, 'yscale': 'log'
+    }
+    single_plot(dataset_dict, prefix + "_price.png", dpi=dpi)
+
 
     shape = hist.argmax()
-    plt.plot(bins_bid[:shape+1] * (-1), hist[:shape+1], label="-")
-    plt.plot(bins_bid[shape:], hist[shape-1:], label="+")
-    plt.xscale('log')
-    plt.yscale('log')
-    plt.legend()
-    plt.savefig(prefix+"_price_log_log.png", dpi=dpi)
-    plt.close()
+    dataset_dict = {
+        "x": (bins_bid[:shape+1] * (-1), bins_bid[shape:]), "y": (hist[:shape+1], hist[shape-1:]), 'label': ("-", "+"), "xscale": "log", "yscale": "log",
+    }
+    single_plot(dataset_dict, prefix + "_price_log_log.png", dpi=dpi)
 
     cumsum_bid = hist.cumsum()
-    plt.plot(bins_bid[1:], cumsum_bid)
-    plt.xscale("linear")
-    plt.yscale("linear")
-    plt.savefig(prefix+"_price_cumsum.png", dpi=dpi)
-    plt.close()
+    dataset_dict = {
+        "x": bins_bid[1:], "y": cumsum_bid
+    }
+    single_plot(dataset_dict, prefix + "_price_cumsum.png", dpi=dpi)
 
     hist, bins = np.histogram(delta_time, bins=bins)
-    plt.plot(bins[1:], hist)
-    plt.yscale('log')
-    plt.xscale('linear')
-    plt.savefig(prefix+"_time.png", dpi=dpi)
-    plt.close()
+    dataset_dict = {
+        "x": bins[1:], "y": hist, "yscale": 'log'
+    }
+    single_plot(dataset_dict, prefix + "_time.png", dpi=dpi)
 
     cumsum = hist[::-1].cumsum()[::-1]
-    plt.yscale('log')
-    plt.xscale('log')
-    plt.plot(cumsum)
-    plt.savefig(prefix+"_time_cumsum.png", dpi=dpi)
-    plt.close()
+    dataset_dict = {
+        "y": cumsum, "xscale": 'log', "yscale": 'log'
+    }
+    single_plot(dataset_dict, prefix + "_time_cumsum.png", dpi=dpi)
 
     logbins = np.logspace(np.log10(bins[1]), np.log10(bins[-1]), 200)
     hist, bins = np.histogram(delta_time, bins=logbins)
-    plt.plot(bins[1:], hist)
-    plt.yscale('log')
-    plt.xscale('log')
-    plt.savefig(prefix+"_time_log.png", dpi=dpi)
-    plt.close()
+    dataset_dict = {
+        "x": bins[1:], "y": hist, "xscale": 'log', "yscale": 'log'
+    }
+    single_plot(dataset_dict, prefix + "_time_log.png", dpi=dpi)
 
 
 def time_join_dataset(dataset1: Dict[Any, Tuple], dataset2: Dict[Any, Tuple], select_columns1: Tuple, select_columns2: Tuple):
@@ -408,34 +403,46 @@ def price_minute_analysis(prefix, dataset, dpi=400, bins=250):
     sign_open_price = np.sign(delta_open_price)
     corr = signal.correlate(sign_open_price, sign_open_price, mode='full')
 
-    plt.xscale("linear")
-    plt.yscale("linear")
-    plt.plot(corr)
-    plt.savefig(prefix+"_sign_open_autocorrelation.png", dpi=dpi)
-    plt.close()
+    dataset_dict = {
+        "y": corr
+    }
+    single_plot(dataset_dict, prefix + "_sign_open_autocorrelation.png", dpi=dpi)
 
     abs_open_price = np.abs(delta_open_price)
     corr = signal.correlate(abs_open_price, abs_open_price, mode='full')
     max_corr = max(corr)
     shape = corr.shape[0] // 2
 
-    plt.xscale("log")
-    plt.yscale("log")
-    plt.plot(corr[shape:] / max_corr)
-    plt.savefig(prefix+"_abs_open_autocorrelation.png", dpi=dpi)
-    plt.close()
+    dataset_dict = {
+        "y": corr[shape:] / max_corr, "xscale": "log", "yscale": "log",
+    }
+    single_plot(dataset_dict, prefix + "_abs_open_autocorrelation.png", dpi=dpi)
 
     hist, bins_bid = np.histogram(volume, bins=bins)
     dataset_dict = {
         "x": bins_bid[1:], "y": hist, "xscale": "log", "yscale": "log",
     }
-    quadruple_plot(dataset_dict, prefix + "_volume.png", dpi=dpi)
+    single_plot(dataset_dict, prefix + "_volume.png", dpi=dpi)
 
-    cumsum_bid = hist.cumsum()
+    #logged_bin = np.log(bins_bid[1:])
+    #logged_hist = np.log(hist)
+    #popt, pcov = curve_fit(lambda x, a, b: a * (x-10**5)**(-b), bins_bid[1:], hist, p0=(10**3, 2))
+
+    cumsum_bid = hist[::-1].cumsum()[::-1]
     dataset_dict = {
-        "x": bins_bid[1:], "y": cumsum_bid, "xscale": "log",
+        "x": bins_bid[1:], "y": cumsum_bid, "xscale": "log", "yscale": "log",
     }
-    quadruple_plot(dataset_dict, prefix + "_volume_cumsum.png", dpi=dpi)
+    single_plot(dataset_dict, prefix + "_volume_cumsum.png", dpi=dpi)
+
+    func = lambda x, a, b: a * x + b
+    logged_bin = np.log(bins_bid[1:])
+    logged_hist = np.log(cumsum_bid)
+    popt, pcov = curve_fit(func, logged_bin, logged_hist, p0=(-1, 2))
+    interp_values = np.exp(func(logged_bin, *popt))
+    dataset_dict = {
+        "x": (bins_bid[1:], bins_bid[1:]), "y": (cumsum_bid, interp_values), "xscale": "log", "yscale": "log", 'label': ["val", r"$x^{" + f"{popt[0]:.3f}" + r"}$"], "legend": True
+    }
+    single_plot(dataset_dict, prefix + "_volume_cumsum_interp.png", dpi=dpi)
 
     hist_open, bins_bid_open = np.histogram(delta_open_price, bins=bins)
     hist_max, bins_bid_max = np.histogram(delta_max_price, bins=bins)
@@ -493,14 +500,20 @@ def quadruple_plot(datasets, name, dpi=300):
 
 
 def single_plot(dataset, name, dpi=300):
-    if isinstance(dataset['x'], (tuple, list)):
-        for item_x, item_y, label in zip(dataset['x'], dataset['y'], dataset.get('label', [])):
-            plt.plot(item_x, item_y, label=label)
+    if 'x' in dataset:
+        if isinstance(dataset['x'], (tuple, list)):
+            for item_x, item_y, label in zip(dataset['x'], dataset['y'], dataset.get('label', [])):
+                plt.plot(item_x, item_y, label=label)
+        else:
+            plt.plot(dataset['x'], dataset['y'])
     else:
-        plt.plot(dataset['x'], dataset['y'])
+        plt.plot(dataset['y'])
+
     plt.title(dataset.get('title', None))
     plt.xscale(dataset.get('xscale', 'linear'))
     plt.yscale(dataset.get('yscale', 'linear'))
+    if dataset.get("legend", False):
+        plt.legend(ncol=3)
     plt.savefig(name, dpi=dpi)
     plt.close()
 
