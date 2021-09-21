@@ -9,8 +9,8 @@ import unittest
 from datetime import datetime
 
 import numpy as np
+import pytest
 import xarray as xr
-
 from pyclits.geofield_new import DataField
 
 from . import TestHelperTempSave
@@ -125,6 +125,15 @@ class TestDataField(TestHelperTempSave):
             df.spatial_dims
             == (self.CORRECT_LATS.shape[0], self.CORRECT_LONS.shape[0])
         )
+        self.assertListEqual(df.dims_not_time, ["lats", "lons"])
+        for (k1, v1), (k2, v2) in zip(
+            df.coords_not_time.items(),
+            {
+                k: v.values for k, v in df.data.coords.items() if k != "time"
+            }.items(),
+        ):
+            self.assertEqual(k1, k2)
+            np.testing.assert_equal(v1, v2)
 
     def test_shift_lons(self):
         df = self.load_df()
@@ -206,6 +215,16 @@ class TestDataField(TestHelperTempSave):
             filename,
         )
 
+    def test_dt(self):
+        df = self.load_df()
+        with pytest.raises(ValueError):
+            df.dt(units="fail_please")
+        self.assertEqual(df.dt(units="seconds"), 2629440.0)
+        self.assertEqual(df.dt(units="hours"), 730.4)
+        self.assertAlmostEqual(df.dt(units="days"), 30.43333333)
+        self.assertAlmostEqual(df.dt(units="months"), 1.0, places=3)
+        self.assertAlmostEqual(df.dt(units="years"), 0.08332363)
+
     def test_spatial_resample(self):
         df = self.load_df()
         resampled_df = df.spatial_resample(
@@ -226,9 +245,36 @@ class TestDataField(TestHelperTempSave):
 
     def test_deseasonalise(self):
         df = self.load_df()
-        mean, std = df.deseasonalise(standardise=True, inplace=True)
+        deseas_df, mean_df, std_df = df.deseasonalise(
+            standardise=True, inplace=False
+        )
+        filename_df = os.path.join(self.temp_dir, "deseasonalised.nc")
+        deseas_df.save(filename_df)
+        filename_mean = os.path.join(self.temp_dir, "deseasonalise_mean.nc")
+        mean_df.to_netcdf(filename_mean)
+        filename_std = os.path.join(self.temp_dir, "deseasonalise_std.nc")
+        std_df.to_netcdf(filename_std)
 
-        # TODO finish test
+        # assert that time dimension did not change
+        self.compare_time_range(
+            df.time, datetime(1990, 1, 1), datetime(2000, 1, 1)
+        )
+        self.compare_nc_files(
+            os.path.join(self.test_results_path, "deseasonalised_result.nc"),
+            filename_df,
+        )
+        self.compare_nc_files(
+            os.path.join(
+                self.test_results_path, "deseasonalise_mean_result.nc"
+            ),
+            filename_mean,
+        )
+        self.compare_nc_files(
+            os.path.join(
+                self.test_results_path, "deseasonalise_std_results.nc"
+            ),
+            filename_std,
+        )
 
 
 if __name__ == "__main__":

@@ -5,10 +5,23 @@ Base class for any geo spatio-temporal field. Represented as xarray.DataArray.
 """
 
 from datetime import date, datetime
+from multiprocessing import cpu_count
 
 import numpy as np
 import pandas as pd
 import xarray as xr
+from pathos.multiprocessing import Pool
+from sklearn.decomposition import PCA
+
+from .wavelet_analysis import MorletWavelet, continous_wavelet
+
+TIME_UNITS = {
+    "seconds": "s",
+    "hours": "h",
+    "days": "D",
+    "months": "M",
+    "years": "Y",
+}
 
 
 class DataField:
@@ -53,8 +66,13 @@ class DataField:
         self.data = self.data.sortby(self.data.time)
 
         if np.any(self.data.lons.values < 0.0):
-            print("**WARNING: found negative longitude, shifting to 0-360")
             self.data = self.shift_lons_to_all_east_notation(self.data)
+
+        # assert time dimensions is the first one
+        self.data = self.data.transpose(*(["time"] + self.dims_not_time))
+
+        # get average dt
+        self._dt = self.data.time.diff(dim="time").mean()
 
     def _rename_coords(self, substring, new_name):
         """
@@ -149,6 +167,47 @@ class DataField:
     @property
     def spatial_dims(self):
         return (self.lats.shape[0], self.lons.shape[0])
+
+    @property
+    def shape(self):
+        return self.data.shape
+
+    @property
+    def dims_not_time(self):
+        """
+        Return list of dimensions that are not time.
+        """
+        return [dim for dim in self.data.dims if dim != "time"]
+
+    @property
+    def coords_not_time(self):
+        """
+        Return dict with all coordinates except time.
+        """
+        return {k: v.values for k, v in self.data.coords.items() if k != "time"}
+
+    def dt(self, units="seconds"):
+        """
+        Return average dt in units.
+
+        :param units: units in which to return dt, supported are:
+            - seconds
+            - hours
+            - days
+            - months
+            - years
+        :type units: str
+        :return dt in selected unit
+        :rtype: float
+        """
+        if units not in TIME_UNITS:
+            raise ValueError(
+                f"`{units}` not understood, use one of the "
+                f"{TIME_UNITS.keys()}"
+            )
+        return self._dt.values.astype("timedelta64[s]") / np.timedelta64(
+            1, TIME_UNITS[units]
+        ).astype("timedelta64[s]")
 
     def save(self, filename):
         """
@@ -387,3 +446,387 @@ class DataField:
         return self.deseasonalise(
             base_period=base_period, standardise=False, inplace=inplace
         )[:-1]
+
+    def pca(self, n_comps, return_nans=False):
+        """
+        Perform PCA decomposition. NaNs are removed beforehand, and optionally
+        added back to the EOFs.
+
+        :param n_comps: number of PCA components [if int], or ratio of variance
+            to retain [if float < 1]
+        :type n_comps: int|float
+        :param return_nans: whether to return NaNs after the PCA
+        :rtype return_nans: bool
+        :return: principal components (the timeseries from PCA), empirical
+            orthogonal functions (the components from PCA, variance explained by
+            the components
+        :rtype: xr.DataArray, xr.DataArray, np.ndarray
+        """
+        flat_data = self.data.stack(space=self.dims_not_time).dropna(
+            dim="space", how="any"
+        )
+        self.pca_mean = flat_data.mean(dim="time")
+        self.pca = PCA(n_components=n_comps)
+        pcs = self.pca.fit_transform((flat_data - self.pca_mean).values)
+        pcs = xr.DataArray(
+            data=pcs.copy(),
+            dims=["time", "component"],
+            coords={"time": self.time, "component": np.arange(1, n_comps + 1)},
+        )
+        eofs = xr.DataArray(
+            data=self.pca.components_.copy(),
+            dims=["component", "space"],
+            coords={
+                "component": np.arange(1, n_comps + 1),
+                "space": flat_data.coords["space"],
+            },
+        ).unstack()
+        if return_nans:
+            eofs_full = np.empty((eofs.shape[0],) + self.data.shape[1:])
+            eofs_full[:] = np.nan
+            _, _, idx_lats = np.intersect1d(
+                eofs.lats.values, self.lats, return_indices=True
+            )
+            _, _, idx_lons = np.intersect1d(
+                eofs.lons.values, self.lons, return_indices=True
+            )
+            eofs_full[:, idx_lats.reshape((-1, 1)), idx_lons] = eofs.values
+            eofs = xr.DataArray(
+                data=eofs_full,
+                dims=["component"] + self.dims_not_time,
+                coords={
+                    "component": np.arange(1, n_comps + 1),
+                    **self.coords_not_time,
+                },
+            )
+
+        var = self.pca.explained_variance_ratio_.copy()
+
+        return pcs, eofs, var
+
+    def invert_pca(self, eofs, pcs):
+        pass
+
+    @staticmethod
+    def _get_parametric_phase(args):
+        """
+        Helper function for parallel computation of parametric phase.
+        """
+        i, half_length, upper_bound, freq, window, data = args
+        if np.any(np.isnan(data)):
+            return i, np.nan
+
+        c = np.cos(np.arange(-half_length, upper_bound, 1) * freq)
+        s = np.sin(np.arange(-half_length, upper_bound, 1) * freq)
+        cx = np.dot(c, data) / data.shape[0]
+        sx = np.dot(s, data) / data.shape[0]
+        mx = np.sqrt(cx ** 2 + sx ** 2)
+        phi = np.angle(cx - 1j * sx)
+        z = mx * np.cos(np.arange(-half_length, upper_bound, 1) * freq + phi)
+
+        # iterate with window
+        iphase = np.zeros_like(data)
+        half_window = int(np.floor(window / 2))
+        upper_bound_window = half_window + 1 if window & 0x1 else half_window
+        co = np.cos(np.arange(-half_window, upper_bound_window, 1) * freq)
+        so = np.sin(np.arange(-half_window, upper_bound_window, 1) * freq)
+
+        for shift in range(0, data.shape[0] - window + 1):
+            y = data[shift : shift + window].copy()
+            y -= np.mean(y)
+            cxo = np.dot(co, y) / window
+            sxo = np.dot(so, y) / window
+            phio = np.angle(cxo - 1j * sxo)
+            iphase[shift + half_window] = phio
+
+        iphase[shift + half_window + 1 :] = np.angle(
+            np.exp(1j * (np.arange(1, upper_bound_window) * freq + phio))
+        )
+        y = data[:window].copy()
+        y -= np.mean(y)
+        cxo = np.dot(co, y) / window
+        sxo = np.dot(so, y) / window
+        phio = np.angle(cxo - 1j * sxo)
+        iphase[:half_window] = np.angle(
+            np.exp(1j * (np.arange(-half_window, 0, 1) * freq + phio))
+        )
+
+        return i, iphase
+
+    def parametric_phase(
+        self,
+        central_period,
+        window,
+        units="years",
+        return_wrapped=True,
+        inplace=True,
+    ):
+        """
+        Computes phase of the analytic signal using parametric method. Data are
+        padded in the temporal dimension by the 1/4 of the central period at
+        both sides.
+
+        :param central_period: central period of the analytic signal, in units
+            given in `units`
+        :type central_period: float
+        :param window: length of the estimation window, in units given in
+            `units`
+        :type window: float
+        :param units: units for the central period and window
+        :type units: str
+        :param return_wrapped: return wrapped phase (bounded in -pi, pi)
+        :type return_wrapped: bool
+        :param inplace: whether to make operation in-place or return
+        :type inplace: bool
+        """
+        demeaned_data = self.data - self.data.mean(dim="time")
+        # pad before computation
+        how_much = int((central_period * 2) * (1.0 / self.dt(units)))
+        padded_data = np.pad(
+            demeaned_data.values,
+            pad_width=[(how_much, how_much)]
+            + [(0, 0)] * len(self.dims_not_time),
+            mode="symmetric",
+        )
+        half_length = int(np.floor(padded_data.shape[0] / 2))
+        upper_bound = (
+            half_length + 1 if padded_data.shape[0] & 0x1 else half_length
+        )
+        orig_shape = padded_data.shape[1:]
+        data_reshape = padded_data.reshape((padded_data.shape[0], -1))
+        freq = 2 * np.pi / (central_period * (1.0 / self.dt(units)))
+        args = [
+            (
+                i,
+                half_length,
+                upper_bound,
+                freq,
+                int(window * (1.0 / self.dt(units))),
+                data_reshape[:, i],
+            )
+            for i in range(data_reshape.shape[1])
+        ]
+        pool = Pool(cpu_count())
+        results = pool.imap_unordered(self._get_parametric_phase, args)
+        pool.close()
+        pool.join()
+        parametric_phase = np.zeros((len(self.time), data_reshape.shape[1]))
+        for result in results:
+            i, phase_ = result
+            parametric_phase[:, i] = phase_[how_much:-how_much]
+        parametric_phase = parametric_phase.reshape(
+            (len(self.time),) + orig_shape
+        )
+        parametric_phase = (
+            parametric_phase
+            if return_wrapped
+            else np.unwrap(parametric_phase, axis=0)
+        )
+
+        parametric_phase = xr.DataArray(
+            data=parametric_phase,
+            dims=self.data.dims,
+            coords=self.data.coords,
+            attrs={
+                "parametric_phase_period": central_period,
+                "parametric_phase_window": window,
+                "parametric_phase_units": units,
+                **self.data.attrs,
+            },
+        )
+
+        if inplace:
+            self.data = parametric_phase
+        else:
+            return DataField(data=parametric_phase)
+
+    @staticmethod
+    def _regress_amps(args):
+        """
+        Helper function for parallel regression of amplitudes to the data range.
+        """
+        i, amp, recon, data = args
+        fit_x = np.vstack([recon, np.ones((recon.shape[0]))]).T
+        try:
+            m, c = np.linalg.lstsq(fit_x, data)[0]
+            fit_amp = m * amp + c
+        except np.linalg.LinAlgError:
+            fit_amp = np.zeros_like(amp)
+            amp[:] = np.nan
+        return i, fit_amp
+
+    @staticmethod
+    def _get_wvlt_coefficients(args):
+        """
+        Helper function for parallel wavelet computing
+        """
+        i, s0, wavelet, k0, data = args
+        wave, _, _, _ = continous_wavelet(
+            data, dt=1.0, pad=True, wavelet=wavelet, dj=0, s0=s0, j1=0, k0=k0
+        )
+        return i, wave
+
+    def ccwt(
+        self,
+        central_period,
+        units="years",
+        wavelet=MorletWavelet(),
+        k0=6.0,
+        return_as="complex",
+        inplace=True,
+    ):
+        """
+        Perform continuous complex wavelet transform of the data. Data are
+        padded in the temporal dimension by the 1/4 of the longest period at
+        both sides.
+
+        :param central_periods: central period to use for the wavelet, in units
+            given in `units`
+        :type central_period: float
+        :param units: units for the wavelet
+        :type units: str
+        :param wavelet: mother wavelet to use
+        :type wavelet: `wvlt.MotherWavelet`
+        :param k0: mother wavelet parameter - wavenumber for Morlet, order for
+            Paul, derivative for DoG
+        :type k0: float
+        :param return_as: what type of result to return
+            `raw`: return raw wavelet coefficients
+            `amplitude` will compute amplitude, hence abs(H(x))
+            `amplitude_regressed` will compute amplitude and regress it onto the
+                data, so the ranges are equal
+            `phase_wrapped` will compute phase, hence angle(H(x)), in -pi,pi
+            `phase_unwrapped` will compute phase in a continuous sense, hence
+                monotonic
+            `reconstruction` will compute reconstruction of the signal as
+                A*cos(phi)
+            `reconstruction_regressed` will compute reconstruction of the signal
+                with amplitdes regressed to the data range
+        :type return_as: str
+        :param inplace: whether to make operation in-place or return
+        :type inplace: bool
+        """
+        if units not in TIME_UNITS:
+            raise ValueError(
+                f"`{units}` not understood, use one of the "
+                f"{TIME_UNITS.keys()}"
+            )
+        s0 = (central_period * (1.0 / self.dt(units))) / wavelet.fourier_factor(
+            k0
+        )
+        # pad before wavelet
+        how_much = int((central_period * 2) * (1.0 / self.dt(units)))
+        padded_data = np.pad(
+            self.data.values,
+            pad_width=[(how_much, how_much)]
+            + [(0, 0)] * len(self.dims_not_time),
+            mode="symmetric",
+        )
+        orig_shape = padded_data.shape[1:]
+        data_reshape = padded_data.reshape((padded_data.shape[0], -1))
+        args = [
+            (i, s0, wavelet, k0, data_reshape[:, i])
+            for i in range(data_reshape.shape[1])
+        ]
+        pool = Pool(cpu_count())
+        results = pool.imap_unordered(self._get_wvlt_coefficients, args)
+        pool.close()
+        pool.join()
+        coeffs = np.zeros(
+            (len(self.time), data_reshape.shape[1]), dtype=np.complex128
+        )
+        for result in results:
+            i, wave = result
+            coeffs[:, i] = wave.squeeze()[how_much:-how_much]
+        coeffs = coeffs.reshape((len(self.time),) + orig_shape)
+        amplitude = np.abs(coeffs)
+        phase = np.angle(coeffs)
+        reconstruction = amplitude * np.cos(phase)
+
+        if return_as in ["amplitude_regressed", "reconstruction_regressed"]:
+            reconstruction_reshaped = reconstruction.reshape(
+                (len(self.time), -1)
+            )
+            amplitude_reshape = amplitude.reshape((len(self.time), -1))
+            data_reshape = self.data.values.reshape((len(self.time), -1))
+            args = [
+                (
+                    i,
+                    amplitude_reshape[:, i],
+                    reconstruction_reshaped[:, i],
+                    data_reshape[:, i],
+                )
+                for i in range(data_reshape.shape[1])
+            ]
+            pool = Pool(cpu_count())
+            results = pool.imap_unordered(self._regress_amps, args)
+            pool.close()
+            pool.join()
+            amps_regressed = np.zeros_like(reconstruction_reshaped)
+            for result in list(results):
+                i, amps_r = result
+                amps_regressed[:, i] = amps_r
+            amplitude = amps_regressed.reshape((len(self.time),) + orig_shape)
+
+        if return_as == "phase_wrapped":
+            wvlt_result = phase
+        elif return_as == "phase_unwrapped":
+            wvlt_result = np.unwrap(phase, axis=0)
+        elif return_as in ["amplitude", "amplitude_regressed"]:
+            wvlt_result = amplitude
+        elif return_as in ["reconstruction", "reconstruction_regressed"]:
+            wvlt_result = amplitude * np.cos(phase)
+        elif return_as == "raw":
+            wvlt_result = coeffs
+
+        wvlt = xr.DataArray(
+            data=wvlt_result,
+            dims=self.data.dims,
+            coords=self.data.coords,
+            attrs={
+                "CCWT_period": central_period,
+                "CCWT_units": units,
+                **self.data.attrs,
+            },
+        )
+
+        if inplace:
+            self.data = wvlt
+        else:
+            return DataField(data=wvlt)
+
+
+class StationDataField(DataField):
+    """
+    Class holds station data, hence 1D in space.
+    """
+
+    @classmethod
+    def load_ECAD_station(
+        cls,
+        filename,
+        station_name,
+        skiprows=19,
+        missing=-9999,
+        multiplier=0.1,
+        lat=None,
+        lon=None,
+    ):
+        data = pd.read_csv(filename, skiprows=skiprows, delimiter=",")
+        data.columns = data.columns.str.strip()
+        data["DATE"] = pd.to_datetime(data["DATE"], format="%Y%m%d")
+        col_name = data.columns[2]
+        data[col_name] = data[col_name].astype(float).replace({missing: np.nan})
+        data = data.drop("SOUID", axis=1)
+        data = data.rename({"DATE": "time"}, axis=1)
+        data = data.set_index("time")
+        data[col_name] = data[col_name] * multiplier
+
+        initd = cls(
+            xr.DataArray.from_series(data[col_name])
+            .expand_dims(["lats", "lons"])
+            .assign_coords({"lats": [lat or np.nan], "lons": [lon or np.nan]})
+        )
+        initd.station_name = station_name
+
+        return initd

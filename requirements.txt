@@ -1,0 +1,11 @@
+black
+flake8
+git+https://github.com/matplotlib/basemap.git
+isort
+numpy
+pandas
+pytest
+PyWavelets
+scikit-learn
+statsmodels
+xarray
