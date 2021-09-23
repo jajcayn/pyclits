@@ -319,47 +319,71 @@ def bid_ask_price_analysis(prefix, dataset, dpi=400, bins=250):
     plt.close()
 
 
-def price_analysis(prefix, dataset, dpi=400, bins=250):
+def interpolation(data_x, data_y, func=lambda x, a, b: a * x + b, selector=lambda x: x < -100, multiplicator=-1, p0=(-1, 11)):
+    selector_data = [(np.log(multiplicator * item[0]), np.log(item[1])) for item in zip(data_x, data_y) if selector(item[0]) and item[1] > 0]
+    logged_bin = np.array([item[0] for item in selector_data])
+    logged_hist = np.array([item[1] for item in selector_data])
+    popt, pcov = curve_fit(func, logged_bin, logged_hist, p0=p0)
+    return multiplicator * np.exp(logged_bin), np.exp(func(logged_bin, *popt)), popt
+
+
+def price_analysis(prefix, dataset, dpi=400, number_bins=250):
     delta_price = [record[1] for time, record in dataset.items()]
     delta_time = [record[2] for time, record in dataset.items()]
 
-    hist, bins_bid = np.histogram(delta_price, bins=bins)
+    hist, bins = np.histogram(delta_price, bins=number_bins)
+    interp_bin1, interp_values1, popt1 = interpolation(bins[1:], hist, selector=lambda x: x < -70, multiplicator=-1)
+    interp_bin2, interp_values2, popt2 = interpolation(bins[1:], hist, selector=lambda x: x > 70, multiplicator=1)
+
     dataset_dict = {
-        "x": bins_bid[1:], "y": hist, 'yscale': 'log'
+        "x": (bins[1:], interp_bin1, interp_bin2), "y": (hist, interp_values1, interp_values2),
+        'yscale': 'log', 'legend': True,
+        'label': [None, r"$x^{" + f"{popt1[0]:.3f}" + r"}$", r"$x^{" + f"{popt2[0]:.3f}" + r"}$"]
     }
     single_plot(dataset_dict, prefix + "_price.png", dpi=dpi)
 
-
     shape = hist.argmax()
     dataset_dict = {
-        "x": (bins_bid[:shape+1] * (-1), bins_bid[shape:]), "y": (hist[:shape+1], hist[shape-1:]), 'label': ("-", "+"), "xscale": "log", "yscale": "log",
+        "x": (bins[:shape+1] * (-1), bins[shape:], -interp_bin1, interp_bin2), "y": (hist[:shape+1], hist[shape-1:], interp_values1, interp_values2),
+        'label': ("-", "+", r"$x^{" + f"{popt1[0]:.3f}" + r"}$", r"$x^{" + f"{popt2[0]:.3f}" + r"}$"),
+        "xscale": "log", "yscale": "log", 'legend': True,
     }
-    single_plot(dataset_dict, prefix + "_price_log_log.png", dpi=dpi)
+    single_plot(dataset_dict, prefix + "_price_log_log.png", xlim=(min(bins[:shape+1] * (-1)), max(bins[shape:])), dpi=dpi)
 
     cumsum_bid = hist.cumsum()
+    cfd = cumsum_bid / max(cumsum_bid)
+    interp_bin1, interp_values1, popt1 = interpolation(bins[1:], cfd, selector=lambda x: x < -70, multiplicator=-1)
+    interp_bin2, interp_values2, popt2 = interpolation(bins[1:], 1 - cfd, selector=lambda x: x > 70, multiplicator=1)
     dataset_dict = {
-        "x": bins_bid[1:], "y": cumsum_bid
+        "x": (bins[1:], interp_bin1, interp_bin2), "y": (cfd, interp_values1, 1 - interp_values2), 'legend': True,
+        'label': (None, r"$x^{" + f"{popt1[0]:.3f}" + r"}$", r"$x^{" + f"{popt2[0]:.3f}" + r"}$"), "yscale": "log"
     }
     single_plot(dataset_dict, prefix + "_price_cumsum.png", dpi=dpi)
 
-    hist, bins = np.histogram(delta_time, bins=bins)
+    hist, bins = np.histogram(delta_time, bins=number_bins)
+    interp_bin, interp_values, popt = interpolation(bins[1:], hist, selector=lambda x: 5 < x < 290, multiplicator=1)
     dataset_dict = {
-        "x": bins[1:], "y": hist, "yscale": 'log'
+        "x": (bins[1:], interp_bin), "y": (hist, interp_values), "yscale": 'log', 'legend': True,
+        'label': (None, r"$x^{" + f"{popt[0]:.3f}" + r"}$")
     }
-    single_plot(dataset_dict, prefix + "_time.png", dpi=dpi)
+    single_plot(dataset_dict, prefix + "_time.png", xlim=(0, max(bins[1:])), dpi=dpi)
 
     cumsum = hist[::-1].cumsum()[::-1]
+    interp_bin, interp_values, popt = interpolation(bins[1:], cumsum, selector=lambda x: 320 < x, multiplicator=1)
     dataset_dict = {
-        "y": cumsum, "xscale": 'log', "yscale": 'log'
+        "x": (bins[1:], interp_bin), "y": (cumsum, interp_values), "xscale": 'log', "yscale": 'log', 'legend': True,
+        'label': (None, r"$x^{" + f"{popt[0]:.3f}" + r"}$")
     }
-    single_plot(dataset_dict, prefix + "_time_cumsum.png", dpi=dpi)
+    single_plot(dataset_dict, prefix + "_time_cumsum.png", xlim=(bins[1], bins[-1]), dpi=dpi)
 
     logbins = np.logspace(np.log10(bins[1]), np.log10(bins[-1]), 200)
     hist, bins = np.histogram(delta_time, bins=logbins)
+    interp_bin, interp_values, popt = interpolation(bins[1:], hist, selector=lambda x: x < 280, multiplicator=1)
     dataset_dict = {
-        "x": bins[1:], "y": hist, "xscale": 'log', "yscale": 'log'
+        "x": (bins[1:], interp_bin), "y": (hist, interp_values), "xscale": 'log', "yscale": 'log', 'legend': True,
+        'label': (None, r"$x^{" + f"{popt[0]:.3f}" + r"}$")
     }
-    single_plot(dataset_dict, prefix + "_time_log.png", dpi=dpi)
+    single_plot(dataset_dict, prefix + "_time_log.png", xlim=(bins[1], bins[-1]), dpi=dpi)
 
 
 def time_join_dataset(dataset1: Dict[Any, Tuple], dataset2: Dict[Any, Tuple], select_columns1: Tuple, select_columns2: Tuple):
@@ -499,7 +523,7 @@ def quadruple_plot(datasets, name, dpi=300):
     plt.close()
 
 
-def single_plot(dataset, name, dpi=300):
+def single_plot(dataset, name, xlim=None, ylim=None, dpi=300):
     if 'x' in dataset:
         if isinstance(dataset['x'], (tuple, list)):
             for item_x, item_y, label in zip(dataset['x'], dataset['y'], dataset.get('label', [])):
@@ -509,6 +533,10 @@ def single_plot(dataset, name, dpi=300):
     else:
         plt.plot(dataset['y'])
 
+    if xlim:
+        plt.xlim(xlim)
+    if ylim:
+        plt.ylim(ylim)
     plt.title(dataset.get('title', None))
     plt.xscale(dataset.get('xscale', 'linear'))
     plt.yscale(dataset.get('yscale', 'linear'))
@@ -531,13 +559,13 @@ if __name__ == "__main__":
 
     for data, info in zip(dataset, metadata):
         if info['type'] == 'aggregated':
-            price_minute_analysis(info["code"], data, bins=250)
+            #price_minute_analysis(info["code"], data, bins=250)
             pass
         elif info['type'] == 'tick':
             #bid_ask_price_analysis(info["code"], data)
             pass
         elif info['type'] == 'shortened':
-            #price_analysis(info["code"], data)
+            price_analysis(info["code"], data)
             pass
 
     data1, metadata1 = select_dataset_with_code((dataset, metadata), "EURSEK")

@@ -154,14 +154,26 @@ def figures2d_TE_alpha(dataset, selector, title, xlabel, ylabel, filename, suffi
 
     for code in codes:
         subselection = dataset.loc[dataset["epsilon"] == code]
+        columns = list(subselection.columns.values)
 
-        ys = subselection[['alpha']]
-        zs = subselection[[selector]]
+        for swap in [True, False]:
+            list_selector = list(selector)
+            list_selector[4] = swap
+            selector = tuple(list_selector)
+            if selector in columns:
 
-        try:
-            ax.plot(ys.values, zs.values, linewidth=3, label=code.replace("_", "-"))
-        except Exception as exc:
-            print(f"{exc}: Problem D=")
+                label = code.replace("_", "-")
+                if swap:
+                    label_split = label.split("-")
+                    label = label_split[1] + "-" + label_split[0]
+
+                ys = subselection[['alpha']]
+                zs = subselection[[selector]]
+
+                try:
+                    ax.plot(ys.values, zs.values, linewidth=3, label=label)
+                except Exception as exc:
+                    print(f"{exc}: Problem D=")
 
     # Add a color bar which maps values to colors.
     # fig.colorbar(surf, shrink=0.5, aspect=5)

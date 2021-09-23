@@ -36,14 +36,17 @@ if __name__ == "__main__":
         processed_raw_dataset = directory + "/pivot_dataset_raw.bin"
         files = glob.glob(processed_dataset)
         if len(files) == 0:
-            TE, TE_column_names, TE_raw = process_datasets(processed_datasets=directory + "/Conditional_information_transfer-*.bin",
+            TE, TE_column_names, TE_raw = process_datasets(processed_datasets=directory + "/Conditional_information_transfer-*.bin*",
                                                            result_dataset=processed_dataset, result_raw_dataset=processed_raw_dataset,
                                                            new_columns_base_name=name_of_title, converter_epsilon=lambda x: str(x))
         else:
             TE, TE_column_names, TE_raw = load_processed_dataset(processed_dataset, processed_raw_dataset)
 
         names = {"balance_effective_conditional_information_transfer": 5, "balance_conditional_information_transfer": 4, "effective_conditional_information_transfer": 4, "conditional_information_transfer": 3}
-        for item in TE_column_names:
+
+        TE_nonswapped_columns = [item for item in TE_column_names if item[4] == False]
+
+        for item in TE_nonswapped_columns:
             try:
                 shift = 0
                 for key, value in names.items():
@@ -102,6 +105,7 @@ if __name__ == "__main__":
                 std_filename = directory + "/" + column_name + "_" + filename_direction[swapped_datasets] + ("_shuffled" if shuffled_calculation else "") + "_2d_std"
 
                 figures2d_TE_alpha(TE, item, latex_title, r"$\varepsilon$", label, standard_filename, output, dpi=dpi)
+                figures2d_TE_alpha(TE, tuple(item_error), r"$\varepsilon$", latex_title_std, label, std_filename, output, dpi=dpi)
                 figures2d_TE_alpha_errorbar(TE, item, tuple(item_error), latex_title, r"$\varepsilon$", label, errorbar_filename, output, dpi=dpi)
             except Exception as exc:
                 print(f"Problem {exc} {item}")
