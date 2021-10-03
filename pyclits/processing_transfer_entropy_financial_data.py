@@ -28,7 +28,7 @@ def load_processed_dataset(dataset, dataset_raw, new_columns_base_name="transfer
 if __name__ == "__main__":
     dpi = 150
     output = "png"
-    directories = ["financial_transfer_entropy"]
+    directories = ["financial_transfer_entropy_1"]
 
     for directory in directories:
         name_of_title = "conditional_information_transfer"
