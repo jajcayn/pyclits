@@ -138,23 +138,28 @@ def figures2d_imshow(dataset, selector, title, ylabel, filename, suffix, cmap="m
 
 def figures2d_TE_alpha(dataset, selector, title, xlabel, ylabel, filename, suffix, cmap="rainbow", dpi=300):
     matplotlib.style.use("seaborn")
-
-    color_map = matplotlib.cm.get_cmap(cmap)
-
     fig = plt.figure(figsize=(13, 8))
     ax = fig.add_subplot(1, 1, 1)
 
-    markers = ['b', '^']
+    color_map = matplotlib.cm.get_cmap(cmap)
 
     ax.set_title(title)
     ax.set_xlabel(xlabel)
     ax.set_ylabel(ylabel)
 
     codes = dataset['epsilon'].unique()
+    list_selector = list(selector)
+    list_selector[4] = not selector[4]
+    selector_not = tuple(list_selector)
+    columns = list(dataset.columns.values)
+    if selector_not in columns:
+        number_of_datasets = float(2*len(codes)) - 1
+    else:
+        number_of_datasets = float(len(codes)) - 1
 
+    order_of_dataset = 0
     for code in codes:
         subselection = dataset.loc[dataset["epsilon"] == code]
-        columns = list(subselection.columns.values)
 
         for swap in [True, False]:
             list_selector = list(selector)
@@ -171,13 +176,15 @@ def figures2d_TE_alpha(dataset, selector, title, xlabel, ylabel, filename, suffi
                 zs = subselection[[selector]]
 
                 try:
-                    ax.plot(ys.values, zs.values, linewidth=3, label=label)
+                    map_position = order_of_dataset/number_of_datasets
+                    color = color_map(map_position)
+                    ax.plot(ys.values, zs.values, linewidth=3, label=label, color=color)
                 except Exception as exc:
                     print(f"{exc}: Problem D=")
 
-    # Add a color bar which maps values to colors.
-    # fig.colorbar(surf, shrink=0.5, aspect=5)
-    plt.legend(loc=0, ncol=3)
+                order_of_dataset += 1
+
+    plt.legend(loc=0, ncol=2)
 
     plt.savefig(filename + "." + suffix, dpi=dpi)
     plt.close()
@@ -199,27 +206,44 @@ def figures2d_TE_alpha_errorbar(dataset, selector, error_selector, title, xlabel
     ax.set_ylabel(ylabel)
 
     codes = dataset['epsilon'].unique()
+    list_selector = list(selector)
+    list_selector[4] = not selector[4]
+    selector_not = tuple(list_selector)
+    columns = list(dataset.columns.values)
+    if selector_not in columns:
+        number_of_datasets = float(2*len(codes)) - 1
+    else:
+        number_of_datasets = float(len(codes)) - 1
 
+    order_of_dataset = 0
     for code in codes:
         subselection = dataset.loc[dataset["epsilon"] == code]
 
-        ys = subselection[['alpha']]
-        zs = subselection[[selector]]
-        error_bar = subselection[[error_selector]].copy()
+        for swap in [True, False]:
+            list_selector = list(selector)
+            list_selector[4] = swap
+            selector = tuple(list_selector)
+            if selector in columns:
 
-        error_selector_negative_std = list(error_selector)
-        error_selector_negative_std[1] = "-std"
-        # error_bar[tuple(error_selector_negative_std)] = error_bar.apply(lambda x: -x, axis=1, raw=True)
-        errors = error_bar.copy().T.to_numpy()
+                ys = subselection[['alpha']]
+                zs = subselection[[selector]]
+                error_bar = subselection[[error_selector]].copy()
 
-        try:
-            ax.errorbar(ys.values.flatten(), zs.values.flatten(), yerr=errors.flatten(), linewidth=3, label=code.replace("_", "-"))
-        except Exception as exc:
-            print(f"{exc}: {errors.shape}")
+                error_selector_negative_std = list(error_selector)
+                error_selector_negative_std[1] = "-std"
+                # error_bar[tuple(error_selector_negative_std)] = error_bar.apply(lambda x: -x, axis=1, raw=True)
+                errors = error_bar.copy().T.to_numpy()
 
-    # Add a color bar which maps values to colors.
-    # fig.colorbar(surf, shrink=0.5, aspect=5)
-    plt.legend(loc=0, ncol=3)
+                try:
+                    map_position = order_of_dataset / number_of_datasets
+                    color = color_map(map_position)
+                    lims = np.array([True] * ys.size, dtype=bool)
+                    ax.errorbar(ys.values.flatten(), zs.values.flatten(), yerr=errors.flatten(), linewidth=3, label=code.replace("_", "-"), color=color, ls='dotted')
+                except Exception as exc:
+                    print(f"{exc}: {errors.shape}")
+                order_of_dataset += 1
+
+    plt.legend(loc=0, ncol=2)
 
     plt.savefig(filename + "." + suffix, dpi=dpi)
     plt.close()
@@ -246,6 +270,7 @@ def figures2d_TE(dataset, selector, title, xlabel, ylabel, filename, suffix, cma
     #subselected_alphas = alphas[mean - neghborhood:  mean + neghborhood]
     subselected_alphas = [alpha for number, alpha in enumerate(alphas) if (0.70 <= alpha <= 2 and number % 2 == 0)]
 
+
     for alpha in subselected_alphas:
         subselection = dataset.loc[dataset["alpha"] == alpha]
         ys = subselection[['epsilon']]
@@ -259,8 +284,6 @@ def figures2d_TE(dataset, selector, title, xlabel, ylabel, filename, suffix, cma
         except Exception as exc:
             print(f"{exc}: Problem D=")
 
-    # Add a color bar which maps values to colors.
-    # fig.colorbar(surf, shrink=0.5, aspect=5)
     plt.legend(loc=0, ncol=3)
 
     plt.savefig(filename + "." + suffix, dpi=dpi)
