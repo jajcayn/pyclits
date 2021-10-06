@@ -29,6 +29,8 @@ if __name__ == "__main__":
                         help='Sets number saved in arbitrary precision arithmetic')
     parser.add_argument('--dataset', action='store_true', help='Use dataset', default=False)
     parser.add_argument('--dataset_range', metavar='XXX-YYY', type=str, help='Dataset with range')
+    parser.add_argument('--alpha_params', metavar='XXX', type=str, nargs='+', help='Calculation for alphas, min, max, number between')
+
     args = parser.parse_args()
     # print(args.epsilon, flush=True)
 
@@ -47,7 +49,16 @@ if __name__ == "__main__":
     else:
         histories_seconds = range(2, 25)
 
+    if args.alpha_params:
+        alpha_params = (float(args.alpha_params[0]), float(args.alpha_params[1]), int(args.alpha_params[2]))
+    else:
+        alpha_params = (0.1, 1.9, 37)
+
+    # create alphas that are been calculated
+    alphas = np.round(np.linspace(alpha_params[0], alpha_params[1], alpha_params[2], endpoint=True), 3)
+
     print(f"PID:{os.getpid()} {datetime.datetime.now().isoformat()} History parameters: {histories_firsts} {histories_seconds} {future_firsts}")
+    print(f"PID:{os.getpid()} {datetime.datetime.now().isoformat()} Alphas: {alphas}")
 
     # create alphas that are been calculated
     alphas = np.round(np.linspace(0.1, 1.9, 37, endpoint=True), 3)
