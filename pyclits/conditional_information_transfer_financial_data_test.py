@@ -31,6 +31,7 @@ if __name__ == "__main__":
     parser.add_argument('--dataset_2_code', help='Second dataset to load', default=False)
     parser.add_argument('--dataset_1_selector', metavar='XXX', type=int, nargs='+', help='Selector of columns for first dataset')
     parser.add_argument('--dataset_2_selector', metavar='XXX', type=int, nargs='+', help='Selector of columns for second dataset')
+    parser.add_argument('--alpha_params', metavar='XXX', type=str, nargs='+', help='Calculation for alphas, min, max, number between')
 
     args = parser.parse_args()
     # print(args.epsilon, flush=True)
@@ -50,10 +51,15 @@ if __name__ == "__main__":
     else:
         histories_seconds = range(2, 25)
 
-    print(f"PID:{os.getpid()} {datetime.datetime.now().isoformat()} History parameters: {histories_firsts} {histories_seconds} {future_firsts}")
+    if args.alpha_params:
+        alpha_params = (float(args.alpha_params[0]), float(args.alpha_params[1]), int(args.alpha_params[2]))
+    else:
+        alpha_params = (0.1, 1.9, 37)
 
     # create alphas that are been calculated
-    alphas = np.round(np.linspace(0.1, 1.9, 37, endpoint=True), 3)
+    alphas = np.round(np.linspace(alpha_params[0], alpha_params[1], alpha_params[2], endpoint=True), 3)
+    print(f"PID:{os.getpid()} {datetime.datetime.now().isoformat()} History parameters: {histories_firsts} {histories_seconds} {future_firsts}")
+    print(f"PID:{os.getpid()} {datetime.datetime.now().isoformat()} Alphas: {alphas}")
 
     arbitrary_precision = args.arbitrary_precision
     arbitrary_precision_decimal_numbers = args.arbitrary_precision_decimal_numbers
