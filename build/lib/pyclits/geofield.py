@@ -11,6 +11,7 @@ import numpy as np
 import pandas as pd
 import xarray as xr
 from pathos.multiprocessing import Pool
+from scipy.signal import detrend
 from sklearn.decomposition import PCA
 
 from .wavelet_analysis import MorletWavelet, continous_wavelet
@@ -378,7 +379,13 @@ class DataField:
         else:
             return DataField(data=resampled_shifted_back)
 
-    def deseasonalise(self, base_period=None, standardise=False, inplace=True):
+    def deseasonalise(
+        self,
+        base_period=None,
+        standardise=False,
+        detrend_data=False,
+        inplace=True,
+    ):
         """
         Removes seasonality in mean and optionally in std.
 
@@ -386,10 +393,12 @@ class DataField:
         :type base_period: list[datetimes]|None
         :param standardise: whether to also remove seasonality in STD
         :type standardise: bool
+        :param detrend_data: whether to remove linear trend from the data
+        :type detrend_data: bool
         :param inplace: whether to make operation in-place or return
         :type inplace: bool
-        :return: seasonal mean and std
-        :rtype: xr.DataArray, xr.DataArray
+        :return: seasonal mean, seasonal std, trend
+        :rtype: xr.DataArray, xr.DataArray, xr.DataArray
         """
         inferred_freq = pd.infer_freq(self.time)
         if base_period is None:
@@ -415,21 +424,40 @@ class DataField:
         else:
             climatology_std = 1.0
 
+        def _detrend(x):
+            if np.any(np.isnan(x)):
+                return x
+            else:
+                return detrend(x, axis=0, type="linear")
+
+        if detrend_data:
+            detrended = xr.apply_ufunc(
+                _detrend,
+                self.data,
+                input_core_dims=[["time"]],
+                output_core_dims=[["time"]],
+            ).transpose(*(["time"] + self.dims_not_time))
+            trend = self.data - detrended
+        else:
+            detrended = self.data
+            trend = 0.0
+
         stand_anomalies = xr.apply_ufunc(
             lambda x, mean, std: (x - mean) / std,
-            self.data.groupby(groupby),
+            detrended.groupby(groupby),
             climatology_mean,
             climatology_std,
         )
 
         if inplace:
             self.data = stand_anomalies
-            return climatology_mean, climatology_std
+            return climatology_mean, climatology_std, trend
         else:
             return (
                 DataField(data=stand_anomalies),
                 climatology_mean,
                 climatology_std,
+                trend,
             )
 
     def anomalise(self, base_period=None, inplace=True):
@@ -522,7 +550,7 @@ class DataField:
         sx = np.dot(s, data) / data.shape[0]
         mx = np.sqrt(cx ** 2 + sx ** 2)
         phi = np.angle(cx - 1j * sx)
-        z = mx * np.cos(np.arange(-half_length, upper_bound, 1) * freq + phi)
+        # z = mx * np.cos(np.arange(-half_length, upper_bound, 1) * freq + phi)
 
         # iterate with window
         iphase = np.zeros_like(data)
@@ -801,6 +829,27 @@ class StationDataField(DataField):
     Class holds station data, hence 1D in space.
     """
 
+    data_name = ""
+
+    @classmethod
+    def init_with_numpy(cls, data, time, data_name="", lat=None, lon=None):
+        assert data.ndim == 1
+        assert len(data) == len(time)
+        initd = cls(
+            xr.DataArray(
+                data[:, np.newaxis, np.newaxis],
+                dims=["time", "lats", "lons"],
+                coords={
+                    "time": time,
+                    "lats": [lat or np.nan],
+                    "lons": [lon or np.nan],
+                },
+            )
+        )
+        initd.data_name = data_name
+
+        return initd
+
     @classmethod
     def load_ECAD_station(
         cls,
@@ -827,6 +876,6 @@ class StationDataField(DataField):
             .expand_dims(["lats", "lons"])
             .assign_coords({"lats": [lat or np.nan], "lons": [lon or np.nan]})
         )
-        initd.station_name = station_name
+        initd.data_name = f"ECAD-{col_name}-{station_name}"
 
         return initd

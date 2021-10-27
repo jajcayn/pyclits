@@ -1,6 +1,6 @@
 black
+cartopy # sometimes needs to install with --no-binary
 flake8
-git+https://github.com/matplotlib/basemap.git
 isort
 numpy
 pandas

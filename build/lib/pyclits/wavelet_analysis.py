@@ -39,7 +39,7 @@ class MorletWavelet(MotherWavelet):
         :return: Fourier factor
         :rtype: float
         """
-        return (4.0 * np.pi) / (k0 + np.sqrt(2.0 + np.power(k0, 2)))
+        return (4 * np.pi) / (k0 + np.sqrt(2 + np.power(k0, 2)))
 
     def coi(self, k0):
         """

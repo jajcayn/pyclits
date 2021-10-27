@@ -1,7 +1,5 @@
 """
 Integration tests for base class - DataField.
-
-(c) Nikola Jajcay
 """
 
 import os
@@ -11,7 +9,7 @@ from datetime import datetime
 import numpy as np
 import pytest
 import xarray as xr
-from pyclits.geofield_new import DataField
+from pyclits.geofield import DataField
 
 from . import TestHelperTempSave
 
