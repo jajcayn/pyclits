@@ -243,8 +243,8 @@ class TestDataField(TestHelperTempSave):
 
     def test_deseasonalise(self):
         df = self.load_df()
-        deseas_df, mean_df, std_df = df.deseasonalise(
-            standardise=True, inplace=False
+        deseas_df, mean_df, std_df, trend_df = df.deseasonalise(
+            standardise=True, detrend_data=True, inplace=False
         )
         filename_df = os.path.join(self.temp_dir, "deseasonalised.nc")
         deseas_df.save(filename_df)
@@ -252,6 +252,8 @@ class TestDataField(TestHelperTempSave):
         mean_df.to_netcdf(filename_mean)
         filename_std = os.path.join(self.temp_dir, "deseasonalise_std.nc")
         std_df.to_netcdf(filename_std)
+        filename_trend = os.path.join(self.temp_dir, "deseasonalise_trend.nc")
+        trend_df.to_netcdf(filename_trend)
 
         # assert that time dimension did not change
         self.compare_time_range(
@@ -273,6 +275,102 @@ class TestDataField(TestHelperTempSave):
             ),
             filename_std,
         )
+        self.compare_nc_files(
+            os.path.join(
+                self.test_results_path, "deseasonalise_trend_results.nc"
+            ),
+            filename_trend,
+        )
+
+    def test_pca(self):
+        df = self.load_df()
+        pcs, eofs, var = df.pca(n_comps=5)
+        self.assertTrue(isinstance(pcs, xr.DataArray))
+        self.assertTrue(isinstance(eofs, xr.DataArray))
+        self.assertTrue(isinstance(var, np.ndarray))
+        self.assertTupleEqual(pcs.shape, (df.time.shape[0], 5))
+        self.assertTupleEqual(
+            eofs.shape, (5, df.lats.shape[0], df.lons.shape[0])
+        )
+        self.assertTupleEqual(var.shape, (5,))
+        self.assertTrue(isinstance(df.pca_mean, xr.DataArray))
+
+    def test_parametric_phase(self):
+        df = self.load_df()
+        for wrapped in [True, False]:
+            param_phase_df = df.parametric_phase(
+                central_period=1.0,
+                window=0.25,
+                units="years",
+                return_wrapped=wrapped,
+                inplace=False,
+            )
+            filename_df = os.path.join(
+                self.temp_dir, f"param_phase_{wrapped}.nc"
+            )
+            param_phase_df.save(filename_df)
+            self.assertDictContainsSubset(
+                {
+                    "parametric_phase_period": 1.0,
+                    "parametric_phase_window": 0.25,
+                    "parametric_phase_units": "years",
+                },
+                param_phase_df.data.attrs,
+            )
+
+            self.compare_time_range(
+                df.time, datetime(1990, 1, 1), datetime(2000, 1, 1)
+            )
+            self.compare_nc_files(
+                os.path.join(
+                    self.test_results_path, f"param_phase_{wrapped}_results.nc"
+                ),
+                filename_df,
+            )
+
+    def test_ccwt(self):
+        df = self.load_df()
+        for return_as in [
+            "raw",
+            "amplitude",
+            "amplitude_regressed",
+            "phase_wrapped",
+            "phase_unwrapped",
+            "reconstruction",
+            "reconstruction_regressed",
+        ]:
+            ccwt_df = df.ccwt(
+                central_period=1.0,
+                units="years",
+                return_as=return_as,
+                inplace=False,
+            )
+            self.assertDictContainsSubset(
+                {
+                    "CCWT_period": 1.0,
+                    "CCWT_units": "years",
+                },
+                ccwt_df.data.attrs,
+            )
+
+            self.compare_time_range(
+                df.time, datetime(1990, 1, 1), datetime(2000, 1, 1)
+            )
+            if return_as == "raw":
+                self.assertTrue(isinstance(ccwt_df.data, xr.DataArray))
+                self.assertEqual(ccwt_df.data.values.dtype.kind, "c")
+            else:
+                filename_df = os.path.join(
+                    self.temp_dir, f"ccwt_{return_as}.nc"
+                )
+                ccwt_df.save(filename_df)
+                self.compare_nc_files(
+                    os.path.join(
+                        self.test_results_path,
+                        f"ccwt_{return_as}_results.nc",
+                    ),
+                    filename_df,
+                )
 
 
 if __name__ == "__main__":

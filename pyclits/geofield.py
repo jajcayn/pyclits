@@ -472,8 +472,11 @@ class DataField:
         :rtype: xr.DataArray
         """
         return self.deseasonalise(
-            base_period=base_period, standardise=False, inplace=inplace
-        )[:-1]
+            base_period=base_period,
+            standardise=False,
+            detrend_data=False,
+            inplace=inplace,
+        )[:-2]
 
     def pca(self, n_comps, return_nans=False):
         """
