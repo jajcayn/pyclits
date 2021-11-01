@@ -210,6 +210,33 @@ class DataField:
             1, TIME_UNITS[units]
         ).astype("timedelta64[s]")
 
+    def iterate(self, return_as="datafield"):
+        """
+        Return iterator over spatial dimensions, so univariate measures can be
+        computed per spatial feature.
+
+        :param return_as: how to return columns: `xr` as xr.DataArray,
+            `datafield` as instance of DataField with the same attributes as
+            the mother signal
+        :type return_as: str
+        """
+        try:
+            stacked = self.data.stack({"space": self.dims_not_time})
+        except ValueError:
+            stacked = self.data.expand_dims("space")
+        if return_as == "xr":
+            yield from stacked.groupby("space")
+        elif return_as == "datafield":
+            for name_coords, column in stacked.groupby("space"):
+                if not isinstance(name_coords, (list, tuple)):
+                    name_coords = [name_coords]
+                name_dict = {
+                    k: v for k, v in zip(self.dims_not_time, name_coords)
+                }
+                yield name_dict, DataField(data=column.unstack())
+        else:
+            raise ValueError(f"Data type not understood: {return_as}")
+
     def save(self, filename):
         """
         Save DataField as nc file.
@@ -235,18 +262,20 @@ class DataField:
         Selects date range. Both ends are inclusive.
 
         :param date_from: date from
-        :type date_from: datetime.date|datetime.datetime
+        :type date_from: datetime.date|datetime.datetime|None
         :param date_to: date to
-        :type date_to: datetime.date|datetime.datetime
+        :type date_to: datetime.date|datetime.datetime|None
         :param inplace: whether to make operation in-place or return
         :type inplace: bool
         """
-        assert isinstance(
-            date_from, (date, datetime)
-        ), f"Date from must be datetime, got {type(date_from)}"
-        assert isinstance(
-            date_to, (date, datetime)
-        ), f"Date to must be datetime, got {type(date_to)}"
+        if date_from:
+            assert isinstance(
+                date_from, (date, datetime)
+            ), f"Date from must be datetime, got {type(date_from)}"
+        if date_to:
+            assert isinstance(
+                date_to, (date, datetime)
+            ), f"Date to must be datetime, got {type(date_to)}"
 
         selected_data = self.data.sel(time=slice(date_from, date_to))
 

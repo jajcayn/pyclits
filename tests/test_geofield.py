@@ -133,6 +133,22 @@ class TestDataField(TestHelperTempSave):
             self.assertEqual(k1, k2)
             np.testing.assert_equal(v1, v2)
 
+    def test_iterate(self):
+        df = self.load_df()
+        for name, it in df.iterate(return_as="datafield"):
+            self.assertTrue(isinstance(it, DataField))
+            self.assertTrue(isinstance(name, dict))
+            self.assertTupleEqual(it.shape, (df.shape[0], 1, 1))
+
+        for name, it in df.iterate(return_as="xr"):
+            self.assertTrue(isinstance(it, xr.DataArray))
+            self.assertTrue(isinstance(name, tuple))
+            self.assertTupleEqual(it.shape, (df.shape[0], 1))
+
+        with pytest.raises(ValueError):
+            for name, it in df.iterate(return_as="abcde"):
+                pass
+
     def test_shift_lons(self):
         df = self.load_df()
         # shift to -180 -- 179
