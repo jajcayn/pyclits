@@ -1,0 +1,11 @@
+black
+cartopy # sometimes needs to install with --no-binary
+flake8
+isort
+numpy
+pandas
+pytest
+PyWavelets
+scikit-learn
+statsmodels
+xarray
