@@ -249,7 +249,7 @@ def continous_wavelet(X, dt, pad=False, wavelet=MorletWavelet(), **kwargs):
     # construct scale array and empty period & wave arrays
     scale = np.array([s0 * np.power(2, x * dj) for x in range(0, j1 + 1)])
     period = scale
-    wave = np.zeros((j1 + 1, n), dtype=np.complex)
+    wave = np.zeros((j1 + 1, n), dtype=np.complex128)
 
     # loop through scales and compute tranform
     for i in range(j1 + 1):
