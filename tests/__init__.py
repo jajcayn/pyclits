@@ -37,7 +37,7 @@ class TestHelper(unittest.TestCase):
             xr.open_dataset(file1),
             xr.open_dataset(file2),
             rtol=1e-02,
-            atol=1e-05,
+            atol=1e-03,
         )
 
     def compare_time_range(self, time_array, start_date, end_date):
