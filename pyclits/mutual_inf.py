@@ -3,6 +3,8 @@ Functions for (conditional) mutual information using Shannon entropy measure.
 """
 
 
+import logging
+
 import numpy as np
 from scipy.spatial import cKDTree
 from scipy.special import digamma

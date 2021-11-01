@@ -583,7 +583,7 @@ class EmpiricalModel(DataField):
             print("...preparing noise forcing...")
 
         self.sigma = sigma
-        if isinstance(noise_type, basestring):
+        if isinstance(noise_type, str):
             if noise_type not in ["white", "cond", "seasonal"]:
                 raise Exception(
                     "Unknown noise type to be used as forcing. Use 'white', 'cond', or 'seasonal'."
@@ -1167,7 +1167,7 @@ class EmpiricalModel(DataField):
         if self.verbose:
             print("reconstructing 3D geo fields...")
             if save_by_one is not None:
-                if not isinstance(save_by_one, basestring):
+                if not isinstance(save_by_one, str):
                     raise Exception(
                         "save_by_one must be a string! It is a filename base for files."
                     )

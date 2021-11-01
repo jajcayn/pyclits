@@ -33,7 +33,9 @@ class TestHelper(unittest.TestCase):
         assert file1.endswith(self.PATTERN_NC), f"Unknown extension: {file1}"
         assert file2.endswith(self.PATTERN_NC), f"Unknown extension: {file2}"
 
-        xr.testing.assert_equal(xr.open_dataset(file1), xr.open_dataset(file2))
+        xr.testing.assert_allclose(
+            xr.open_dataset(file1), xr.open_dataset(file2)
+        )
 
     def compare_time_range(self, time_array, start_date, end_date):
         """
