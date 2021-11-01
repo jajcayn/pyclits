@@ -27,6 +27,7 @@ jobs:
         if: ${{ matrix.os  == 'ubuntu-latest'}}
         run: |
           sudo apt-get install -y libgeos++-dev libgeos-3.8.0 libgeos-c1v5 libgeos-dev libgeos-doc
+          sudo apt-get install -y proj-bin
       - name: Install macos deps
         if: ${{ matrix.os  == 'macos-latest'}}
         run: |
