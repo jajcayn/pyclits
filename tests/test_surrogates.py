@@ -124,6 +124,8 @@ class TestHelperFunctions(unittest.TestCase):
         np.testing.assert_almost_equal(p_vals, RESULT)
         p_vals = get_p_values(data, surrs, tailed="lower")
         np.testing.assert_almost_equal(p_vals, 1.0 - RESULT)
+        with pytest.raises(ValueError):
+            p_vals = get_p_values(data, surrs, tailed="161AFA")
 
 
 class TestSurrogateFunctions(unittest.TestCase):

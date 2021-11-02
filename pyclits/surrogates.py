@@ -30,7 +30,6 @@ def get_p_values(data_value, surrogates_value, tailed="upper"):
     :return: p-value of surrogate testing
     :rtype: float
     """
-    # TODO fix!!!!!
     assert data_value.shape == surrogates_value.shape[1:], (
         f"Incompatible shapes: data {data_value.shape}; surrogates "
         f"{surrogates_value.shape}"
