@@ -190,28 +190,28 @@ class TestMutualInformation(unittest.TestCase):
     def test_mutual_inf_eqd(self):
         x, y = self.generate_ts()
         mi = mutual_information(x, y, algorithm="EQD", bins=4, log2=True)
-        self.assertEqual(mi, 1.4675603576588012)
+        self.assertAlmostEqual(mi, 1.4675603576588012)
         mi = mutual_information(x, y, algorithm="EQD", bins=4, log2=False)
-        self.assertEqual(mi, 1.017235324212743)
+        self.assertAlmostEqual(mi, 1.017235324212743)
 
     def test_mutual_inf_eqq_naive(self):
         x, y = self.generate_ts()
         mi = mutual_information(x, y, algorithm="EQQ_naive", bins=4, log2=True)
-        self.assertEqual(mi, 1.2873827393211736)
+        self.assertAlmostEqual(mi, 1.2873827393211736)
         mi = mutual_information(x, y, algorithm="EQQ_naive", bins=4, log2=False)
-        self.assertEqual(mi, 0.8923457160620105)
+        self.assertAlmostEqual(mi, 0.8923457160620105)
 
     def test_mutual_inf_eqq(self):
         x, y = self.generate_ts()
         mi = mutual_information(x, y, algorithm="EQQ", bins=4, log2=True)
-        self.assertEqual(mi, 1.2873827393211736)
+        self.assertAlmostEqual(mi, 1.2873827393211736)
         mi = mutual_information(x, y, algorithm="EQQ", bins=4, log2=False)
-        self.assertEqual(mi, 0.8923457160620105)
+        self.assertAlmostEqual(mi, 0.8923457160620105)
 
     def test_mutual_inf_knn(self):
         x, y = self.generate_ts()
         mi = mutual_information(x, y, algorithm="knn", k=16, log2=True)
-        self.assertEqual(mi, 0.8398477550540533)
+        self.assertAlmostEqual(mi, 0.8398477550540533)
 
     def test_mutual_inf_unknown(self):
         x, y = self.generate_ts()
@@ -237,55 +237,55 @@ class TestConditionalMutualInformation(unittest.TestCase):
         cmi = conditional_mutual_information(
             x, y, z, algorithm="EQD", bins=4, log2=True
         )
-        self.assertEqual(cmi, 0.37205717910686587)
+        self.assertAlmostEqual(cmi, 0.37205717910686587)
         cmi = conditional_mutual_information(
             x, y, z, algorithm="EQD", bins=4, log2=False
         )
-        self.assertEqual(cmi, 0.23206180465500795)
+        self.assertAlmostEqual(cmi, 0.23206180465500795)
 
     def test_cond_mutual_inf_eqq_naive(self):
         x, y, z = self.generate_ts()
         cmi = conditional_mutual_information(
             x, y, z, algorithm="EQQ_naive", bins=4, log2=True
         )
-        self.assertEqual(cmi, 0.1437210106843291)
+        self.assertAlmostEqual(cmi, 0.1437210106843291)
         cmi = conditional_mutual_information(
             x, y, z, algorithm="EQQ_naive", bins=4, log2=False
         )
-        self.assertEqual(cmi, 0.07012418863838997)
+        self.assertAlmostEqual(cmi, 0.07012418863838997)
 
     def test_cond_mutual_inf_eqq(self):
         x, y, z = self.generate_ts()
         cmi = conditional_mutual_information(
             x, y, z, algorithm="EQQ", bins=4, log2=True
         )
-        self.assertEqual(cmi, 0.1437210106843291)
+        self.assertAlmostEqual(cmi, 0.1437210106843291)
         cmi = conditional_mutual_information(
             x, y, z, algorithm="EQQ", bins=4, log2=False
         )
-        self.assertEqual(cmi, 0.07012418863838997)
+        self.assertAlmostEqual(cmi, 0.07012418863838997)
 
     def test_cond_mutual_inf_knn(self):
         x, y, z = self.generate_ts()
         cmi = conditional_mutual_information(
             x, y, z, algorithm="knn", k=16, log2=True
         )
-        self.assertEqual(cmi, 0.010902506625959596)
+        self.assertAlmostEqual(cmi, 0.010902506625959596)
         cmi = conditional_mutual_information(
             x, y, z, algorithm="knn", k=16, log2=False
         )
-        self.assertEqual(cmi, 0.0071026719472646604)
+        self.assertAlmostEqual(cmi, 0.0071026719472646604)
 
     def test_cond_mutual_inf_gcm(self):
         x, y, z = self.generate_ts()
         cmi = conditional_mutual_information(
             x, y, z, algorithm="GCM", log2=True
         )
-        self.assertEqual(cmi, 0.0006656697681635682)
+        self.assertAlmostEqual(cmi, 0.0006656697681635682)
         cmi = conditional_mutual_information(
             x, y, z, algorithm="GCM", log2=False
         )
-        self.assertEqual(cmi, 0.002527512095056351)
+        self.assertAlmostEqual(cmi, 0.002527512095056351)
 
     def test_mutual_inf_unknown(self):
         x, y, z = self.generate_ts()
