@@ -43,10 +43,15 @@ class TestHelperFunctions(unittest.TestCase):
 
     def test_create_shifted_eqq_bins(self):
         np.random.seed(DEFAULT_SEED)
-        ts = np.random.rand(100)
+        ts = np.random.rand(100) * 0.001
         bins = _create_shifted_eqq_bins(ts, no_bins=2)
         self.assertListEqual(
-            bins, [0.005522117123602399, 0.4722149251619493, 0.9868869366005173]
+            bins,
+            [
+                5.522117123602399e-06,
+                0.0004722149251619493,
+                0.0009868869366005174,
+            ],
         )
 
     def test_create_naive_eqq_bins(self):
@@ -177,6 +182,15 @@ class TestGetConditionedTimeseries(unittest.TestCase):
         np.testing.assert_equal(z[0], ts[1, 2 * self.ETA : -self.TAU])
         np.testing.assert_equal(z[1], ts[1, self.ETA : -self.TAU - self.ETA])
         np.testing.assert_equal(z[2], ts[1, : -self.TAU - 2 * self.ETA])
+
+    def test_errors_and_warnings(self):
+        ts = self.generate_ts()
+        with pytest.raises(ValueError):
+            get_conditioned_timeseries(
+                ts, tau=self.TAU, dim_of_condition=2, eta=0
+            )
+
+        get_conditioned_timeseries(ts, tau=self.TAU, dim_of_condition=7, eta=1)
 
 
 class TestMutualInformation(unittest.TestCase):
