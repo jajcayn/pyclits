@@ -11,3 +11,5 @@ dist/
 /*.egg
 
 build/
+
+.coverage
