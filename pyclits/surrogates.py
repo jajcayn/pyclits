@@ -30,6 +30,7 @@ def get_p_values(data_value, surrogates_value, tailed="upper"):
     :return: p-value of surrogate testing
     :rtype: float
     """
+    # TODO fix!!!!!
     assert data_value.shape == surrogates_value.shape[1:], (
         f"Incompatible shapes: data {data_value.shape}; surrogates "
         f"{surrogates_value.shape}"
@@ -377,10 +378,20 @@ class SurrogateField(DataField):
         Init SurrogateField from other DataField.
         """
         assert isinstance(datafield, DataField)
-        surr_field = cls(datafield.data)
+        surr_field = cls(datafield.data).__finalize__(datafield)
         surr_field.orig_data_xr = deepcopy(datafield.data)
 
         return surr_field
+
+    def __finalize__(self, other, add_steps=None):
+        """
+        Additionally to parent function, also copy `orig_data_xr`.
+        """
+        if hasattr(other, "orig_data_xr"):
+            setattr(
+                self, "orig_data_xr", deepcopy(getattr(other, "orig_data_xr"))
+            )
+        return super().__finalize__(other, add_steps=add_steps)
 
     def construct_surrogates(
         self, surrogate_type, univariate=True, inplace=True, **kwargs
@@ -431,11 +442,18 @@ class SurrogateField(DataField):
             self.data,
             input_core_dims=[["time"]],
             output_core_dims=[["time"]],
-        )
+            vectorize=True,
+        ).transpose(*(["time"] + self.dims_not_time))
+
+        univar = "univariate" if univariate else "multivariate"
+        add_steps = [f"{univar} {surrogate_type} surrogates"]
         if inplace:
             self.data = surrogates
+            self.process_steps += add_steps
         else:
-            return SurrogateField(data=surrogates)
+            return self.__constructor__(surrogates).__finalize__(
+                self, add_steps
+            )
 
     def add_seasonality(self, mean, var, trend, inplace=True):
         """
@@ -453,7 +471,9 @@ class SurrogateField(DataField):
         """
 
         added = ((self.data * var) + mean) + trend
+        add_steps = ["add seasonality"]
         if inplace:
             self.data = added
+            self.process_steps += add_steps
         else:
-            return SurrogateField(data=added)
+            return self.__constructor__(added).__finalize__(self, add_steps)

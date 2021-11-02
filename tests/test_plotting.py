@@ -43,6 +43,10 @@ class TestGeoPlot(TestHelperTempSave):
         plot._set_up_map()
         self.assertTrue(hasattr(plot, "axis"))
 
+        plot = GeoPlot(df.lats, df.lons, whole_world=True)
+        plot._set_up_map()
+        self.assertTrue(hasattr(plot, "axis"))
+
     def test_plot(self):
         df = self.load_df()
         plot = GeoPlot(df.lats, df.lons, whole_world=False, colormesh=False)

@@ -96,6 +96,7 @@ class DataField:
         """
         Copy attributes from other to self. Used when constructing class
         instance with different data, but same metadata.
+
         :param other: other instance of `DataField`
         :type other: `DataField`
         :param add_steps: add steps to preprocessing
