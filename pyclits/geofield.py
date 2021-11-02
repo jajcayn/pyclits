@@ -266,10 +266,7 @@ class DataField:
             the mother signal
         :type return_as: str
         """
-        try:
-            stacked = self.data.stack({"space": self.dims_not_time})
-        except ValueError:
-            stacked = self.data.expand_dims("space")
+        stacked = self.data.stack({"space": self.dims_not_time})
         if return_as == "xr":
             yield from stacked.groupby("space", squeeze=False)
         elif return_as == "datafield":
@@ -344,6 +341,8 @@ class DataField:
             ] = self.data.variable.encoding["_FillValue"]
         except KeyError:
             pass
+
+        self._write_attrs_to_xr()
 
         if not filename.endswith(".nc"):
             filename += ".nc"
@@ -574,7 +573,7 @@ class DataField:
             groupby = base_data.time.dt.month
         elif inferred_freq in ["C", "B", "D"]:
             # daily data
-            groupby = base_data.time.dayofyear
+            groupby = base_data.time.dt.dayofyear
         else:
             raise ValueError(
                 "Anomalise supported only for daily or monthly data"
@@ -643,12 +642,20 @@ class DataField:
         :return: seasonal mean
         :rtype: xr.DataArray
         """
-        return self.deseasonalise(
-            base_period=base_period,
-            standardise=False,
-            detrend_data=False,
-            inplace=inplace,
-        )[:-2]
+        if inplace:
+            return self.deseasonalise(
+                base_period=base_period,
+                standardise=False,
+                detrend_data=False,
+                inplace=inplace,
+            )[0]
+        else:
+            return self.deseasonalise(
+                base_period=base_period,
+                standardise=False,
+                detrend_data=False,
+                inplace=inplace,
+            )[:2]
 
     def pca(self, n_comps, return_nans=False):
         """

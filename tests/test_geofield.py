@@ -9,7 +9,8 @@ from datetime import datetime
 import numpy as np
 import pytest
 import xarray as xr
-from pyclits.geofield import DataField
+from pyclits.geofield import DataField, StationDataField
+from pyclits.wavelet_analysis import MorletWavelet
 
 from . import TestHelperTempSave
 
@@ -104,12 +105,12 @@ class TestDataField(TestHelperTempSave):
 
     def test_load_save(self):
         df = self.load_df()
-        filename = os.path.join(self.temp_dir, "test.nc")
+        filename = os.path.join(self.temp_dir, "test")
         df.save(filename)
 
         self.compare_nc_files(
             os.path.join(self.test_results_path, "load_save_result.nc"),
-            filename,
+            filename + ".nc",
         )
 
     def test_properties(self):
@@ -202,6 +203,10 @@ class TestDataField(TestHelperTempSave):
             selected_df.time, datetime(1991, 6, 1), datetime(1992, 3, 1)
         )
         self.assertEqual(len(selected_df.process_steps), 2)
+        df.select_date(
+            datetime(1991, 5, 20), datetime(1992, 3, 7), inplace=True
+        )
+        xr.testing.assert_allclose(df.data, selected_df.data)
 
     def test_select_months(self):
         df = self.load_df()
@@ -217,6 +222,8 @@ class TestDataField(TestHelperTempSave):
             )
         )
         self.assertEqual(len(jja_df.process_steps), 2)
+        df.select_months(months=jja_months, inplace=True)
+        xr.testing.assert_allclose(df.data, jja_df.data)
 
     def test_select_lat_lon(self):
         df = self.load_df()
@@ -226,6 +233,8 @@ class TestDataField(TestHelperTempSave):
         np.testing.assert_equal(selected_df.lats, self.SELECTED_LATS)
         np.testing.assert_equal(selected_df.lons, self.SELECTED_LONS)
         self.assertEqual(len(selected_df.process_steps), 3)
+        df.select_lat_lon(lats_cut, lons_cut, inplace=True)
+        xr.testing.assert_allclose(df.data, selected_df.data)
 
     def test_select_lat_lon_through_prime_meridian(self):
         df = self.load_df()
@@ -237,6 +246,8 @@ class TestDataField(TestHelperTempSave):
             selected_df.lons, self.SELECTED_LONS_PRIME_MERIDIAN
         )
         self.assertEqual(len(selected_df.process_steps), 3)
+        df.select_lat_lon(lats_cut, lons_cut, inplace=True)
+        xr.testing.assert_allclose(df.data, selected_df.data)
 
     def test_cos_weights(self):
         df = self.load_df()
@@ -294,7 +305,7 @@ class TestDataField(TestHelperTempSave):
         df.spatial_resample(d_lat=5, d_lon=5, method="linear", inplace=True)
         xr.testing.assert_allclose(df.data, resampled_df.data)
 
-    def test_deseasonalise(self):
+    def test_deseasonalise_all(self):
         df = self.load_df()
         deseas_df, mean_df, std_df, trend_df = df.deseasonalise(
             standardise=True, detrend_data=True, inplace=False
@@ -313,9 +324,55 @@ class TestDataField(TestHelperTempSave):
         xr.testing.assert_allclose(std_df, std_df2)
         xr.testing.assert_allclose(trend_df, trend_df2)
 
+    def test_deseasonalise_no_trend(self):
+        df = self.load_df()
+        deseas_df, mean_df, std_df, trend_df = df.deseasonalise(
+            standardise=True, detrend_data=False, inplace=False
+        )
+        self.assertEqual(len(deseas_df.process_steps), 3)
+        self.assertEqual(trend_df, 0.0)
+
+        # assert that time dimension did not change
+        self.compare_time_range(
+            df.time, datetime(1990, 1, 1), datetime(2000, 1, 1)
+        )
+        mean_df2, std_df2, trend_df2 = df.deseasonalise(
+            standardise=True, detrend_data=False, inplace=True
+        )
+        self.assertEqual(trend_df2, 0.0)
+        xr.testing.assert_allclose(deseas_df.data, df.data)
+        xr.testing.assert_allclose(mean_df, mean_df2)
+        xr.testing.assert_allclose(std_df, std_df2)
+
+    def test_anomalise(self):
+        df = self.load_df()
+        deseas_df, mean_df = df.anomalise(inplace=False)
+        self.assertEqual(len(deseas_df.process_steps), 2)
+
+        # assert that time dimension did not change
+        self.compare_time_range(
+            df.time, datetime(1990, 1, 1), datetime(2000, 1, 1)
+        )
+        mean_df2 = df.anomalise(inplace=True)
+        xr.testing.assert_allclose(deseas_df.data, df.data)
+        xr.testing.assert_allclose(mean_df, mean_df2)
+
     def test_pca(self):
         df = self.load_df()
         pcs, eofs, var = df.pca(n_comps=5)
+        self.assertTrue(isinstance(pcs, xr.DataArray))
+        self.assertTrue(isinstance(eofs, xr.DataArray))
+        self.assertTrue(isinstance(var, np.ndarray))
+        self.assertTupleEqual(pcs.shape, (df.time.shape[0], 5))
+        self.assertTupleEqual(
+            eofs.shape, (5, df.lats.shape[0], df.lons.shape[0])
+        )
+        self.assertTupleEqual(var.shape, (5,))
+        self.assertTrue(isinstance(df.pca_mean, xr.DataArray))
+
+    def test_pca_return_nans(self):
+        df = self.load_df()
+        pcs, eofs, var = df.pca(n_comps=5, return_nans=True)
         self.assertTrue(isinstance(pcs, xr.DataArray))
         self.assertTrue(isinstance(eofs, xr.DataArray))
         self.assertTrue(isinstance(var, np.ndarray))
@@ -358,6 +415,39 @@ class TestDataField(TestHelperTempSave):
             )
             xr.testing.assert_allclose(df.data, param_phase_df.data)
 
+    def test_get_wvlt_coefficients(self):
+        df = self.load_df()
+        central_period = 1.0
+        units = "years"
+        ccwt_df = df.ccwt(
+            central_period=central_period,
+            units=units,
+            return_as="raw",
+            inplace=False,
+        )
+        isel = {"lats": 0, "lons": 0}
+
+        # prepare wavelet
+        s0 = (
+            1.0 * (central_period / df.dt(units))
+        ) / MorletWavelet().fourier_factor(6.0)
+        how_much = int((central_period * 2) * (1.0 / df.dt(units)))
+        padded_data = np.pad(
+            df.data.isel(isel),
+            pad_width=[(how_much, how_much)],
+            mode="symmetric",
+        )
+        _, ccwt_single = df._get_wvlt_coefficients(
+            [0, s0, MorletWavelet(), 6.0, padded_data]
+        )
+        ccwt_single = ccwt_single.squeeze()[how_much:-how_much]
+        self.assertTrue(isinstance(ccwt_single, np.ndarray))
+        self.assertEqual(ccwt_single.dtype.kind, "c")
+        self.assertTupleEqual(
+            ccwt_single.shape, ccwt_df.data.isel(isel).values.shape
+        )
+        np.testing.assert_allclose(ccwt_single, ccwt_df.data.isel(isel).values)
+
     def test_ccwt(self):
         for return_as in [
             "raw",
@@ -394,6 +484,91 @@ class TestDataField(TestHelperTempSave):
                 inplace=True,
             )
             xr.testing.assert_allclose(df.data, ccwt_df.data)
+
+
+class TestStationDataField(TestHelperTempSave):
+    """
+    Basic tests for StationDataField.
+    """
+
+    def load_df(self):
+        """
+        Loads testing dataset: TG
+        """
+        return StationDataField.load_ECAD_station(
+            os.path.join(self.test_data_path, "TG_STAID000049.txt"),
+            station_name="Jena",
+            lat=50.9271,
+            lon=11.5892,
+        )
+
+    def test_properties(self):
+        df = self.load_df()
+        self.assertTrue(isinstance(df, StationDataField))
+        self.assertTrue(isinstance(df.data, xr.DataArray))
+        self.assertTrue(hasattr(df, "data_name"))
+        self.assertTrue(hasattr(df, "_copy_attributes"))
+        self.assertEqual(df.data_name, "ECAD-TG-Jena")
+        self.assertEqual(df.lats[0], 50.9271)
+        self.assertEqual(df.lons[0], 11.5892)
+        self.assertTupleEqual(df.shape[1:], (1, 1))
+
+    def test_iterate(self):
+        df = self.load_df()
+        for name, it in df.iterate(return_as="datafield"):
+            self.assertTrue(isinstance(it, DataField))
+            self.assertTrue(isinstance(name, dict))
+            self.assertTupleEqual(it.shape, (df.shape[0], 1, 1))
+            self.assertEqual(len(it.process_steps), 2)
+
+        for name, it in df.iterate(return_as="xr"):
+            self.assertTrue(isinstance(it, xr.DataArray))
+            self.assertTrue(isinstance(name, tuple))
+            self.assertTupleEqual(it.shape, (df.shape[0], 1))
+
+        with pytest.raises(ValueError):
+            for name, it in df.iterate(return_as="abcde"):
+                pass
+
+    def test_deseasonalise_all(self):
+        df = self.load_df()
+        deseas_df, mean_df, std_df, trend_df = df.deseasonalise(
+            standardise=True, detrend_data=True, inplace=False
+        )
+        self.assertEqual(len(deseas_df.process_steps), 4)
+
+        mean_df2, std_df2, trend_df2 = df.deseasonalise(
+            standardise=True, detrend_data=True, inplace=True
+        )
+        xr.testing.assert_allclose(deseas_df.data, df.data)
+        xr.testing.assert_allclose(mean_df, mean_df2)
+        xr.testing.assert_allclose(std_df, std_df2)
+        xr.testing.assert_allclose(trend_df, trend_df2)
+
+    def test_deseasonalise_no_trend(self):
+        df = self.load_df()
+        deseas_df, mean_df, std_df, trend_df = df.deseasonalise(
+            standardise=True, detrend_data=False, inplace=False
+        )
+        self.assertEqual(len(deseas_df.process_steps), 3)
+        self.assertEqual(trend_df, 0.0)
+
+        mean_df2, std_df2, trend_df2 = df.deseasonalise(
+            standardise=True, detrend_data=False, inplace=True
+        )
+        self.assertEqual(trend_df2, 0.0)
+        xr.testing.assert_allclose(deseas_df.data, df.data)
+        xr.testing.assert_allclose(mean_df, mean_df2)
+        xr.testing.assert_allclose(std_df, std_df2)
+
+    def test_anomalise(self):
+        df = self.load_df()
+        deseas_df, mean_df = df.anomalise(inplace=False)
+        self.assertEqual(len(deseas_df.process_steps), 2)
+
+        mean_df2 = df.anomalise(inplace=True)
+        xr.testing.assert_allclose(deseas_df.data, df.data)
+        xr.testing.assert_allclose(mean_df, mean_df2)
 
 
 if __name__ == "__main__":

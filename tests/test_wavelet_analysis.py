@@ -5,6 +5,7 @@ Integration tests for wavelet analysis functions.
 import unittest
 
 import numpy as np
+import pytest
 from pyclits.wavelet_analysis import (
     DoGWavelet,
     MorletWavelet,
@@ -23,6 +24,15 @@ class TestMotherWavelet(unittest.TestCase):
         self.assertTrue(hasattr(mw, "fourier_factor"))
         self.assertTrue(hasattr(mw, "coi"))
         self.assertTrue(hasattr(mw, "get_wavelet"))
+
+    def test_not_implemented(self):
+        mw = MotherWavelet()
+        with pytest.raises(NotImplementedError):
+            mw.fourier_factor(0.0)
+        with pytest.raises(NotImplementedError):
+            mw.coi(0.0)
+        with pytest.raises(NotImplementedError):
+            mw.get_wavelet(WAVENUMS, 20.0, 0.0)
 
 
 class TestMorletWavelet(unittest.TestCase):
