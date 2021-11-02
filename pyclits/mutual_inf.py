@@ -517,7 +517,7 @@ def conditional_mutual_information(
             yz_bins = y_bins + z_bins
 
         else:
-            raise ValueError(f"Unknown MI algorithm: {algorithm}")
+            raise ValueError(f"Unknown CMI algorithm: {algorithm}")
 
         # compute histogram counts
         count_z = np.histogramdd(z.T, bins=z_bins)[0]
