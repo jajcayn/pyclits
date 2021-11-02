@@ -4,6 +4,7 @@ Base class for any geo spatio-temporal field. Represented as xarray.DataArray.
 (c) Nikola Jajcay
 """
 
+from copy import deepcopy
 from datetime import date, datetime
 from multiprocessing import cpu_count
 
@@ -29,6 +30,8 @@ class DataField:
     """
     Class holds spatio-temporal geophysical field.
     """
+
+    _copy_attributes = ["process_steps"]
 
     @classmethod
     def load_nc(cls, filename, variable=None):
@@ -75,6 +78,36 @@ class DataField:
         # get average dt
         self._dt = self.data.time.diff(dim="time").mean()
 
+        self.process_steps = [
+            f"Loaded geodata with shape {self.shape}; {self.time[0]} -- "
+            f"{self.time[-1]}; containing {self.num_nans} missing values"
+        ]
+
+    @property
+    def __constructor__(self):
+        """
+        Return constructor, so that each child class would initiate a new
+        instance of the correct class, i.e. first in the method resolution
+        order.
+        """
+        return self.__class__.mro()[0]
+
+    def __finalize__(self, other, add_steps=None):
+        """
+        Copy attributes from other to self. Used when constructing class
+        instance with different data, but same metadata.
+        :param other: other instance of `DataField`
+        :type other: `DataField`
+        :param add_steps: add steps to preprocessing
+        :type add_steps: list|None
+        """
+        assert isinstance(other, DataField)
+        for attr in self._copy_attributes:
+            setattr(self, attr, deepcopy(getattr(other, attr)))
+        if add_steps is not None:
+            self.process_steps += add_steps
+        return self
+
     def _rename_coords(self, substring, new_name):
         """
         Rename coordinate in xr.DataArray to new_name.
@@ -84,11 +117,13 @@ class DataField:
         :param new_name: new name for matched coordinate
         :type new_name: str
         """
+        old_name = None
         for coord in self.data.coords:
             if substring in coord:
                 old_name = coord
                 break
-        self.data = self.data.rename({old_name: new_name})
+        if old_name:
+            self.data = self.data.rename({old_name: new_name})
 
     @staticmethod
     def _update_coord_attributes(old_coord, new_coord, new_units=None):
@@ -174,6 +209,10 @@ class DataField:
         return self.data.shape
 
     @property
+    def num_nans(self):
+        return np.isnan(self.data.values).sum()
+
+    @property
     def dims_not_time(self):
         """
         Return list of dimensions that are not time.
@@ -186,6 +225,13 @@ class DataField:
         Return dict with all coordinates except time.
         """
         return {k: v.values for k, v in self.data.coords.items() if k != "time"}
+
+    @property
+    def preprocessing_steps(self):
+        """
+        Return preprocessing steps done on the data.
+        """
+        return " -> ".join(self.process_steps)
 
     def dt(self, units="seconds"):
         """
@@ -225,17 +271,64 @@ class DataField:
         except ValueError:
             stacked = self.data.expand_dims("space")
         if return_as == "xr":
-            yield from stacked.groupby("space")
+            yield from stacked.groupby("space", squeeze=False)
         elif return_as == "datafield":
-            for name_coords, column in stacked.groupby("space"):
+            for name_coords, column in stacked.groupby("space", squeeze=False):
                 if not isinstance(name_coords, (list, tuple)):
                     name_coords = [name_coords]
                 name_dict = {
                     k: v for k, v in zip(self.dims_not_time, name_coords)
                 }
-                yield name_dict, DataField(data=column.unstack())
+                yield name_dict, self.__constructor__(
+                    column.unstack()
+                ).__finalize__(self, [f"select {column.name}"])
         else:
             raise ValueError(f"Data type not understood: {return_as}")
+
+    def rolling(
+        self, roll_over, function=np.nanmean, dropnans=True, inplace=True
+    ):
+        """
+        Return rolling reduction over signal's time dimension. The window is
+        centered around the midpoint.
+
+        :param roll_over: window to use, in samples
+        :type roll_over: int
+        :param function: function to use for reduction
+        :type function: callable
+        :param dropnans: whether to drop NaNs - will shorten time dimension, or
+            not
+        :type dropnans: bool
+        :param inplace: whether to make operation in-place or return
+        :type inplace: bool
+        """
+        assert callable(function)
+        rolling = self.data.rolling(time=int(roll_over), center=True).reduce(
+            function
+        )
+        add_steps = [f"rolling {function.__name__} over {roll_over} samples"]
+        if dropnans:
+            rolling = rolling.dropna("time")
+            add_steps[0] += "; drop NaNs"
+        if inplace:
+            self.data = rolling
+            self.process_steps += add_steps
+        else:
+            return self.__constructor__(rolling).__finalize__(self, add_steps)
+
+    def _write_attrs_to_xr(self):
+        """
+        Copy attributes to xarray before saving.
+        """
+        # write attributes to xarray
+        for attr in self._copy_attributes:
+            value = getattr(self, attr)
+            # if list need to unwrap
+            if isinstance(value, (list, tuple)):
+                for idx, val in enumerate(value):
+                    self.data.attrs[f"{attr}_{idx}"] = val
+            else:
+                self.data.attrs[attr] = deepcopy(value)
 
     def save(self, filename):
         """
@@ -278,11 +371,15 @@ class DataField:
             ), f"Date to must be datetime, got {type(date_to)}"
 
         selected_data = self.data.sel(time=slice(date_from, date_to))
+        add_steps = [f"select {date_from or 'x'}--{date_to or 'x'}"]
 
         if inplace:
             self.data = selected_data
+            self.process_steps += add_steps
         else:
-            return DataField(data=selected_data)
+            return self.__constructor__(selected_data).__finalize__(
+                self, add_steps
+            )
 
     def select_months(self, months, inplace=True):
         """
@@ -302,11 +399,15 @@ class DataField:
             range(len(self.time)),
         )
         selected_data = self.data.isel(time=list(months_index))
+        add_steps = [f"select {months} months"]
 
         if inplace:
             self.data = selected_data
+            self.process_steps += add_steps
         else:
-            return DataField(data=selected_data)
+            return self.__constructor__(selected_data).__finalize__(
+                self, add_steps
+            )
 
     def select_lat_lon(self, lats=None, lons=None, inplace=True):
         """
@@ -320,9 +421,11 @@ class DataField:
         :type inplace: bool
         """
         selected_data = self.data.copy()
+        add_steps = []
         if lats is not None:
             assert len(lats) == 2, f"Need two lats, got {lats}"
             selected_data = selected_data.sel(lats=slice(lats[0], lats[1]))
+            add_steps += [f"select lats {lats[0]}--{lats[1]}"]
 
         if lons is not None:
             assert len(lons) == 2, f"Need two lons, got {lons}"
@@ -335,11 +438,15 @@ class DataField:
             selected_data = shifted.sel(lons=slice(lons[0], lons[1]))
             # shift back
             selected_data = self.shift_lons_to_all_east_notation(selected_data)
+            add_steps += [f"select lons {lons[0]}--{lons[1]}"]
 
         if inplace:
             self.data = selected_data
+            self.process_steps += add_steps
         else:
-            return DataField(data=selected_data)
+            return self.__constructor__(selected_data).__finalize__(
+                self, add_steps
+            )
 
     @property
     def cos_weights(self):
@@ -351,6 +458,25 @@ class DataField:
             cos_weights[ndx, :] = np.cos(self.lats[ndx] * np.pi / 180.0) ** 0.5
 
         return cos_weights
+
+    def interpolate_temporal_nans(self, method="cubic", inplace=True):
+        """
+        Interpolate temporal NaNs.
+
+        :param method: method for interpolating, see xarray docs for more info
+            on available methods
+        :type method: str
+        :param inplace: whether to make operation in-place or return
+        :type inplace: bool
+        """
+        interpd = self.data.interpolate_na(dim="time", method=method)
+        add_steps = [f"interpolate temporal NaNs with {method} method"]
+
+        if inplace:
+            self.data = interpd
+            self.process_steps += add_steps
+        else:
+            return self.__constructor__(interpd).__finalize__(self, add_steps)
 
     def temporal_resample(self, resample_to, function=np.nanmean, inplace=True):
         """
@@ -366,11 +492,13 @@ class DataField:
         resampled = self.data.resample(time=resample_to).reduce(
             function, dim="time"
         )
+        add_steps = [f"resample to {resample_to} using {function.__name__}"]
 
         if inplace:
             self.data = resampled
+            self.process_steps += add_steps
         else:
-            return DataField(data=resampled)
+            return self.__constructor__(resampled).__finalize__(self, add_steps)
 
     def spatial_resample(self, d_lat, d_lon, method="linear", inplace=True):
         """
@@ -402,11 +530,17 @@ class DataField:
         )
 
         resampled_shifted_back = self.shift_lons_to_all_east_notation(resampled)
+        add_steps = [
+            f"resample to {d_lat} x {d_lon} grid using {method} method"
+        ]
 
         if inplace:
             self.data = resampled_shifted_back
+            self.process_steps += add_steps
         else:
-            return DataField(data=resampled_shifted_back)
+            return self.__constructor__(resampled_shifted_back).__finalize__(
+                self, add_steps
+            )
 
     def deseasonalise(
         self,
@@ -459,6 +593,7 @@ class DataField:
             else:
                 return detrend(x, axis=0, type="linear")
 
+        add_steps = []
         if detrend_data:
             detrended = xr.apply_ufunc(
                 _detrend,
@@ -467,6 +602,7 @@ class DataField:
                 output_core_dims=[["time"]],
             ).transpose(*(["time"] + self.dims_not_time))
             trend = self.data - detrended
+            add_steps += ["detrended"]
         else:
             detrended = self.data
             trend = 0.0
@@ -478,12 +614,19 @@ class DataField:
             climatology_std,
         )
 
+        add_steps += [f"anomalised over {base_period or 'full period'}"]
+        if standardise:
+            add_steps += [f"standardised over {base_period or 'full period'}"]
+
         if inplace:
             self.data = stand_anomalies
+            self.process_steps += add_steps
             return climatology_mean, climatology_std, trend
         else:
             return (
-                DataField(data=stand_anomalies),
+                self.__constructor__(stand_anomalies).__finalize__(
+                    self, add_steps
+                ),
                 climatology_mean,
                 climatology_std,
                 trend,
@@ -695,10 +838,19 @@ class DataField:
             },
         )
 
+        wrapped = "wrapped" if return_wrapped else "unwrapped"
+        add_steps = [
+            f"parametric {wrapped} phase of {central_period}{units} cycle with "
+            f"{window}{units} window"
+        ]
+
         if inplace:
             self.data = parametric_phase
+            self.process_steps += add_steps
         else:
-            return DataField(data=parametric_phase)
+            return self.__constructor__(parametric_phase).__finalize__(
+                self, add_steps
+            )
 
     @staticmethod
     def _regress_amps(args):
@@ -850,10 +1002,16 @@ class DataField:
             },
         )
 
+        add_steps = [
+            f"CCWT: {return_as.replace('_', ' ')} of {central_period}{units} "
+            f"cycle using {wavelet.name} wavelet with k0={k0}"
+        ]
+
         if inplace:
             self.data = wvlt
+            self.process_steps += add_steps
         else:
-            return DataField(data=wvlt)
+            return self.__constructor__(wvlt).__finalize__(self, add_steps)
 
 
 class StationDataField(DataField):
@@ -862,6 +1020,7 @@ class StationDataField(DataField):
     """
 
     data_name = ""
+    _copy_attributes = ["process_steps", "data_name"]
 
     @classmethod
     def init_with_numpy(cls, data, time, data_name="", lat=None, lon=None):

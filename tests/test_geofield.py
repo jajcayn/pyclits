@@ -114,6 +114,15 @@ class TestDataField(TestHelperTempSave):
 
     def test_properties(self):
         df = self.load_df()
+
+        self.assertTrue(hasattr(df, "preprocessing_steps"))
+        self.assertTrue(hasattr(df, "_copy_attributes"))
+        self.assertTrue(hasattr(df, "__constructor__"))
+        self.assertTrue(hasattr(df, "__finalize__"))
+
+        self.assertEqual(df.num_nans, 0)
+        self.assertEqual(len(df.process_steps), 1)
+
         np.testing.assert_equal(df.lats, self.CORRECT_LATS)
         np.testing.assert_equal(df.lons, self.CORRECT_LONS)
         self.compare_time_range(
@@ -139,6 +148,7 @@ class TestDataField(TestHelperTempSave):
             self.assertTrue(isinstance(it, DataField))
             self.assertTrue(isinstance(name, dict))
             self.assertTupleEqual(it.shape, (df.shape[0], 1, 1))
+            self.assertEqual(len(it.process_steps), 2)
 
         for name, it in df.iterate(return_as="xr"):
             self.assertTrue(isinstance(it, xr.DataArray))
@@ -148,6 +158,23 @@ class TestDataField(TestHelperTempSave):
         with pytest.raises(ValueError):
             for name, it in df.iterate(return_as="abcde"):
                 pass
+
+    def test_rolling(self):
+        df = self.load_df()
+        rolled = df.rolling(roll_over=20, dropnans=False, inplace=False)
+        self.assertTrue(isinstance(rolled, DataField))
+        self.assertTupleEqual(rolled.shape, df.shape)
+        self.assertEqual(len(rolled.process_steps), 2)
+        df.rolling(roll_over=20, dropnans=False, inplace=True)
+        xr.testing.assert_allclose(df.data, rolled.data)
+
+        df = self.load_df()
+        rolled = df.rolling(roll_over=20, dropnans=True, inplace=False)
+        self.assertTrue(isinstance(rolled, DataField))
+        self.assertTupleEqual(rolled.shape[1:], df.shape[1:])
+        self.assertEqual(len(rolled.process_steps), 2)
+        df.rolling(roll_over=20, dropnans=True, inplace=True)
+        xr.testing.assert_allclose(df.data, rolled.data)
 
     def test_shift_lons(self):
         df = self.load_df()
@@ -174,6 +201,7 @@ class TestDataField(TestHelperTempSave):
         self.compare_time_range(
             selected_df.time, datetime(1991, 6, 1), datetime(1992, 3, 1)
         )
+        self.assertEqual(len(selected_df.process_steps), 2)
 
     def test_select_months(self):
         df = self.load_df()
@@ -188,6 +216,7 @@ class TestDataField(TestHelperTempSave):
                 for time in range(jja_df.time.shape[0])
             )
         )
+        self.assertEqual(len(jja_df.process_steps), 2)
 
     def test_select_lat_lon(self):
         df = self.load_df()
@@ -196,6 +225,7 @@ class TestDataField(TestHelperTempSave):
         selected_df = df.select_lat_lon(lats_cut, lons_cut, inplace=False)
         np.testing.assert_equal(selected_df.lats, self.SELECTED_LATS)
         np.testing.assert_equal(selected_df.lons, self.SELECTED_LONS)
+        self.assertEqual(len(selected_df.process_steps), 3)
 
     def test_select_lat_lon_through_prime_meridian(self):
         df = self.load_df()
@@ -206,28 +236,39 @@ class TestDataField(TestHelperTempSave):
         np.testing.assert_equal(
             selected_df.lons, self.SELECTED_LONS_PRIME_MERIDIAN
         )
+        self.assertEqual(len(selected_df.process_steps), 3)
 
     def test_cos_weights(self):
         df = self.load_df()
         np.testing.assert_allclose(df.cos_weights[:, 0], self.COS_WEIGHTS)
+
+    def test_interpolate_temporal_nans(self):
+        df = self.load_df()
+        interpd_df = df.interpolate_temporal_nans(method="cubic", inplace=False)
+        self.assertEqual(len(interpd_df.process_steps), 2)
+        self.assertTrue(
+            interpd_df.spatial_dims
+            == (self.CORRECT_LATS.shape[0], self.CORRECT_LONS.shape[0])
+        )
+        df.interpolate_temporal_nans(method="cubic", inplace=True)
+        xr.testing.assert_allclose(df.data, interpd_df.data)
 
     def test_temporal_resample(self):
         df = self.load_df()
         resampled_df = df.temporal_resample(
             resample_to="3M", function=np.nanmean, inplace=False
         )
-        filename = os.path.join(self.temp_dir, "temp_resample.nc")
-        resampled_df.save(filename)
+        self.assertEqual(len(resampled_df.process_steps), 2)
 
         # assert only time dimension got resampled - no changes to spatial dims
         self.assertTrue(
             resampled_df.spatial_dims
             == (self.CORRECT_LATS.shape[0], self.CORRECT_LONS.shape[0])
         )
-        self.compare_nc_files(
-            os.path.join(self.test_results_path, "temp_resample_result.nc"),
-            filename,
+        df.temporal_resample(
+            resample_to="3M", function=np.nanmean, inplace=True
         )
+        xr.testing.assert_allclose(df.data, resampled_df.data)
 
     def test_dt(self):
         df = self.load_df()
@@ -244,59 +285,33 @@ class TestDataField(TestHelperTempSave):
         resampled_df = df.spatial_resample(
             d_lat=5, d_lon=5, method="linear", inplace=False
         )
-        filename = os.path.join(self.temp_dir, "spatial_resample.nc")
-        resampled_df.save(filename)
+        self.assertEqual(len(resampled_df.process_steps), 2)
 
         # assert that time dimension did not change
         self.compare_time_range(
             df.time, datetime(1990, 1, 1), datetime(2000, 1, 1)
         )
-
-        self.compare_nc_files(
-            os.path.join(self.test_results_path, "spatial_resample_result.nc"),
-            filename,
-        )
+        df.spatial_resample(d_lat=5, d_lon=5, method="linear", inplace=True)
+        xr.testing.assert_allclose(df.data, resampled_df.data)
 
     def test_deseasonalise(self):
         df = self.load_df()
         deseas_df, mean_df, std_df, trend_df = df.deseasonalise(
             standardise=True, detrend_data=True, inplace=False
         )
-        filename_df = os.path.join(self.temp_dir, "deseasonalised.nc")
-        deseas_df.save(filename_df)
-        filename_mean = os.path.join(self.temp_dir, "deseasonalise_mean.nc")
-        mean_df.to_netcdf(filename_mean)
-        filename_std = os.path.join(self.temp_dir, "deseasonalise_std.nc")
-        std_df.to_netcdf(filename_std)
-        filename_trend = os.path.join(self.temp_dir, "deseasonalise_trend.nc")
-        trend_df.to_netcdf(filename_trend)
+        self.assertEqual(len(deseas_df.process_steps), 4)
 
         # assert that time dimension did not change
         self.compare_time_range(
             df.time, datetime(1990, 1, 1), datetime(2000, 1, 1)
         )
-        self.compare_nc_files(
-            os.path.join(self.test_results_path, "deseasonalised_result.nc"),
-            filename_df,
+        mean_df2, std_df2, trend_df2 = df.deseasonalise(
+            standardise=True, detrend_data=True, inplace=True
         )
-        self.compare_nc_files(
-            os.path.join(
-                self.test_results_path, "deseasonalise_mean_result.nc"
-            ),
-            filename_mean,
-        )
-        self.compare_nc_files(
-            os.path.join(
-                self.test_results_path, "deseasonalise_std_results.nc"
-            ),
-            filename_std,
-        )
-        self.compare_nc_files(
-            os.path.join(
-                self.test_results_path, "deseasonalise_trend_results.nc"
-            ),
-            filename_trend,
-        )
+        xr.testing.assert_allclose(deseas_df.data, df.data)
+        xr.testing.assert_allclose(mean_df, mean_df2)
+        xr.testing.assert_allclose(std_df, std_df2)
+        xr.testing.assert_allclose(trend_df, trend_df2)
 
     def test_pca(self):
         df = self.load_df()
@@ -312,8 +327,8 @@ class TestDataField(TestHelperTempSave):
         self.assertTrue(isinstance(df.pca_mean, xr.DataArray))
 
     def test_parametric_phase(self):
-        df = self.load_df()
         for wrapped in [True, False]:
+            df = self.load_df()
             param_phase_df = df.parametric_phase(
                 central_period=1.0,
                 window=0.25,
@@ -321,10 +336,7 @@ class TestDataField(TestHelperTempSave):
                 return_wrapped=wrapped,
                 inplace=False,
             )
-            filename_df = os.path.join(
-                self.temp_dir, f"param_phase_{wrapped}.nc"
-            )
-            param_phase_df.save(filename_df)
+            self.assertEqual(len(param_phase_df.process_steps), 2)
             self.assertDictContainsSubset(
                 {
                     "parametric_phase_period": 1.0,
@@ -337,15 +349,16 @@ class TestDataField(TestHelperTempSave):
             self.compare_time_range(
                 df.time, datetime(1990, 1, 1), datetime(2000, 1, 1)
             )
-            self.compare_nc_files(
-                os.path.join(
-                    self.test_results_path, f"param_phase_{wrapped}_results.nc"
-                ),
-                filename_df,
+            df.parametric_phase(
+                central_period=1.0,
+                window=0.25,
+                units="years",
+                return_wrapped=wrapped,
+                inplace=True,
             )
+            xr.testing.assert_allclose(df.data, param_phase_df.data)
 
     def test_ccwt(self):
-        df = self.load_df()
         for return_as in [
             "raw",
             "amplitude",
@@ -355,12 +368,14 @@ class TestDataField(TestHelperTempSave):
             "reconstruction",
             "reconstruction_regressed",
         ]:
+            df = self.load_df()
             ccwt_df = df.ccwt(
                 central_period=1.0,
                 units="years",
                 return_as=return_as,
                 inplace=False,
             )
+            self.assertEqual(len(ccwt_df.process_steps), 2)
             self.assertDictContainsSubset(
                 {
                     "CCWT_period": 1.0,
@@ -372,21 +387,13 @@ class TestDataField(TestHelperTempSave):
             self.compare_time_range(
                 df.time, datetime(1990, 1, 1), datetime(2000, 1, 1)
             )
-            if return_as == "raw":
-                self.assertTrue(isinstance(ccwt_df.data, xr.DataArray))
-                self.assertEqual(ccwt_df.data.values.dtype.kind, "c")
-            else:
-                filename_df = os.path.join(
-                    self.temp_dir, f"ccwt_{return_as}.nc"
-                )
-                ccwt_df.save(filename_df)
-                self.compare_nc_files(
-                    os.path.join(
-                        self.test_results_path,
-                        f"ccwt_{return_as}_results.nc",
-                    ),
-                    filename_df,
-                )
+            df.ccwt(
+                central_period=1.0,
+                units="years",
+                return_as=return_as,
+                inplace=True,
+            )
+            xr.testing.assert_allclose(df.data, ccwt_df.data)
 
 
 if __name__ == "__main__":
