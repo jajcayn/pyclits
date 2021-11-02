@@ -25,7 +25,7 @@ def get_p_values(data_value, surrogates_value, tailed="upper"):
     :param surrogates_value: value(s) from surrogate data analyses, shape must
         be [num_surrogates, ...] where (...) is the shape of the data
     :type surrogates_value: np.ndarray
-    :param tailed: which test statistic to compute: `upper`, `lower`, or `both`
+    :param tailed: which test statistic to compute: `upper` or `lower`
     :type tailed: str
     :return: p-value of surrogate testing
     :rtype: float
@@ -41,17 +41,9 @@ def get_p_values(data_value, surrogates_value, tailed="upper"):
             np.greater_equal(data_value, surrogates_value), axis=0
         ) / float(num_surrogates)
     elif tailed == "lower":
-        significance = np.sum(
+        significance = 1.0 - np.sum(
             np.less_equal(data_value, surrogates_value), axis=0
         ) / float(num_surrogates)
-    elif tailed == "both":
-        significance = 2 * (
-            1.0
-            - np.sum(
-                np.greater_equal(np.abs(data_value), surrogates_value), axis=0
-            )
-            / float(num_surrogates)
-        )
     else:
         raise ValueError(f"Unknown tail for testing: {tailed}")
 

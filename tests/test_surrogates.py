@@ -2,6 +2,7 @@
 Integration tests for surrogate creation.
 """
 
+
 import os
 import unittest
 from datetime import datetime
@@ -14,6 +15,8 @@ from pyclits.surrogates import (
     SurrogateField,
     correct_for_multiple_comparisons,
     get_p_values,
+    get_single_shuffle_surrogate,
+    get_single_time_shift_surrogate,
 )
 
 from . import TestHelperTempSave
@@ -111,24 +114,45 @@ class TestHelperFunctions(unittest.TestCase):
             self.assertTrue(isinstance(corr_pvals, np.ndarray))
             self.assertTrue(np.all(np.less_equal(pvals, corr_pvals)))
 
-    @pytest.mark.skip()
     def test_get_p_values(self):
         RESULT = np.array([0.56, 0.05, 0.23])
+
         np.random.seed(DEFAULT_SEED)
         data = np.random.rand(3) + 0.01
         surrs = np.random.rand(100, 3)
         p_vals = get_p_values(data, surrs, tailed="upper")
         np.testing.assert_almost_equal(p_vals, RESULT)
         p_vals = get_p_values(data, surrs, tailed="lower")
-        np.testing.assert_almost_equal(p_vals, RESULT)
+        np.testing.assert_almost_equal(p_vals, 1.0 - RESULT)
 
 
 class TestSurrogateFunctions(unittest.TestCase):
+    def get_ts(self):
+        np.random.seed(DEFAULT_SEED)
+        return np.random.rand(100)
+
     def test_get_single_time_shift_surrogate(self):
-        pass
+        ts = self.get_ts()
+        surr = get_single_time_shift_surrogate(ts, seed=DEFAULT_SEED)
+        with pytest.raises(AssertionError):
+            np.testing.assert_equal(ts, surr)
+        np.testing.assert_equal(ts.sort(), surr.sort())
 
     def test_get_single_shuffle_surrogate(self):
-        pass
+        ts = self.get_ts()
+        surr = get_single_shuffle_surrogate(
+            ts, cut_points=None, seed=DEFAULT_SEED
+        )
+        with pytest.raises(AssertionError):
+            np.testing.assert_equal(ts, surr)
+        np.testing.assert_equal(ts.sort(), surr.sort())
+
+        surr = get_single_shuffle_surrogate(
+            ts, cut_points=12, seed=DEFAULT_SEED
+        )
+        with pytest.raises(AssertionError):
+            np.testing.assert_equal(ts, surr)
+        np.testing.assert_equal(ts.sort(), surr.sort())
 
     def test_get_single_FT_surrogate(self):
         pass
