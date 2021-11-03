@@ -7,6 +7,7 @@ import unittest
 from datetime import datetime
 
 import numpy as np
+import pandas as pd
 import pytest
 import xarray as xr
 from pyclits.geofield import DataField, StationDataField
@@ -103,7 +104,7 @@ class TestDataField(TestHelperTempSave):
             os.path.join(self.test_data_path, "air.sig995.nc")
         )
 
-    def test_load_save(self):
+    def test_load_save_datarray(self):
         df = self.load_df()
         filename = os.path.join(self.temp_dir, "test")
         df.save(filename)
@@ -111,6 +112,16 @@ class TestDataField(TestHelperTempSave):
         self.compare_nc_files(
             os.path.join(self.test_results_path, "load_save_result.nc"),
             filename + ".nc",
+        )
+
+    def test_load_save_dataset(self):
+        with pytest.raises(AssertionError):
+            df = DataField.load_nc(
+                os.path.join(self.test_data_path, "sst_mean_sample.nc")
+            )
+        _ = DataField.load_nc(
+            os.path.join(self.test_data_path, "sst_mean_sample.nc"),
+            variable="sst",
         )
 
     def test_properties(self):
@@ -415,6 +426,51 @@ class TestDataField(TestHelperTempSave):
             )
             xr.testing.assert_allclose(df.data, param_phase_df.data)
 
+    def test_get_parametric_phase(self):
+        df = self.load_df()
+        central_period = 1.0
+        window = 0.25
+        units = "years"
+        param_phase_df = df.parametric_phase(
+            central_period=central_period,
+            window=window,
+            units=units,
+            return_wrapped=True,
+            inplace=False,
+        )
+        isel = {"lats": 0, "lons": 0}
+
+        # prepare parametric phase
+        how_much = int((central_period * 2) * (1.0 / df.dt(units)))
+        padded_data = np.pad(
+            (df.data - df.data.mean(dim="time")).isel(isel),
+            pad_width=[(how_much, how_much)],
+            mode="symmetric",
+        )
+        half_length = int(np.floor(padded_data.shape[0] / 2))
+        upper_bound = (
+            half_length + 1 if padded_data.shape[0] & 0x1 else half_length
+        )
+        freq = 2 * np.pi / (central_period * (1.0 / df.dt(units)))
+        _, param_single = df._get_parametric_phase(
+            [
+                0,
+                half_length,
+                upper_bound,
+                freq,
+                int(window * (1.0 / df.dt(units))),
+                padded_data,
+            ]
+        )
+        param_single = param_single.squeeze()[how_much:-how_much]
+        self.assertTrue(isinstance(param_single, np.ndarray))
+        self.assertTupleEqual(
+            param_single.shape, param_phase_df.data.isel(isel).values.shape
+        )
+        np.testing.assert_allclose(
+            param_single, param_phase_df.data.isel(isel).values
+        )
+
     def test_get_wvlt_coefficients(self):
         df = self.load_df()
         central_period = 1.0
@@ -485,6 +541,43 @@ class TestDataField(TestHelperTempSave):
             )
             xr.testing.assert_allclose(df.data, ccwt_df.data)
 
+    def test_regress_amps(self):
+        df = self.load_df()
+        isel = {"lats": 0, "lons": 0}
+        amp_df = df.ccwt(
+            central_period=1.0,
+            units="years",
+            return_as="amplitude",
+            inplace=False,
+        )
+        recon_df = df.ccwt(
+            central_period=1.0,
+            units="years",
+            return_as="reconstruction",
+            inplace=False,
+        )
+        amp_regr_df = df.ccwt(
+            central_period=1.0,
+            units="years",
+            return_as="amplitude_regressed",
+            inplace=False,
+        )
+        _, regr_single = df._regress_amps(
+            [
+                0,
+                amp_df.data.isel(isel).values,
+                recon_df.data.isel(isel).values,
+                df.data.isel(isel).values,
+            ]
+        )
+        self.assertTrue(isinstance(regr_single, np.ndarray))
+        self.assertTupleEqual(
+            regr_single.shape, amp_regr_df.data.isel(isel).values.shape
+        )
+        np.testing.assert_allclose(
+            regr_single, amp_regr_df.data.isel(isel).values
+        )
+
 
 class TestStationDataField(TestHelperTempSave):
     """
@@ -500,6 +593,22 @@ class TestStationDataField(TestHelperTempSave):
             station_name="Jena",
             lat=50.9271,
             lon=11.5892,
+        )
+
+    def create_numpy_df(self):
+        """
+        Create dummy dataset for testing weird features as negative lon, weekly
+        timeseries etc.
+        """
+        ts = np.random.rand(100)
+        return StationDataField.init_with_numpy(
+            ts,
+            time=pd.date_range(
+                datetime(1990, 1, 1), periods=ts.shape[0], freq="W"
+            ),
+            data_name="test-data",
+            lat=12.4,
+            lon=-13.3,
         )
 
     def test_properties(self):
@@ -569,6 +678,22 @@ class TestStationDataField(TestHelperTempSave):
         mean_df2 = df.anomalise(inplace=True)
         xr.testing.assert_allclose(deseas_df.data, df.data)
         xr.testing.assert_allclose(mean_df, mean_df2)
+
+    def test_numpy_init(self):
+        df = self.create_numpy_df()
+        self.assertTrue(isinstance(df, StationDataField))
+        self.assertTrue(isinstance(df.data, xr.DataArray))
+        self.assertTrue(hasattr(df, "data_name"))
+        self.assertTrue(hasattr(df, "_copy_attributes"))
+        self.assertEqual(df.data_name, "test-data")
+        self.assertEqual(df.lats[0], 12.4)
+        self.assertEqual(df.lons[0], 346.7)
+        self.assertTupleEqual(df.shape[1:], (1, 1))
+
+    def test_deseasonalise_wrong(self):
+        df = self.create_numpy_df()
+        with pytest.raises(ValueError):
+            df.deseasonalise()
 
 
 if __name__ == "__main__":
