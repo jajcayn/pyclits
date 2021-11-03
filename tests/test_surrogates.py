@@ -15,6 +15,10 @@ from pyclits.surrogates import (
     SurrogateField,
     correct_for_multiple_comparisons,
     get_p_values,
+    get_single_AAFT_surrogate,
+    get_single_FT_surrogate,
+    get_single_IAAFT_surrogate,
+    get_single_MF_surrogate,
     get_single_shuffle_surrogate,
     get_single_time_shift_surrogate,
 )
@@ -129,9 +133,9 @@ class TestHelperFunctions(unittest.TestCase):
 
 
 class TestSurrogateFunctions(unittest.TestCase):
-    def get_ts(self):
+    def get_ts(self, ndim=1):
         np.random.seed(DEFAULT_SEED)
-        return np.random.rand(100)
+        return np.random.rand(100, ndim)
 
     def test_get_single_time_shift_surrogate(self):
         ts = self.get_ts()
@@ -157,16 +161,36 @@ class TestSurrogateFunctions(unittest.TestCase):
         np.testing.assert_equal(ts.sort(), surr.sort())
 
     def test_get_single_FT_surrogate(self):
-        pass
+        ts = self.get_ts(ndim=2)
+        surr = get_single_FT_surrogate(ts, seed=DEFAULT_SEED)
+        self.assertTupleEqual(ts.shape, surr.shape)
+        with pytest.raises(AssertionError):
+            np.testing.assert_equal(ts, surr)
 
     def test_get_single_AAFT_surrogate(self):
-        pass
+        ts = self.get_ts(ndim=2)
+        surr = get_single_AAFT_surrogate(ts, seed=DEFAULT_SEED)
+        self.assertTupleEqual(ts.shape, surr.shape)
+        with pytest.raises(AssertionError):
+            np.testing.assert_equal(ts, surr)
 
     def test_get_single_IAAFT_surrogate(self):
-        pass
+        ts = self.get_ts(ndim=2)
+        surr = get_single_IAAFT_surrogate(ts, seed=DEFAULT_SEED)
+        self.assertTupleEqual(ts.shape, surr.shape)
+        with pytest.raises(AssertionError):
+            np.testing.assert_equal(ts, surr)
 
     def test_get_single_MF_surrogate(self):
-        pass
+        ts = self.get_ts(ndim=1).squeeze()[:64]
+        surr = get_single_MF_surrogate(ts, seed=DEFAULT_SEED)
+        self.assertTupleEqual(ts.shape, surr.shape)
+        with pytest.raises(AssertionError):
+            np.testing.assert_equal(ts, surr)
+
+        with pytest.raises(ValueError):
+            ts = self.get_ts(ndim=1).squeeze()
+            get_single_MF_surrogate(ts, seed=DEFAULT_SEED)
 
 
 if __name__ == "__main__":
