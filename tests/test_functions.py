@@ -41,15 +41,15 @@ class TestHelperFunctions(unittest.TestCase):
         # no confounds case
         ts = self.generate_ts()
         corr, pval = partial_corr(ts.T)
-        self.assertEqual(corr, -0.06701731434192172)
-        self.assertEqual(pval, 0.5076554556468957)
+        self.assertLess(corr, 0.0)
+        self.assertGreater(pval, 0.5)
 
         # confounds
         np.random.seed(DEFAULT_SEED)
         ts = np.random.rand(4, 100)
         corr, pval = partial_corr(ts)
-        self.assertEqual(corr, -0.05145952721058166)
-        self.assertEqual(pval, 0.6148090827114683)
+        self.assertLess(corr, 0.0)
+        self.assertGreater(pval, 0.5)
 
         # NaNs
         ts[3, 13] = np.nan
@@ -61,7 +61,7 @@ class TestHelperFunctions(unittest.TestCase):
         with pytest.raises(ValueError):
             _ = partial_corr(ts)
 
-        # not enought df
+        # not enough df
         ts = np.random.rand(5, 5)
         with pytest.raises(ValueError):
             _ = partial_corr(ts)
