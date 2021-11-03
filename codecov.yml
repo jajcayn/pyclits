@@ -2,6 +2,8 @@ coverage:
   precision: 2
   round: nearest
   range: "50...90"
+  ignore:
+    - "pyclits/empirical_model.py"
   status:
     project:
       default:
