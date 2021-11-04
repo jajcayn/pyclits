@@ -148,7 +148,7 @@ class TestContinuousWavelet(unittest.TestCase):
         self.assertTupleEqual((1, len(sig)), wave.shape)
         self.assertEqual(6.0, sc)
         self.assertEqual(len(per), 1)
-        self.assertEqual(len(coi), len(sig) + 1)
+        self.assertEqual(len(coi), len(sig))
 
     def test_pad(self):
         sig = self._generate_signal(freq=6.0)

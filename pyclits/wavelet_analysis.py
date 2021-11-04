@@ -261,8 +261,8 @@ def continous_wavelet(X, dt, pad=False, wavelet=MorletWavelet(), **kwargs):
     coi *= dt * np.concatenate(
         (
             np.array([1e-5]),
-            np.arange(1, (n1 + 1) / 2),
-            np.arange((n1 / 2 - 1), 0, -1),
+            np.arange(int((n1 + 1) / 2) - 1),
+            np.flipud(np.arange(0, int(n1 / 2) - 1)),
             np.array([1e-5]),
         )
     )

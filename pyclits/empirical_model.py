@@ -1,18 +1,26 @@
 """
-created on Aug 21, 2016
+Empirical multi-level modelling approach.
 
-@author: Nikola Jajcay, jajcay(at)cs.cas.cz
+Kondrashov D., Kravtsov S., Robertson A. W. and Ghil M., J. Climate, 18, 2005.
 
-last update on Sep 22, 2017
-
-Based on Kondrashov D., Kravtsov S., Robertson A. W. and Ghil M., J. Climate, 18, 2005.
+(c) Nikola Jajcay
 """
-
+import logging
+from copy import deepcopy
+from multiprocessing import cpu_count
 
 import numpy as np
 import scipy.stats as sts
+import xarray as xr
+from pathos.multiprocessing import ProcessingPool
+from sklearn.decomposition import PCA
+from sklearn.linear_model import BayesianRidge, LinearRegression, Ridge
+
 from functions import cross_correlation, kdensity_estimate
-from geofield import DataField
+
+from .geofield import DataField
+
+CCORR_MAX_LAG = 50
 
 
 def _partial_least_squares(x, y, ux, sx, vx, optimal, intercept=True):
@@ -77,341 +85,443 @@ def _partial_least_squares(x, y, ux, sx, vx, optimal, intercept=True):
     return bpls, r
 
 
+def compute_statistics(pcs, max_lag=CCORR_MAX_LAG):
+    """
+    Compute statistics (autocorrelation, kernel density estimation, and
+    first 4 statistical moments) of input PCs.
+
+    :param pcs: principal components to compute statistics on, (time x dim)
+    :type pcs: np.ndarray
+    :param max_lag: maximum lag for autocorrelation
+    :type max_lag: int
+    :return: autocorrelation, kernel density, and statistical moments
+    :rtype: xr.DataArray, xr.DataArray, xr.DataArray
+    """
+    lag_cors = np.zeros((2 * max_lag + 1, pcs.shape[1]))
+    kernel_densities = np.zeros((100, pcs.shape[1], 2))
+    for k in range(pcs.shape[1]):
+        lag_cors[:, k] = cross_correlation(
+            pcs[:, k], pcs[:, k], max_lag=max_lag
+        )
+        (
+            kernel_densities[:, k, 0],
+            kernel_densities[:, k, 1],
+        ) = kdensity_estimate(pcs[:, k], kernel="epanechnikov")
+    lag_cors = xr.DataArray(
+        lag_cors,
+        dims=["lag", "component"],
+        coords={
+            "lag": np.arange(-max_lag, max_lag + 1),
+            "component": np.arange(1, pcs.shape[1] + 1),
+        },
+    )
+    kernel_densities = xr.DataArray(
+        kernel_densities,
+        dims=["point", "component", "arr_type"],
+        coords={
+            "component": np.arange(1, pcs.shape[1] + 1),
+            "type": ["x", "density"],
+        },
+    )
+    base_stats = xr.DataArray(
+        [
+            np.mean(pcs, axis=0),
+            np.std(pcs, axis=0, ddof=1),
+            sts.skew(pcs, axis=0),
+            sts.kurtosis(pcs, axis=0),
+        ],
+        dims=["stat", "component"],
+        coords={
+            "stat": ["mean", "std", "skew", "kurt"],
+            "component": np.arange(1, pcs.shape[1] + 1),
+        },
+    )
+    return lag_cors, kernel_densities, base_stats
+
+
 class EmpiricalModel(DataField):
     """
-    Class holds the geo data and is able to fit / train and integrate statistical model
-    as in Kravtsov et al., J. Climate, 18, 4404 - 4424 (2005).
-    Working with monthly data.
+    Class for empirical model.
     """
 
-    def __init__(self, no_levels, verbose=False):
-        """
-        Init function.
-        """
+    _additional_copy_attributes = [
+        "no_levels",
+        "low_freq",
+        "input_pcs",
+        "input_eofs",
+        "orig_data_xr",
+        "model_options",
+    ]
 
-        DataField.__init__(self)
+    def __init__(self, no_levels, data):
+        """
+        :param no_levels: number of levels in the empirical model
+        :type no_levels: int
+        :param data: spatio-temporal data
+        :type data: xr.DataArray
+        """
+        # set attributes
         self.no_levels = no_levels
         self.low_freq = None
         self.input_pcs = None
         self.input_eofs = None
-        self.verbose = verbose
-        self.combined = False
-        self.delay_model = False
+        self.model_options = {}
+        assert isinstance(
+            data, xr.DataArray
+        ), f"Data has to be xr.DataArray, got {type(data)}"
+        self.orig_data_xr = deepcopy(data)
 
-    def load_geo_data(
-        self,
-        fname,
-        varname,
-        start_date,
-        end_date,
-        lats=None,
-        lons=None,
-        dataset="NCEP",
-        anom=False,
-    ):
-        """
-        Loads geo data, makes sure the data is monthly.
-        """
+        super().__init__(data=data)
 
-        self.load(fname, varname, dataset=dataset, print_prog=False)
-        self.select_date(start_date, end_date)
-        self.select_lat_lon(lats, lons)
-        if anom:
-            self.anomalise()
-        if np.abs(self.time[1] - self.time[0]) <= 1:
-            raise Exception("Model works only with monthly data.")
-        if self.verbose:
-            print(
-                "Data loaded with shape %s and time span %s -- %s."
-                % (
-                    self.data.shape,
-                    self.get_date_from_ndx(0),
-                    self.get_date_from_ndx(-1),
-                )
-            )
+    def get_model_option(self, opt):
+        return self.model_options.get(opt, False)
 
-    def copy_existing_datafield(self, g):
+    def from_datafield(cls, no_levels, datafield):
         """
-        Copies existing DataField instance to this model.
+        Init EmpiricalModel from other datafield.
         """
+        assert isinstance(datafield, DataField)
+        emp_model = cls(no_levels, datafield.data).__finalize__(datafield)
 
-        self.data = g.data.copy()
-        self.time = g.time.copy()
-        if np.abs(self.time[1] - self.time[0]) <= 1:
-            raise Exception("Model now works only with monthly data.")
-        self.lats = g.lats.copy()
-        self.lons = g.lons.copy()
-        self.nans = g.nans
-        if self.verbose:
-            print(
-                "DataField copied to model. Shape of the data is %s, time span is %s -- %s including."
-                % (
-                    self.data.shape,
-                    self.get_date_from_ndx(0),
-                    self.get_date_from_ndx(-1),
-                )
-            )
+        return emp_model
+
+    def __finalize__(self, other, add_steps=None):
+        """
+        Copy additional attributes.
+        """
+        for attr in self._additional_copy_attributes:
+            if hasattr(other, attr):
+                setattr(self, attr, deepcopy(getattr(other, attr)))
+        return super().__finalize__(other, add_steps=add_steps)
+
+    @staticmethod
+    def _pca(self, data_xr, pca_mean, n_comps):
+        """
+        Helper for PCA.
+
+        :param data_xr: input data as DataArray
+        :type data_xr: xr.DataArray
+        :param pca_mean: temporal mean of the data
+        :type pca_mean: xr.DataArray
+        :param n_comps: number of components to extract
+        :type n_comps: int|float|None
+        :return: PCA class, principal components, orthogonal functions,
+            explained variance
+        :rtype: `sklearn.decomposition.PCA`, xr.DataArray, xr.DataArray,
+            np.ndarray
+        """
+        pca_class = PCA(n_components=n_comps or 0.99)
+        pcs = pca_class.fit_transform((data_xr - pca_mean).values)
+        pcs = xr.DataArray(
+            data=pcs.copy(),
+            dims=["time", "component"],
+            coords={
+                "time": data_xr.time,
+                "component": np.arange(1, pcs.shape[1] + 1),
+            },
+        )
+        eofs = xr.DataArray(
+            data=pca_class.components_.copy(),
+            dims=["component", "space"],
+            coords={
+                "component": np.arange(1, pcs.shape[1] + 1),
+                "space": data_xr.coords["space"],
+            },
+        ).unstack()
+        eofs_full = np.empty((eofs.shape[0],) + self.data.shape[1:])
+        eofs_full[:] = np.nan
+        _, _, idx_lats = np.intersect1d(
+            eofs.lats.values, self.lats, return_indices=True
+        )
+        _, _, idx_lons = np.intersect1d(
+            eofs.lons.values, self.lons, return_indices=True
+        )
+        eofs_full[:, idx_lats.reshape((-1, 1)), idx_lons] = eofs.values
+        eofs = xr.DataArray(
+            data=eofs_full,
+            dims=["component"] + self.dims_not_time,
+            coords={
+                "component": np.arange(1, pcs.shape[1] + 1),
+                **self.coords_not_time,
+            },
+        )
+
+        return pca_class, pcs, eofs, pca_class.explained_variance_ratio_.copy()
 
     def remove_low_freq_variability(
         self, mean_over, cos_weights=True, no_comps=None
     ):
         """
-        Removes low-frequency variability (usually magnitude of decades) and
-        stores the signal in EOFs.
-        mean_over in years, cos_weights whether to use cosine reweighting
-        if no_comps is None, keeps number such 99% of variance is described.
+        Remove low-frequency variability (usually magnitude of decades) and
+        store the signal in EOFs.
+
+        :param mean_over: how many years to run over
+        :type mean_over: float
+        :param cos_weights: whether to use cosine reweighting
+        :type cos_weights: bool
+        :param no_comps: number of components for storing low-freq variability,
+            if None will select number such that it keeps 99% of the variance
         """
 
-        if self.verbose:
-            print("removing low frequency variability...")
+        logging.info("Removing low frequency variability...")
 
-        window = int((mean_over / 2.0) * 12.0)
-
-        # boxcar mean
-        smoothed = np.zeros_like(self.data)
-        if self.verbose:
-            print("...running boxcar mean over %d years..." % mean_over)
-        for t in range(self.time.shape[0]):
-            smoothed[t, ...] = np.nanmean(
-                self.data[
-                    max(t - window, 0) : min(t + window, self.time.shape[0]),
-                    ...,
-                ],
-                axis=0,
-            )
+        # rolling mean
+        logging.debug("...running rolling mean over %d years..." % mean_over)
+        smoothed = self.data.rolling(
+            int(mean_over * (1.0 / self.dt("years"))), center=True
+        ).reduce(np.nanmean)
 
         # cos-weighting
         if cos_weights:
-            if self.verbose:
-                print("...scaling by square root of cosine of latitude...")
-            cos_w = self.latitude_cos_weights()
-            smoothed *= cos_w
+            logging.debug("...cos-weighting...")
+            smoothed *= self.cos_weights
 
         # pca on low-freq field
-        if no_comps is not None:
-            if self.verbose:
-                print(
-                    "...storing low frequency variability in %d EOFs..."
-                    % no_comps
-                )
-            eofs, pcs, var, pca_mean = self.pca_components(
-                n_comps=no_comps, field=smoothed
-            )
-            if self.verbose:
-                print(
-                    "...which explain %.2f%% of total low frequency variability..."
-                    % (np.sum(var) * 100.0)
-                )
-        elif no_comps is None:
-            if self.verbose:
-                print(
-                    "...storing low frequency variability in EOFs such that they explain 99% of variability..."
-                )
-            eofs, pcs, var, pca_mean = self.pca_components(
-                n_comps=20, field=smoothed
-            )
-            idx = np.where(np.cumsum(var) > 0.99)[0][0] + 1
-            eofs, pcs, var = eofs[:idx, ...], pcs[:idx, ...], var[:idx]
-        self.low_freq = [eofs, pcs, var, pca_mean]
+        logging.debug("...storing low-freq variability in PCA...")
+        smoothed_flat_data = smoothed.stack(space=self.dims_not_time).dropna(
+            dim="space", how="any"
+        )
+        low_freq_pca_mean = smoothed_flat_data.mean(dim="time")
+        low_freq_pca, low_freq_pcs, low_freq_eofs, low_freq_var = self._pca(
+            smoothed_flat_data, low_freq_pca_mean, no_comps
+        )
+        # save low freq
+        self.low_freq = [
+            low_freq_pca,
+            low_freq_pcs,
+            low_freq_eofs,
+            low_freq_var,
+            low_freq_pca_mean,
+        ]
+        logging.debug(
+            f"...low-freq PCA retained {low_freq_var.sum():.2%} of original"
+            " variance..."
+        )
 
         # subtract from data
-        if self.verbose:
-            print("...subtracting from data...")
-        if self.nans:
-            self.data = self.filter_out_NaNs()[0]
-            self.data -= pca_mean
-            self.data = self.return_NaNs_to_data(self.data)
-        else:
-            self.flatten_field()
-            self.data -= pca_mean
-            self.reshape_flat_field()
-        temp = self.flatten_field(eofs)
-        self.flatten_field()
-        self.data -= np.dot(temp.T, pcs).T
-        self.reshape_flat_field()
-        if self.verbose:
-            print("done.")
+        logging.debug("...subtracting low-frequency variability from data...")
+        # remove low-freq from data
+        self.data -= smoothed
+        with_cos_weights = " scaled by cos-weights " if cos_weights else ""
+        self.process_steps += [
+            f"removed low-freq variability over {mean_over} years"
+            f"{with_cos_weights}, stored in {len(low_freq_pca['component'])}"
+        ]
 
     def prepare_input(
-        self, anom=True, no_input_ts=20, cos_weights=True, sel=None
+        self, no_input_ts=20, anomalise=True, cos_weights=True, sel=None
     ):
         """
-        Prepares input time series to model as PCs.
-        if sel is not None, selects those PCs as input (sel pythonic, starting with 0).
+        Prepare input time series to model as PCs.
+
+        :param no_input_ts: number of input PC timeseries
+        :type no_input_ts: int
+        :param anomalise: whether to anomalise data
+        :type anomalise: bool
+        :param cos_weights: whether to use cosine reweighting
+        :type cos_weights: bool
+        :param sel: whether to select specific PCs, if None, use all, uses
+            numbering from 1
+        :type sel: list|tuple|None
         """
 
-        if self.verbose:
-            print("preparing input to the model...")
+        logging.info("Preparing input to the model as principal components...")
 
-        self.no_input_ts = no_input_ts if sel is None else len(sel)
-        self.input_anom = anom
+        no_input_ts = no_input_ts if sel is None else len(sel)
+        self.model_options["input_anomalise"] = anomalise
+        add_steps = []
 
-        if anom:
-            if self.verbose:
-                print("...anomalising...")
-            self.clim_mean = self.anomalise()
+        if anomalise:
+            logging.debug("...anomalising...")
+            self.climatological_mean = self.anomalise(inplace=True)
+            add_steps += ["anomalise"]
 
         if cos_weights:
-            if self.verbose:
-                print("...scaling by square root of cosine of latitude...")
-            cos_w = self.latitude_cos_weights()
-            self.data *= cos_w
+            logging.debug("...cos-weighting...")
+            self.data *= self.cos_weights
+            add_steps += ["cos-weighting"]
 
-        if sel is None:
-            if self.verbose:
-                print(
-                    "...selecting %d first principal components as input time series..."
-                    % (no_input_ts)
-                )
-            eofs, pcs, var = self.pca_components(no_input_ts)
-            self.input_pcs = pcs
-            self.input_eofs = eofs
-            if self.verbose:
-                print(
-                    "...and they explain %.2f%% of variability..."
-                    % (np.sum(var) * 100.0)
-                )
-        else:
-            if self.verbose:
-                print(
-                    "...selecting %d principal components described in 'sel' variable..."
-                    % (len(sel))
-                )
-            eofs, pcs, var = self.pca_components(sel[-1] + 1)
-            self.input_pcs = pcs[sel, :]
-            self.input_eofs = eofs[sel, ...]
-            if self.verbose:
-                print(
-                    "...and they explain %.2f%% of variability..."
-                    % (np.sum(var[sel]) * 100.0)
-                )
+        logging.debug("...computing PCA...")
+        pcs, eofs, var = self.pca(
+            n_comps=no_input_ts if sel is None else sel[-1] + 1,
+            return_nans=True,
+        )
+        if sel is not None:
+            logging.debug(f"...selecting {', '.join(sel)} components...")
+            pcs = pcs.sel({"component": sel})
+            eofs = eofs.sel({"component": sel})
+            var = [va for i, va in enumerate(var) if i + 1 in sel]
+        logging.debug(f"...PCA retained {var.sum():.2%} variance...")
+        add_steps += [f"input as {len(pcs['component'])} PCs"]
 
+        self.input_eofs = eofs
+        self.std_first_pc = np.std(pcs.isel({"component": 0}).values, ddof=1)
         # standardise PCs
-        self.std_first_pc = np.std(self.input_pcs[0, :], ddof=1)
-        self.input_pcs /= self.std_first_pc
+        self.input_pcs = pcs / self.std_first_pc
 
-        if self.verbose:
-            print("done.")
+        self.process_steps += add_steps
 
-    def combined_model(self, field):
+    # def combined_model(self, field):
+    #     """
+    #     Adds other field or prepared model to existing one, allowing to model multiple variables.
+    #     Field is instance of EmpiricalModel with already created input_pcs.
+    #     """
+
+    #     try:
+    #         shp = field.input_pcs.shape
+    #         if self.verbose:
+    #             print(
+    #                 "Adding other %d input pcs of length %d to current one variable model..."
+    #                 % (shp[0], shp[1])
+    #             )
+    #         if shp[1] != self.input_pcs.shape[1]:
+    #             raise Exception(
+    #                 "Combined model must have all variables of the same time series length!"
+    #             )
+    #     except:
+    #         pass
+
+    #     self.combined = True
+    #     self.comb_std_pc1 = np.std(field.input_pcs[0, :], ddof=1)
+    #     pcs_comb = field.input_pcs / self.comb_std_pc1
+
+    #     self.copy_orig_input_pcs = self.input_pcs.copy()
+    #     self.input_pcs = np.concatenate((self.input_pcs, pcs_comb), axis=0)
+    #     if self.verbose:
+    #         print(
+    #             "... input pcs from other field added. Now we are training model on %d PCs..."
+    #             % (self.input_pcs.shape[0])
+    #         )
+
+    @staticmethod
+    def _get_xsin_xcos(len):
         """
-        Adds other field or prepared model to existing one, allowing to model multiple variables.
-        Field is instance of EmpiricalModel with already created input_pcs.
+        Helper function to get harmonics predictors with annual frequency.
         """
+        logging.debug("...using harmonic predictors (with annual frequency)...")
+        return np.sin(2 * np.pi * np.arange(len) / 12.0), np.cos(
+            2 * np.pi * np.arange(len) / 12.0
+        )
 
-        try:
-            shp = field.input_pcs.shape
-            if self.verbose:
-                print(
-                    "Adding other %d input pcs of length %d to current one variable model..."
-                    % (shp[0], shp[1])
-                )
-            if shp[1] != self.input_pcs.shape[1]:
-                raise Exception(
-                    "Combined model must have all variables of the same time series length!"
-                )
-        except:
-            pass
-
-        self.combined = True
-        self.comb_std_pc1 = np.std(field.input_pcs[0, :], ddof=1)
-        pcs_comb = field.input_pcs / self.comb_std_pc1
-
-        self.copy_orig_input_pcs = self.input_pcs.copy()
-        self.input_pcs = np.concatenate((self.input_pcs, pcs_comb), axis=0)
-        if self.verbose:
-            print(
-                "... input pcs from other field added. Now we are training model on %d PCs..."
-                % (self.input_pcs.shape[0])
+    @staticmethod
+    def _build_quad_predictor(pcs):
+        """
+        Helper function to build quadratic predictor.
+        """
+        quad_pred = np.zeros(
+            (
+                pcs.shape[0],
+                (pcs.shape[1] * (pcs.shape[1] - 1)) / 2,
             )
+        )
+        for t in range(pcs.shape[0]):
+            q = np.tril(np.outer(pcs[t, :].T, pcs[t, :]), -1)
+            quad_pred[t, :] = q[np.nonzero(q)]
+        return quad_pred
+
+    @staticmethod
+    def _build_harmonic_predictor(x, xsin, xcos, quad_pred=None):
+        """
+        Helper function to build harmonic predictor.
+        """
+        if quad_pred:
+            return np.c_[
+                quad_pred,
+                x,
+                x * np.outer(xsin, np.ones(x.shape[1])),
+                x * np.outer(xcos, np.ones(x.shape[1])),
+                xsin,
+                xcos,
+            ]
+        else:
+            return np.c_[
+                x,
+                x * np.outer(xsin, np.ones(x.shape[1])),
+                x * np.outer(xcos, np.ones(x.shape[1])),
+                xsin,
+                xcos,
+            ]
 
     def train_model(
         self,
-        harmonic_pred="first",
-        quad=False,
-        delay_model=False,
-        regressor="partialLSQ",
+        harmonic_predictor="first",
+        quadratic_model=False,
+        delayed_model=False,
+        method="partialLSQ",
+        **kwargs,
     ):
         """
-        Train the model.
-        harmonic_pred could have values 'first', 'all', 'none'
-        if quad, train quadratic model, else linear
-        if delay_model, the linear part of the model will be considered DDE with sigmoid type of response,
-        inspired by DDE model of ENSO (Ghil) - delayed feedback.
-        regression will be one of
-            'partialLSQ' - for partial least squares
-            'linear' - for basic linear regressor [sklearn]
-            'ridge' - fir ridge regressor [sklearn]
-            'bayes_ridge' - for Bayesian ridge regressor [sklearn]
+        Train the multi-level statistical model.
+
+        :param harmonic_predictor: type of harmonic predictor to use, options:
+            "first"
+            "all"
+            "none"
+        :type harmonic_predictor: str
+        :param quadratic_model: whether to train quadratic model or linear
+        :type quadratic_model: bool
+        :param delayed_model: whether linear part of the model should be
+            considered as DDE with sigmoid type of response
+        :type delayed_model: bool
+        :param method: method for regression, options:
+            "partialLSQ" - for partial least squares
+            "linear" - for basic linear regressor
+            "ridge" - for ridge regressor
+            "bayes_ridge" - for Bayesian ridge regressor
+        :type method: str
+        :kwargs: possible keyword arguments:
+            delay - delay for delayed model, in months
+            kappa - coefficient for sigmoidal response in delayed model
         """
+        if harmonic_predictor not in ["first", "none", "all"]:
+            raise Exception("Unknown keyword for harmonic predictor")
 
-        self.harmonic_pred = harmonic_pred
-        self.quad = quad
+        self.model_options["harmonic_predictor"] = harmonic_predictor
+        self.model_options["quadratic_model"] = quadratic_model
+        self.model_options["delayed_model"] = delayed_model
 
-        if self.verbose:
-            print(
-                "now training %d-level model using %s regressor..."
-                % (self.no_levels, regressor)
-            )
+        logging.info(
+            f"Training {self.no_levels}-level model using {method} regressor..."
+        )
 
-        pcs = self.input_pcs.copy()
-
-        if harmonic_pred not in ["first", "none", "all"]:
-            raise Exception(
-                "Unknown keyword for harmonic predictor, please use: 'first', 'all' or 'none'."
-            )
-
-        if quad and self.verbose:
-            print("...training quadratic model...")
-
+        pcs = deepcopy(self.input_pcs.values)
         pcs = pcs.T  # time x dim
-        if delay_model:
+        if delayed_model:
             # shorten time series because of delay
-            self.delay_model = True
-            self.delay = 8  # months
-            self.kappa = 50.0
+            self.delayed_model = True
+            self.delay = kwargs.get("delay", 8)
+            self.kappa = kwargs.get("kappa", 50.0)
             if self.verbose:
-                print(
-                    "...training delayed model on main level with delay %d months and kappa %.3f..."
-                    % (self.delay, self.kappa)
+                logging.debug(
+                    f"...training delayed model on main level with delay "
+                    f"{self.delay} months and kappa={self.kappa}..."
                 )
             pcs_delay = pcs[: -self.delay, :].copy()
             pcs = pcs[self.delay :, :]
 
-        if harmonic_pred in ["all", "first"]:
-            if self.verbose:
-                print("...using harmonic predictors (with annual frequency)...")
-            xsin = np.sin(2 * np.pi * np.arange(pcs.shape[0]) / 12.0)
-            xcos = np.cos(2 * np.pi * np.arange(pcs.shape[0]) / 12.0)
+        if harmonic_predictor in ["all", "first"]:
+            xsin, xcos = self._get_xsin_xcos(pcs.shape[0])
 
         residuals = {}
         fit_mat = {}
 
         for level in range(self.no_levels):
+            logging.debug(f"...training {level+1}/{self.no_levels} levels...")
 
-            if self.verbose:
-                print(
-                    "...training %d. out of %d levels..."
-                    % (level + 1, self.no_levels)
-                )
-
-            fit_mat_size = (
-                pcs.shape[1] * (level + 1) + 1
-            )  # as extended vector + intercept
+            # figure out matrix size
+            # as extended vector + intercept
+            fit_mat_size = pcs.shape[1] * (level + 1) + 1
             if level == 0:
-                if harmonic_pred in ["first", "all"]:
-                    fit_mat_size += 2 * pcs.shape[1] + 2  # harm
-                if quad and level == 0:
-                    fit_mat_size += (
-                        pcs.shape[1] * (pcs.shape[1] - 1)
-                    ) / 2  # quad
+                if harmonic_predictor in ["first", "all"]:
+                    fit_mat_size += 2 * pcs.shape[1] + 2
+                if quadratic_model and level == 0:
+                    fit_mat_size += (pcs.shape[1] * (pcs.shape[1] - 1)) / 2
             elif level > 0:
-                if harmonic_pred == "all":
+                if harmonic_predictor == "all":
                     fit_mat_size += (level + 1) * 2 * pcs.shape[1] + 2
 
-            # response variables -- y (dx/dt)
-            if self.verbose:
-                print("...preparing response variables...")
+            # response variables - y (dx/dt)
+            logging.debug("...preparing response variables...")
             y = np.zeros_like(pcs)
             if level == 0:
                 y[:-1, :] = np.diff(pcs, axis=0)
@@ -424,67 +534,47 @@ class EmpiricalModel(DataField):
 
             for k in range(pcs.shape[1]):
                 # prepare predictor
-                x = pcs.copy()
-                for l in range(level):
-                    x = np.c_[x, residuals[l]]
+                x = deepcopy(pcs)
+                for lev in range(level):
+                    x = np.c_[x, residuals[lev]]
                 if level == 0:
-                    if quad:
-                        quad_pred = np.zeros(
-                            (
-                                pcs.shape[0],
-                                (pcs.shape[1] * (pcs.shape[1] - 1)) / 2,
-                            )
-                        )
-                        for t in range(pcs.shape[0]):
-                            q = np.tril(np.outer(pcs[t, :].T, pcs[t, :]), -1)
-                            quad_pred[t, :] = q[np.nonzero(q)]
-                    if self.delay_model:
+                    if quadratic_model:
+                        quad_pred = self._build_quad_predictor(pcs)
+                    if delayed_model:
                         x = np.tanh(self.kappa * pcs_delay)
-                    if harmonic_pred in ["all", "first"]:
-                        if quad:
-                            x = np.c_[
-                                quad_pred,
-                                x,
-                                x * np.outer(xsin, np.ones(x.shape[1])),
-                                x * np.outer(xcos, np.ones(x.shape[1])),
-                                xsin,
-                                xcos,
-                            ]
+                    if harmonic_predictor in ["all", "first"]:
+                        if quadratic_model:
+                            x = self._build_harmonic_predictor(
+                                x, xsin, xcos, quad_pred
+                            )
                         else:
-                            x = np.c_[
-                                x,
-                                x * np.outer(xsin, np.ones(x.shape[1])),
-                                x * np.outer(xcos, np.ones(x.shape[1])),
-                                xsin,
-                                xcos,
-                            ]
+                            x = self._build_harmonic_predictor(
+                                x, xsin, xcos, None
+                            )
                     else:
-                        if quad:
+                        if quadratic_model:
                             x = np.c_[quad_pred, x]
                 else:
-                    if harmonic_pred == "all":
-                        x = np.c_[
-                            x,
-                            x * np.outer(xsin, np.ones(x.shape[1])),
-                            x * np.outer(xcos, np.ones(x.shape[1])),
-                            xsin,
-                            xcos,
-                        ]
+                    if harmonic_predictor == "all":
+                        x = self._build_harmonic_predictor(x, xsin, xcos, None)
 
                 # regularize and regress
-                if regressor != "partialLSQ":
-                    from sklearn import linear_model as lm
-
-                    if regressor == "bayes_ridge":
-                        self.regressor = lm.BayesianRidge(fit_intercept=True)
-                    elif regressor == "linear":
-                        self.regressor = lm.LinearRegression(fit_intercept=True)
-                    elif regressor == "ridge":
-                        self.regressor = lm.Ridge(fit_intercept=True, alpha=0.5)
+                if method == "partialLSQ":
+                    x -= np.mean(x, axis=0)
+                    ux, sx, vx = np.linalg.svd(x, False)
+                    optimal = min(ux.shape[1], 25)
+                    b_aux, residuals[level][:, k] = _partial_least_squares(
+                        x, y[:, k], ux, sx, vx.T, optimal, True
+                    )
+                else:
+                    if method == "bayes_ridge":
+                        self.regressor = BayesianRidge(fit_intercept=True)
+                    elif method == "linear":
+                        self.regressor = LinearRegression(fit_intercept=True)
+                    elif method == "ridge":
+                        self.regressor = Ridge(fit_intercept=True, alpha=0.5)
                     else:
-                        raise Exception(
-                            "Unknown regressor, please check documentation!"
-                        )
+                        raise Exception("Unknown regressing method")
 
                     self.regressor.fit(x, y[:, k])
                     b_aux = np.append(
@@ -492,285 +582,260 @@ class EmpiricalModel(DataField):
                     )
                     residuals[level][:, k] = y[:, k] - self.regressor.predict(x)
 
-                elif regressor == "partialLSQ":
-
-                    x -= np.mean(x, axis=0)
-                    ux, sx, vx = np.linalg.svd(x, False)
-                    optimal = min(ux.shape[1], 25)
-                    b_aux, residuals[level][:, k] = _partial_least_squares(
-                        x, y[:, k], ux, sx, vx.T, optimal, True
-                    )
-
                 # store results
                 fit_mat[level][:, k] = b_aux
 
-                if (k + 1) % 10 == 0 and self.verbose:
-                    print(
-                        "...%d/%d finished fitting..." % (k + 1, pcs.shape[1])
+                if (k + 1) % 10 == 0:
+                    logging.debug(
+                        f"...{k+1}/{pcs.shape[1]} finished fitting..."
                     )
 
-            if self.verbose:
-                # check for negative definiteness
-                negdef = {}
-                for l, e, pos in zip(
-                    fit_mat.keys()[::-1],
-                    range(len(fit_mat.keys())),
-                    range(len(fit_mat.keys()) - 1, -1, -1),
-                ):
-                    negdef[l] = fit_mat[l][
-                        pos * pcs.shape[1] : (pos + 1) * pcs.shape[1]
+            # check for negative definiteness
+            negdef = {}
+            for lev, e, pos in zip(
+                fit_mat.keys()[::-1],
+                range(len(fit_mat.keys())),
+                range(len(fit_mat.keys()) - 1, -1, -1),
+            ):
+                negdef[lev] = fit_mat[lev][
+                    pos * pcs.shape[1] : (pos + 1) * pcs.shape[1]
+                ]
+                for a in range(pos - 1, -1, -1):
+                    negdef[lev] = np.c_[
+                        negdef[lev],
+                        fit_mat[lev][a * pcs.shape[1] : (a + 1) * pcs.shape[1]],
                     ]
-                    for a in range(pos - 1, -1, -1):
-                        negdef[l] = np.c_[
-                            negdef[l],
-                            fit_mat[l][
-                                a * pcs.shape[1] : (a + 1) * pcs.shape[1]
-                            ],
-                        ]
-                    for a in range(e):
-                        negdef[l] = np.c_[negdef[l], np.eye(pcs.shape[1])]
-                grand_negdef = np.concatenate(
-                    [negdef[a] for a in negdef.keys()], axis=0
-                )
-                d, _ = np.linalg.eig(grand_negdef)
-                print("...maximum eigenvalue: %.4f" % (max(np.real(d))))
+                for a in range(e):
+                    negdef[lev] = np.c_[negdef[lev], np.eye(pcs.shape[1])]
+            grand_negdef = np.concatenate(
+                [negdef[a] for a in negdef.keys()], axis=0
+            )
+            d, _ = np.linalg.eig(grand_negdef)
+            logging.debug(f"...maximum eigenvalue: {max(np.real(d)):.4f}")
 
         self.residuals = residuals
         self.fit_mat = fit_mat
 
-        if self.verbose:
-            print("training done.")
+    @staticmethod
+    def _get_spatial_cov_white_noise(resid):
+        """
+        Helper method to get spatial covariance of white noise from residuals.
+        """
+        Q = np.cov(resid, rowvar=0)
+        return np.linalg.cholesky(Q).T
+
+    def _get_spatial_cov_seasonal_noise(self, resid, n_harmonics, n_pcs):
+        """
+        Helper method to get spatial covariance of seasonal noise from
+        residuals.
+        """
+        if self.get_model_option("delayed_model"):
+            resid_delayed = resid[-(resid.shape[0] // 12) * 12 :].copy()
+            rr_last = np.reshape(
+                resid_delayed,
+                (
+                    12,
+                    resid.shape[0] // 12,
+                    resid.shape[1],
+                ),
+                order="F",
+            )
+        else:
+            rr_last = np.reshape(
+                resid,
+                (
+                    12,
+                    resid.shape[0] // 12,
+                    resid.shape[1],
+                ),
+                order="F",
+            )
+        rr_last_std = np.nanstd(rr_last, axis=1, ddof=1)
+        predictors = np.zeros((12, 2 * n_harmonics + 1))
+        for nh in range(n_harmonics):
+            predictors[:, 2 * nh] = np.cos(
+                2 * np.pi * (nh + 1) * np.arange(12) / 12
+            )
+            predictors[:, 2 * nh + 1] = np.sin(
+                2 * np.pi * (nh + 1) * np.arange(12) / 12
+            )
+        predictors[:, -1] = np.ones((12,))
+        bamp = np.zeros((predictors.shape[1], n_pcs))
+        for k in range(bamp.shape[1]):
+            bamp[:, k] = np.linalg.lstsq(predictors, rr_last_std[:, k])[0]
+        rr_last_std_ts = np.dot(predictors, bamp)
+        rr_last_std_ts = np.repeat(
+            rr_last_std_ts,
+            repeats=resid.shape[0] // 12,
+            axis=0,
+        )
+        if self.get_model_option("delayed_model"):
+            resid_delayed /= rr_last_std_ts
+            Q = np.cov(resid_delayed, rowvar=0)
+        else:
+            resid /= rr_last_std_ts
+            Q = np.cov(resid, rowvar=0)
+
+        return np.linalg.cholesky(Q).T
 
     def integrate_model(
         self,
         n_realizations,
-        int_length=None,
+        integration_length=None,
         noise_type="white",
         sigma=1.0,
-        n_workers=3,
+        n_workers=cpu_count(),
         diagnostics=True,
     ):
         """
         Integrate trained model.
-        noise_type:
-        -- white - classic white noise, spatial correlation by cov. matrix of last level residuals
-        -- cond - find n_samples closest to the current space in subset of n_pcs and use their cov. matrix
-        -- seasonal - seasonal dependence of the residuals, fit n_harm harmonics of annual cycle, could also be used with cond.
-        except 'white', one can choose more settings like ['seasonal', 'cond']
+
+        :param n_realizations: number of realizations to integrate
+        :type n_realizations: int
+        :param integration_length: integration length, if None, will use the
+            same length as original data
+        :type integration_length: int
+        :param noise_type: noise type to use for integration, options:
+            "white" - classic white noise, spatial correlation by cov. matrix of
+                thelast level of residuals
+            "cond" - find n_samples closest to the current space in subset of
+                n_pcs and use their cov. matrix
+            "seasonal" - seasonal dependence of the residuals, fit n_harm
+                harmonics of annual cycle, could also be used with cond
+            "cond" and "seasonal" can be combined
+        :type noise_type: str
+        :param sigma: noise variance
+        :type sigma: float
+        :param n_workers: number of workers for parallel integration
+        :type n_workers: int
+        :param diagnostics: whether to save also statistics of all runs
+        :type diagnostics: bool
         """
+        logging.info("Preparing to integrate trained model...")
 
-        if self.verbose:
-            print("preparing to integrate model...")
-
-        pcs = self.input_pcs.copy()
+        pcs = deepcopy(self.input_pcs.values)
         pcs = pcs.T  # time x dim
 
         pcmax = np.amax(pcs, axis=0)
         pcmin = np.amin(pcs, axis=0)
         self.varpc = np.var(pcs, axis=0, ddof=1)
 
-        self.int_length = pcs.shape[0] if int_length is None else int_length
+        integration_length = integration_length or pcs.shape[0]
+        # self.diagnostics = diagnostics
 
-        self.diagnostics = diagnostics
+        if self.get_model_option("harmonic_predictor") in ["all", "first"]:
+            xsin, xcox = self._get_xsin_xcos(integration_length)
 
-        if self.harmonic_pred in ["all", "first"]:
-            if self.verbose:
-                print("...using harmonic predictors (with annual frequency)...")
-            self.xsin = np.sin(2 * np.pi * np.arange(self.int_length) / 12.0)
-            self.xcos = np.cos(2 * np.pi * np.arange(self.int_length) / 12.0)
+        logging.debug("...preparing noise forcing...")
 
-        if self.verbose:
-            print("...preparing noise forcing...")
-
-        self.sigma = sigma
+        # self.sigma = sigma
         if isinstance(noise_type, str):
             if noise_type not in ["white", "cond", "seasonal"]:
                 raise Exception(
-                    "Unknown noise type to be used as forcing. Use 'white', 'cond', or 'seasonal'."
+                    "Unknown noise type to be used as forcing. Use 'white', "
+                    "'cond', or 'seasonal'."
                 )
         elif isinstance(noise_type, list):
             noise_type = frozenset(noise_type)
             if not noise_type.issubset(set(["white", "cond", "seasonal"])):
                 raise Exception(
-                    "Unknown noise type to be used as forcing. Use 'white', 'cond', or 'seasonal'."
+                    "Unknown noise type to be used as forcing. Use 'white', "
+                    "'cond', or 'seasonal'."
                 )
 
-        self.last_level_res = self.residuals[max(self.residuals.keys())]
-        self.noise_type = noise_type
+        last_level_res = self.residuals[max(self.residuals.keys())]
         if noise_type == "white":
-            if self.verbose:
-                print("...using spatially correlated white noise...")
-            Q = np.cov(self.last_level_res, rowvar=0)
-            self.rr = np.linalg.cholesky(Q).T
+            logging.debug("...using spatially correlated white noise...")
+            rr = self._get_spatial_cov_white_noise(last_level_res)
 
         if "seasonal" in noise_type:
             n_harmonics = 5
-            if self.verbose:
-                print(
-                    "...fitting %d harmonics to estimate seasonal modulation of last level's residual..."
-                    % n_harmonics
-                )
-            if self.delay_model:
-                resid_delayed = self.last_level_res[
-                    -(self.last_level_res.shape[0] // 12) * 12 :
-                ].copy()
-                rr_last = np.reshape(
-                    resid_delayed,
-                    (
-                        12,
-                        self.last_level_res.shape[0] // 12,
-                        self.last_level_res.shape[1],
-                    ),
-                    order="F",
-                )
-            else:
-                rr_last = np.reshape(
-                    self.last_level_res,
-                    (
-                        12,
-                        self.last_level_res.shape[0] // 12,
-                        self.last_level_res.shape[1],
-                    ),
-                    order="F",
-                )
-            rr_last_std = np.nanstd(rr_last, axis=1, ddof=1)
-            predictors = np.zeros((12, 2 * n_harmonics + 1))
-            for nh in range(n_harmonics):
-                predictors[:, 2 * nh] = np.cos(
-                    2 * np.pi * (nh + 1) * np.arange(12) / 12
-                )
-                predictors[:, 2 * nh + 1] = np.sin(
-                    2 * np.pi * (nh + 1) * np.arange(12) / 12
-                )
-            predictors[:, -1] = np.ones((12,))
-            bamp = np.zeros((predictors.shape[1], pcs.shape[1]))
-            for k in range(bamp.shape[1]):
-                bamp[:, k] = np.linalg.lstsq(predictors, rr_last_std[:, k])[0]
-            rr_last_std_ts = np.dot(predictors, bamp)
-            self.rr_last_std_ts = np.repeat(
-                rr_last_std_ts,
-                repeats=self.last_level_res.shape[0] // 12,
-                axis=0,
+            logging.debug(
+                f"...fitting {n_harmonics} harmonics to estimate seasonal "
+                "modulation of last level's residual..."
             )
-            if self.delay_model:
-                resid_delayed /= self.rr_last_std_ts
-                Q = np.cov(resid_delayed, rowvar=0)
-            else:
-                self.last_level_res /= self.rr_last_std_ts
-                Q = np.cov(self.last_level_res, rowvar=0)
-
-            self.rr = np.linalg.cholesky(Q).T
-
-        if diagnostics:
-            if self.verbose:
-                print("...running diagnostics for the data...")
-            # ACF, kernel density, integral corr. timescale for data
-            self.max_lag = 50
-            lag_cors = np.zeros((2 * self.max_lag + 1, pcs.shape[1]))
-            kernel_densities = np.zeros((100, pcs.shape[1], 2))
-            for k in range(pcs.shape[1]):
-                lag_cors[:, k] = cross_correlation(
-                    pcs[:, k], pcs[:, k], max_lag=self.max_lag
-                )
-                (
-                    kernel_densities[:, k, 0],
-                    kernel_densities[:, k, 1],
-                ) = kdensity_estimate(pcs[:, k], kernel="epanechnikov")
-            integral_corr_timescale = np.sum(np.abs(lag_cors), axis=0)
-
-            # init for integrations
-            lag_cors_int = np.zeros([n_realizations] + list(lag_cors.shape))
-            kernel_densities_int = np.zeros(
-                [n_realizations] + list(kernel_densities.shape)
+            rr = self._get_spatial_cov_seasonal_noise(
+                last_level_res, n_harmonics=n_harmonics, n_pcs=pcs.shape[1]
             )
-            stat_moments_int = np.zeros(
-                (4, n_realizations, pcs.shape[1])
-            )  # mean, variance, skewness, kurtosis
-            int_corr_scale_int = np.zeros((n_realizations, pcs.shape[1]))
 
-        self.diagpc = np.diag(np.std(pcs, axis=0, ddof=1))
-        self.maxpc = np.amax(np.abs(pcs))
-        self.diagres = {}
-        self.maxres = {}
-        for l in self.residuals.keys():
-            self.diagres[l] = np.diag(np.std(self.residuals[l], axis=0, ddof=1))
-            self.maxres[l] = np.amax(np.abs(self.residuals[l]))
+        # if diagnostics:
+        #     logging.debug("...running diagnostics for the data...")
 
-        self.pcs = pcs
+        #     # init for integrations
+        #     lag_cors_int = np.zeros([n_realizations] + list(lag_cors.shape))
+        #     kernel_densities_int = np.zeros(
+        #         [n_realizations] + list(kernel_densities.shape)
+        #     )
+        #     stat_moments_int = np.zeros(
+        #         (4, n_realizations, pcs.shape[1])
+        #     )  # mean, variance, skewness, kurtosis
+        #     int_corr_scale_int = np.zeros((n_realizations, pcs.shape[1]))
 
-        if n_workers > 1:
-            # from multiprocessing import Pool
-            from pathos.multiprocessing import ProcessingPool
+        diagpc = np.diag(np.std(pcs, axis=0, ddof=1))
+        maxpc = np.amax(np.abs(pcs))
+        diagres = {}
+        maxres = {}
+        for lev in self.residuals.keys():
+            diagres[lev] = np.diag(np.std(self.residuals[lev], axis=0, ddof=1))
+            maxres[lev] = np.amax(np.abs(self.residuals[lev]))
 
-            pool = ProcessingPool(n_workers)
-            map_func = pool.amap
-            if self.verbose:
-                print(
-                    "...running integration of %d realizations using %d workers..."
-                    % (n_realizations, n_workers)
-                )
-        else:
-            map_func = map
-            if self.verbose:
-                print(
-                    "...running integration of %d realizations single threaded..."
-                    % n_realizations
-                )
+        # self.pcs = pcs
+        logging.debug(
+            f"...running integration of {n_realizations} realizations using "
+            f"{n_workers} workers..."
+        )
+        pool = ProcessingPool(n_workers)
 
-        rnds = []
-        for n in range(n_realizations):
+        precomputed_noise = []
+        for _ in range(n_realizations):
             r = {}
-            for l in self.fit_mat.keys():
-                if l == 0:
-                    if self.delay_model:
-                        r[l] = np.dot(
-                            self.diagpc,
+            for lev in self.fit_mat.keys():
+                if lev == 0:
+                    if self.delayed_model:
+                        r[lev] = np.dot(
+                            diagpc,
                             np.random.normal(
                                 0, sigma, (pcs.shape[1], self.delay)
                             ),
                         )
                     else:
-                        r[l] = np.dot(
+                        r[lev] = np.dot(
                             np.random.normal(0, sigma, (pcs.shape[1],)),
-                            self.diagpc,
+                            diagpc,
                         )
                 else:
-                    if self.delay_model:
-                        r[l] = np.dot(
-                            self.diagres[l - 1],
+                    if self.delayed_model:
+                        r[lev] = np.dot(
+                            diagres[lev - 1],
                             np.random.normal(
                                 0, sigma, (pcs.shape[1], self.delay)
                             ),
                         )
                     else:
-                        r[l] = np.dot(
+                        r[lev] = np.dot(
                             np.random.normal(0, sigma, (pcs.shape[1],)),
-                            self.diagres[l - 1],
+                            diagres[lev - 1],
                         )
-            rnds.append(r)
+            precomputed_noise.append(r)
         args = [
-            [i, rnd, noise_type] for i, rnd in zip(range(n_realizations), rnds)
+            [i, rnd] for i, rnd in zip(range(n_realizations), precomputed_noise)
         ]
-        results = map_func(self._process_integration, args)
+        results = list(pool.imap(self._process_integration, args))
 
         del args
-        if n_workers > 1:
-            pool.close()
-            pool.join()
+        pool.close()
+        pool.join()
 
         self.integration_results = np.zeros(
-            (n_realizations, pcs.shape[1], self.int_length)
+            (n_realizations, pcs.shape[1], integration_length)
         )
-        self.num_exploding = np.zeros((n_realizations,))
-
-        if n_workers > 1:
-            results = results.get()
+        num_exploding = np.zeros((n_realizations,))
 
         if self.diagnostics:
             # x, num_exploding, xm, xv, xs, xk, lc, kden, ict
             for i, x, num_expl, xm, xv, xs, xk, lc, kden, ict in results:
                 self.integration_results[i, ...] = x.T
-                self.num_exploding[i] = num_expl
+                num_exploding[i] = num_expl
                 stat_moments_int[0, i, :] = xm
                 stat_moments_int[1, i, :] = xv
                 stat_moments_int[2, i, :] = xs
@@ -783,179 +848,39 @@ class EmpiricalModel(DataField):
                 self.integration_results[i, ...] = x.T
                 self.num_exploding[i] = num_expl
 
-        if self.verbose:
-            print("...integration done, now saving results...")
+        logging.info("All done.")
+        logging.info(
+            f"There was {np.sum(self.num_exploding)} expolding integration "
+            f"chunks in {n_realizations} realizations."
+        )
 
-        if self.verbose:
-            print("...results saved to structure.")
-            print(
-                "there was %d expolding integration chunks in %d realizations."
-                % (np.sum(self.num_exploding), n_realizations)
-            )
-
-        if self.diagnostics:
-            if self.verbose:
-                print("plotting diagnostics...")
-
-            import matplotlib.pyplot as plt
-
-            # plot all diagnostic stuff
-            ## mean, variance, skewness, kurtosis, integral corr. time scale
-            tits = [
-                "MEAN",
-                "VARIANCE",
-                "SKEWNESS",
-                "KURTOSIS",
-                "INTEGRAL CORRELATION TIME SCALE",
-            ]
-            plot = [
-                np.mean(pcs, axis=0),
-                np.var(pcs, axis=0, ddof=1),
-                sts.skew(pcs, axis=0),
-                sts.kurtosis(pcs, axis=0),
-                integral_corr_timescale,
-            ]
-            xplot = np.arange(1, pcs.shape[1] + 1)
-            for i, tit, p in zip(range(5), tits, plot):
-                plt.figure()
-                plt.title(tit, size=20)
-                plt.plot(xplot, p, linewidth=3, color="#3E3436")
-                if i < 4:
-                    plt.plot(
-                        xplot,
-                        np.percentile(stat_moments_int[i, :, :], q=2.5, axis=0),
-                        "--",
-                        linewidth=2.5,
-                        color="#EA3E36",
-                    )
-                    plt.plot(
-                        xplot,
-                        np.percentile(
-                            stat_moments_int[i, :, :], q=97.5, axis=0
-                        ),
-                        "--",
-                        linewidth=2.5,
-                        color="#EA3E36",
-                    )
-                else:
-                    plt.plot(
-                        xplot,
-                        np.percentile(int_corr_scale_int, q=2.5, axis=0),
-                        "--",
-                        linewidth=2.5,
-                        color="#EA3E36",
-                    )
-                    plt.plot(
-                        xplot,
-                        np.percentile(int_corr_scale_int, q=97.5, axis=0),
-                        "--",
-                        linewidth=2.5,
-                        color="#EA3E36",
-                    )
-                plt.xlabel("# PC", size=15)
-                plt.xlim([xplot[0], xplot[-1]])
-                plt.show()
-                plt.close()
-
-            ## lagged correlations, PDF - plot first 9 PCs (or less if input number of pcs is < 9)
-            tits = ["AUTOCORRELATION", "PDF"]
-            plot = [
-                [lag_cors, lag_cors_int],
-                [kernel_densities, kernel_densities_int],
-            ]
-            xlabs = ["LAG", ""]
-            for i, tit, p, xlab in zip(range(2), tits, plot, xlabs):
-                plt.figure()
-                plt.suptitle(tit, size=25)
-                no_plts = 9 if self.no_input_ts > 9 else self.no_input_ts
-                for sub in range(0, no_plts):
-                    plt.subplot(3, 3, sub + 1)
-                    if i == 0:
-                        xplt = np.arange(0, self.max_lag + 1)
-                        plt.plot(
-                            xplt,
-                            p[0][p[0].shape[0] // 2 :, sub],
-                            linewidth=3,
-                            color="#3E3436",
-                        )
-                        plt.plot(
-                            xplt,
-                            np.percentile(
-                                p[1][:, p[0].shape[0] // 2 :, sub],
-                                q=2.5,
-                                axis=0,
-                            ),
-                            "--",
-                            linewidth=2.5,
-                            color="#EA3E36",
-                        )
-                        plt.plot(
-                            xplt,
-                            np.percentile(
-                                p[1][:, p[0].shape[0] // 2 :, sub],
-                                q=97.5,
-                                axis=0,
-                            ),
-                            "--",
-                            linewidth=2.5,
-                            color="#EA3E36",
-                        )
-                        plt.xlim([xplt[0], xplt[-1]])
-                    else:
-                        plt.plot(
-                            p[0][:, sub, 0],
-                            p[0][:, sub, 1],
-                            linewidth=3,
-                            color="#3E3436",
-                        )
-                        plt.plot(
-                            p[1][0, :, sub, 0],
-                            np.percentile(p[1][:, :, sub, 1], q=2.5, axis=0),
-                            "--",
-                            linewidth=2.5,
-                            color="#EA3E36",
-                        )
-                        plt.plot(
-                            p[1][0, :, sub, 0],
-                            np.percentile(p[1][:, :, sub, 1], q=97.5, axis=0),
-                            "--",
-                            linewidth=2.5,
-                            color="#EA3E36",
-                        )
-                        plt.xlim([p[0][0, sub, 0], p[0][-1, sub, 0]])
-                    plt.xlabel(xlab, size=15)
-                    plt.title("PC %d" % (int(sub) + 1), size=20)
-                # plt.tight_layout()
-                plt.show()
-                plt.close()
-
-    def _process_integration(self, a):
-
-        i, rnd, noise = a
+    def _process_integration(self, args):
+        """
+        Helper for parallel integration.
+        """
+        i, rnd = args
         num_exploding = 0
         repeats = 20
         xx = {}
         x = {}
-        for l in self.fit_mat.keys():
-            xx[l] = np.zeros((repeats, self.input_pcs.shape[0]))
-            if self.delay_model:
-                xx[l][: self.delay, :] = rnd[l].T
+        for lev in self.fit_mat.keys():
+            xx[lev] = np.zeros((repeats, self.input_pcs.shape[0]))
+            if self.delayed_model:
+                xx[lev][: self.delay, :] = rnd[lev].T
             else:
-                xx[l][0, :] = rnd[l]
+                xx[lev][0, :] = rnd[lev]
 
-            x[l] = np.zeros((self.int_length, self.input_pcs.shape[0]))
+            x[lev] = np.zeros((self.int_length, self.input_pcs.shape[0]))
             if self.delay_model:
-                x[l][: self.delay, :] = xx[l][: self.delay, :]
+                x[lev][: self.delay, :] = xx[lev][: self.delay, :]
             else:
-                x[l][0, :] = xx[l][0, :]
+                x[lev][0, :] = xx[lev][0, :]
 
         step0 = 0
-        if self.delay_model:
-            step = self.delay
-        else:
-            step = 1
+        step = self.delay if self.delayed_model else 1
         blow_counter = 0
         zz = {}
+
         for n in range(repeats * int(np.ceil(self.int_length / repeats))):
             for k in range(1, repeats):
                 if (self.delay_model and k < self.delay) and step == self.delay:
@@ -965,56 +890,56 @@ class EmpiricalModel(DataField):
                 if step >= self.int_length:
                     break
                 # prepare predictors
-                for l in self.fit_mat.keys():
-                    zz[l] = xx[0][k - 1, :]
-                    for lr in range(l):
-                        zz[l] = np.r_[zz[l], xx[lr + 1][k - 1, :]]
-                for l in self.fit_mat.keys():
-                    if l == 0:
+                for lev in self.fit_mat.keys():
+                    zz[lev] = xx[0][k - 1, :]
+                    for lr in range(lev):
+                        zz[lev] = np.r_[zz[lev], xx[lr + 1][k - 1, :]]
+                for lev in self.fit_mat.keys():
+                    if lev == 0:
                         if self.quad:
-                            q = np.tril(np.outer(zz[l].T, zz[l]), -1)
+                            q = np.tril(np.outer(zz[lev].T, zz[lev]), -1)
                             quad_pred = q[np.nonzero(q)]
                         if self.delay_model:
-                            zz[l] = np.tanh(
-                                self.kappa * x[l][step - self.delay, :]
+                            zz[lev] = np.tanh(
+                                self.kappa * x[lev][step - self.delay, :]
                             )
                         if self.harmonic_pred in ["all", "first"]:
                             if self.quad:
-                                zz[l] = np.r_[
+                                zz[lev] = np.r_[
                                     quad_pred,
-                                    zz[l],
-                                    zz[l] * self.xsin[step],
-                                    zz[l] * self.xcos[step],
+                                    zz[lev],
+                                    zz[lev] * self.xsin[step],
+                                    zz[lev] * self.xcos[step],
                                     self.xsin[step],
                                     self.xcos[step],
                                     1,
                                 ]
                             else:
-                                zz[l] = np.r_[
-                                    zz[l],
-                                    zz[l] * self.xsin[step],
-                                    zz[l] * self.xcos[step],
+                                zz[lev] = np.r_[
+                                    zz[lev],
+                                    zz[lev] * self.xsin[step],
+                                    zz[lev] * self.xcos[step],
                                     self.xsin[step],
                                     self.xcos[step],
                                     1,
                                 ]
                         else:
                             if self.quad:
-                                zz[l] = np.r_[quad_pred, zz[l], 1]
+                                zz[lev] = np.r_[quad_pred, zz[lev], 1]
                             else:
-                                zz[l] = np.r_[zz[l], 1]
+                                zz[lev] = np.r_[zz[lev], 1]
                     else:
                         if self.harmonic_pred == "all":
-                            zz[l] = np.r_[
-                                zz[l],
-                                zz[l] * self.xsin[step],
-                                zz[l] * self.xcos[step],
+                            zz[lev] = np.r_[
+                                zz[lev],
+                                zz[lev] * self.xsin[step],
+                                zz[lev] * self.xcos[step],
                                 self.xsin[step],
                                 self.xcos[step],
                                 1,
                             ]
                         else:
-                            zz[l] = np.r_[zz[l], 1]
+                            zz[lev] = np.r_[zz[lev], 1]
 
                 if "cond" in self.noise_type:
                     n_PCs = 1
@@ -1032,7 +957,7 @@ class EmpiricalModel(DataField):
                         Q = np.cov(
                             self.last_level_res[ndx[:n_samples], :], rowvar=0
                         )
-                        self.rr = np.linalg.cholesky(Q).T
+                        rr = np.linalg.cholesky(Q).T
                     elif self.combined:
                         ndx1 = np.argsort(
                             np.sum(
@@ -1066,29 +991,26 @@ class EmpiricalModel(DataField):
                         Q = np.cov(
                             np.concatenate((res1, res2), axis=0), rowvar=0
                         )
-                        self.rr = np.linalg.cholesky(Q).T
+                        rr = np.linalg.cholesky(Q).T
 
                 # integration step
-                for l in sorted(self.fit_mat, reverse=True):
-                    if l == self.no_levels - 1:
+                for lev in sorted(self.fit_mat, reverse=True):
+                    if lev == self.no_levels - 1:
                         forcing = np.dot(
-                            self.rr,
-                            np.random.normal(
-                                0, self.sigma, (self.rr.shape[0],)
-                            ).T,
+                            rr,
+                            np.random.normal(0, self.sigma, (rr.shape[0],)).T,
                         )
                         if "seasonal" in self.noise_type:
                             forcing *= self.rr_last_std_ts[
                                 step % self.rr_last_std_ts.shape[0], :
                             ]
                     else:
-                        forcing = xx[l + 1][k, :]
-                    xx[l][k, :] = (
-                        xx[l][k - 1, :]
-                        + np.dot(zz[l], self.fit_mat[l])
+                        forcing = xx[lev + 1][k, :]
+                    xx[lev][k, :] = (
+                        xx[lev][k - 1, :]
+                        + np.dot(zz[lev], self.fit_mat[lev])
                         + forcing
                     )
-                    # xx[l][k, :] = xx[l][k-1, :] + self.regressor.predict(zz[l]) + forcing
 
                 step += 1
 
@@ -1096,25 +1018,25 @@ class EmpiricalModel(DataField):
             if np.amax(np.abs(xx[0])) <= 2 * self.maxpc and not np.any(
                 np.isnan(xx[0])
             ):
-                for l in self.fit_mat.keys():
-                    x[l][step - repeats + 1 : step, :] = xx[l][1:, :]
+                for lev in self.fit_mat.keys():
+                    x[lev][step - repeats + 1 : step, :] = xx[lev][1:, :]
                     # set first to last
-                    xx[l][0, :] = xx[l][-1, :]
+                    xx[lev][0, :] = xx[lev][-1, :]
             else:
-                for l in self.fit_mat.keys():
-                    if l == 0:
-                        xx[l][0, :] = np.dot(
+                for lev in self.fit_mat.keys():
+                    if lev == 0:
+                        xx[lev][0, :] = np.dot(
                             np.random.normal(
                                 0, self.sigma, (self.input_pcs.shape[0],)
                             ),
                             self.diagpc,
                         )
                     else:
-                        xx[l][0, :] = np.dot(
+                        xx[lev][0, :] = np.dot(
                             np.random.normal(
                                 0, self.sigma, (self.input_pcs.shape[0],)
                             ),
-                            self.diagres[l - 1],
+                            self.diagres[lev - 1],
                         )
                 if step != step0:
                     num_exploding += 1

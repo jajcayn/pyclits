@@ -682,13 +682,16 @@ class DataField:
         pcs = xr.DataArray(
             data=pcs.copy(),
             dims=["time", "component"],
-            coords={"time": self.time, "component": np.arange(1, n_comps + 1)},
+            coords={
+                "time": self.time,
+                "component": np.arange(1, pcs.shape[1] + 1),
+            },
         )
         eofs = xr.DataArray(
             data=self.pca.components_.copy(),
             dims=["component", "space"],
             coords={
-                "component": np.arange(1, n_comps + 1),
+                "component": np.arange(1, pcs.shape[1] + 1),
                 "space": flat_data.coords["space"],
             },
         ).unstack()
@@ -770,6 +773,7 @@ class DataField:
         window,
         units="years",
         return_wrapped=True,
+        n_workers=cpu_count(),
         inplace=True,
     ):
         """
@@ -787,6 +791,8 @@ class DataField:
         :type units: str
         :param return_wrapped: return wrapped phase (bounded in -pi, pi)
         :type return_wrapped: bool
+        :param n_workers: number of parallel workers
+        :type n_workers: int
         :param inplace: whether to make operation in-place or return
         :type inplace: bool
         """
@@ -817,10 +823,13 @@ class DataField:
             )
             for i in range(data_reshape.shape[1])
         ]
-        pool = Pool(cpu_count())
-        results = pool.imap_unordered(self._get_parametric_phase, args)
-        pool.close()
-        pool.join()
+        if n_workers > 1:
+            pool = Pool(cpu_count())
+            results = pool.imap_unordered(self._get_parametric_phase, args)
+            pool.close()
+            pool.join()
+        else:
+            results = map(self._get_parametric_phase, args)
         parametric_phase = np.zeros((len(self.time), data_reshape.shape[1]))
         for result in results:
             i, phase_ = result
@@ -893,6 +902,7 @@ class DataField:
         wavelet=MorletWavelet(),
         k0=6.0,
         return_as="complex",
+        n_workers=cpu_count(),
         inplace=True,
     ):
         """
@@ -923,6 +933,8 @@ class DataField:
             `reconstruction_regressed` will compute reconstruction of the signal
                 with amplitdes regressed to the data range
         :type return_as: str
+        :param n_workers: number of parallel workers
+        :type n_workers: int
         :param inplace: whether to make operation in-place or return
         :type inplace: bool
         """
@@ -948,10 +960,13 @@ class DataField:
             (i, s0, wavelet, k0, data_reshape[:, i])
             for i in range(data_reshape.shape[1])
         ]
-        pool = Pool(cpu_count())
-        results = pool.imap_unordered(self._get_wvlt_coefficients, args)
-        pool.close()
-        pool.join()
+        if n_workers > 1:
+            pool = Pool(cpu_count())
+            results = pool.imap_unordered(self._get_wvlt_coefficients, args)
+            pool.close()
+            pool.join()
+        else:
+            results = map(self._get_wvlt_coefficients, args)
         coeffs = np.zeros(
             (len(self.time), data_reshape.shape[1]), dtype=np.complex128
         )
@@ -978,10 +993,14 @@ class DataField:
                 )
                 for i in range(data_reshape.shape[1])
             ]
-            pool = Pool(cpu_count())
-            results = pool.imap_unordered(self._regress_amps, args)
-            pool.close()
-            pool.join()
+            if n_workers > 1:
+                pool = Pool(cpu_count())
+                results = pool.imap_unordered(self._regress_amps, args)
+                pool.close()
+                pool.join()
+            else:
+                results = map(self._regress_amps, args)
+
             amps_regressed = np.zeros_like(reconstruction_reshaped)
             for result in list(results):
                 i, amps_r = result

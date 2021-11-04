@@ -426,6 +426,26 @@ class TestDataField(TestHelperTempSave):
             )
             xr.testing.assert_allclose(df.data, param_phase_df.data)
 
+    def test_parametric_phase_parallel(self):
+        df = self.load_df()
+        param_phase_single = df.parametric_phase(
+            central_period=1.0,
+            window=0.25,
+            units="years",
+            n_workers=1,
+            inplace=False,
+        )
+        param_phase_parallel = df.parametric_phase(
+            central_period=1.0,
+            window=0.25,
+            units="years",
+            n_workers=4,
+            inplace=False,
+        )
+        xr.testing.assert_allclose(
+            param_phase_single.data, param_phase_parallel.data
+        )
+
     def test_get_parametric_phase(self):
         df = self.load_df()
         central_period = 1.0
@@ -540,6 +560,24 @@ class TestDataField(TestHelperTempSave):
                 inplace=True,
             )
             xr.testing.assert_allclose(df.data, ccwt_df.data)
+
+    def test_ccwt_parallel(self):
+        df = self.load_df()
+        ccwt_single = df.ccwt(
+            central_period=1.0,
+            units="years",
+            return_as="amplitude_regressed",
+            n_workers=1,
+            inplace=False,
+        )
+        ccwt_parallel = df.ccwt(
+            central_period=1.0,
+            units="years",
+            return_as="amplitude_regressed",
+            n_workers=4,
+            inplace=False,
+        )
+        xr.testing.assert_allclose(ccwt_single.data, ccwt_parallel.data)
 
     def test_regress_amps(self):
         df = self.load_df()
