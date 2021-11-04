@@ -831,22 +831,22 @@ class EmpiricalModel(DataField):
         )
         num_exploding = np.zeros((n_realizations,))
 
-        if self.diagnostics:
-            # x, num_exploding, xm, xv, xs, xk, lc, kden, ict
-            for i, x, num_expl, xm, xv, xs, xk, lc, kden, ict in results:
-                self.integration_results[i, ...] = x.T
-                num_exploding[i] = num_expl
-                stat_moments_int[0, i, :] = xm
-                stat_moments_int[1, i, :] = xv
-                stat_moments_int[2, i, :] = xs
-                stat_moments_int[3, i, :] = xk
-                lag_cors_int[i, ...] = lc
-                kernel_densities_int[i, ...] = kden
-                int_corr_scale_int[i, ...] = ict
-        else:
-            for i, x, num_expl in results:
-                self.integration_results[i, ...] = x.T
-                self.num_exploding[i] = num_expl
+        # if self.diagnostics:
+        #     # x, num_exploding, xm, xv, xs, xk, lc, kden, ict
+        #     for i, x, num_expl, xm, xv, xs, xk, lc, kden, ict in results:
+        #         self.integration_results[i, ...] = x.T
+        #         num_exploding[i] = num_expl
+        #         stat_moments_int[0, i, :] = xm
+        #         stat_moments_int[1, i, :] = xv
+        #         stat_moments_int[2, i, :] = xs
+        #         stat_moments_int[3, i, :] = xk
+        #         lag_cors_int[i, ...] = lc
+        #         kernel_densities_int[i, ...] = kden
+        #         int_corr_scale_int[i, ...] = ict
+        # else:
+        #     for i, x, num_expl in results:
+        #         self.integration_results[i, ...] = x.T
+        #         self.num_exploding[i] = num_expl
 
         logging.info("All done.")
         logging.info(
