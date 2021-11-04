@@ -397,7 +397,8 @@ def figures2d_samples_TE(dataset, selector, title, ylabel, filename, suffix, vie
         plt.close()
 
 
-def process_datasets(processed_datasets, result_dataset, result_raw_dataset, new_columns_base_name="transfer_entropy", converter_epsilon=lambda x: float(x)):
+def process_datasets(processed_datasets, result_dataset, result_raw_dataset, new_columns_base_name="transfer_entropy", take_k_th_nearest_neighbor=5, converter_epsilon=lambda x: float(x)):
+    # taking only some nn data to assure that it converge in theory
     files = glob.glob(processed_datasets)
     print(files)
     frames = []
@@ -406,15 +407,9 @@ def process_datasets(processed_datasets, result_dataset, result_raw_dataset, new
         epsilon = converter_epsilon(file.split("-")[1].split(".b")[0])
         path = Path(file)
 
-        # with open(path, "rb") as fh:
-        #    table = pickle.load(fh)
         table = pd.read_pickle(path)
-
         frame = pd.DataFrame(table)
         frame["epsilon"] = epsilon
-
-        #print(frame)
-
         old_columns = frame.columns
 
         for item in old_columns[:-1]:
@@ -428,7 +423,8 @@ def process_datasets(processed_datasets, result_dataset, result_raw_dataset, new
                 bool_column = 4
 
             # add mean of entropy
-            calculation = frame.apply(lambda row: np.mean(row[item]), axis=1, raw=False)
+
+            calculation = frame.apply(lambda row: np.mean(row[item][take_k_th_nearest_neighbor:]), axis=1, raw=False)
             #calculation = frame.apply(lambda row: if any(row) print(row), axis=1, raw=True)
             #calculation = frame.apply(lambda row: float(np.mean(row[item])), axis=1, raw=True)
             if bool_column == 3:
@@ -437,7 +433,7 @@ def process_datasets(processed_datasets, result_dataset, result_raw_dataset, new
                 frame[mean_column_name, "mean", "", "", item[bool_column], reversed_order] = calculation
 
             # add std of entropy
-            calculation = frame.apply(lambda row: float(np.std(row[item])), axis=1, raw=True)
+            calculation = frame.apply(lambda row: float(np.std(row[item][take_k_th_nearest_neighbor:])), axis=1, raw=True)
             if bool_column == 3:
                 frame[std_column_name, "std", "", item[bool_column], reversed_order] = calculation
             else:
@@ -452,19 +448,41 @@ def process_datasets(processed_datasets, result_dataset, result_raw_dataset, new
 
             if bool_column == 3:
                 frame[mean_column_name, "mean", "", False, item[4]] = frame.apply(
-                    lambda row: float(np.mean(row[item]) - np.mean(row[item[0], item[1], item[2], not item[3], item[4]])),
+                    lambda row: float(
+                        np.mean(
+                            np.array(row[item][take_k_th_nearest_neighbor:])
+                            - np.array(row[item[0], item[1], item[2], not item[3], item[4]][take_k_th_nearest_neighbor:])
+                        )),
                     axis=1,
                     raw=True)
                 frame[std_column_name, "std", "", False, item[4]] = frame.apply(
-                    lambda row: float(np.std(row[item]) + np.std(row[item[0], item[1], item[2], not item[3], item[4]])),
+                    lambda row: float(
+                        np.std(
+                            np.array(row[item][take_k_th_nearest_neighbor:])
+                            - np.array(row[item[0], item[1], item[2], not item[3], item[4]][take_k_th_nearest_neighbor:])
+                        )),
                     axis=1,
                     raw=True)
+                #lambda row: float(
+                #        np.std(row[item][take_k_th_nearest_neighbor:])
+                #        + np.std(row[item[0], item[1], item[2], not item[3], item[4]][take_k_th_nearest_neighbor:]))
             else:
                 frame[mean_column_name, "mean", "", False, item[4]] = frame.apply(
-                    lambda row: float(np.mean(row[item]) - np.mean(row[item[0], item[1], item[2], item[3], not item[4]])), axis=1, raw=True)
+                    lambda row: float(
+                        np.mean(
+                            np.array(row[item][take_k_th_nearest_neighbor:])
+                            - np.array(row[item[0], item[1], item[2], item[3], not item[4]][take_k_th_nearest_neighbor:])
+                        )),
+                    axis=1,
+                    raw=True)
                 frame[std_column_name, "std", "", False, item[4]] = frame.apply(
-                    lambda row: float(np.std(row[item]) + np.std(row[item[0], item[1], item[2], item[3], not item[4]])),
-                    axis=1, raw=True)
+                    lambda row: float(
+                        np.std(
+                            np.array(row[item][take_k_th_nearest_neighbor:])
+                            - np.array(row[item[0], item[1], item[2], item[3], not item[4]][take_k_th_nearest_neighbor:])
+                        )),
+                    axis=1,
+                    raw=True)
 
         # balance of entropy
         balance_names = [item for item in frame.columns.tolist() if not bool(item[4]) and "information" not in str(item[0]) and "epsilon" not in str(item[0])]
@@ -473,10 +491,21 @@ def process_datasets(processed_datasets, result_dataset, result_raw_dataset, new
             std_column_name = f"balance_{new_columns_base_name}_{item[1]}_{item[2]}"
 
             frame[mean_column_name, "mean", "", item[3], False] = frame.apply(
-                lambda row: float(np.mean(row[item]) - np.mean(row[item[0], item[1], item[2], item[3], not item[4]])), axis=1, raw=True)
+                lambda row: float(
+                    np.mean(
+                        np.array(row[item][take_k_th_nearest_neighbor:])
+                        - np.array(row[item[0], item[1], item[2], item[3], not item[4]][take_k_th_nearest_neighbor:])
+                    )),
+                axis=1,
+                raw=True)
             frame[std_column_name, "std", "", item[3], False] = frame.apply(
-                lambda row: float(np.std(row[item]) + np.std(row[item[0], item[1], item[2], item[3], not item[4]])),
-                axis=1, raw=True)
+                lambda row: float(
+                    np.std(
+                        np.array(row[item][take_k_th_nearest_neighbor:])
+                        - np.array(row[item[0], item[1], item[2], item[3], not item[4]][take_k_th_nearest_neighbor:])
+                    )),
+                axis=1,
+                raw=True)
 
         # balance of effective entropy
         balance_names = [item for item in frame.columns.tolist() if not bool(item[4]) and not bool(item[3]) and "information" not in str(item[0]) and "epsilon" not in str(item[0])]
@@ -485,10 +514,25 @@ def process_datasets(processed_datasets, result_dataset, result_raw_dataset, new
             std_column_name = f"balance_effective_{new_columns_base_name}_{item[1]}_{item[2]}"
 
             frame[mean_column_name, "mean", "", item[3], False] = frame.apply(
-                lambda row: float(np.mean(row[item]) - np.mean(row[item[0], item[1], item[2], not item[3], item[4]]) - np.mean(row[item[0], item[1], item[2], item[3], not item[4]]) + np.mean(row[item[0], item[1], item[2], not item[3], not item[4]])), axis=1, raw=True)
+                lambda row: float(
+                    np.mean(
+                        np.array(row[item][take_k_th_nearest_neighbor:])
+                        - np.array(row[item[0], item[1], item[2], not item[3], item[4]][take_k_th_nearest_neighbor:])
+                        - np.array(row[item[0], item[1], item[2], item[3], not item[4]][take_k_th_nearest_neighbor:])
+                        + np.array(row[item[0], item[1], item[2], not item[3], not item[4]][take_k_th_nearest_neighbor:])
+                    )),
+                axis=1,
+                raw=True)
             frame[std_column_name, "std", "", item[3], False] = frame.apply(
-                lambda row: float(np.std(row[item]) + np.std(row[item[0], item[1], item[2], not item[3], item[4]]) + np.std(row[item[0], item[1], item[2], item[3], not item[4]]) + np.std(row[item[0], item[1], item[2], not item[3], not item[4]])),
-                axis=1, raw=True)
+                lambda row: float(
+                    np.std(
+                        np.array(row[item][take_k_th_nearest_neighbor:])
+                        - np.array(row[item[0], item[1], item[2], not item[3], item[4]][take_k_th_nearest_neighbor:])
+                        - np.array(row[item[0], item[1], item[2], item[3], not item[4]][take_k_th_nearest_neighbor:])
+                        + np.array(row[item[0], item[1], item[2], not item[3], not item[4]][take_k_th_nearest_neighbor:])
+                    )),
+                axis=1,
+                raw=True)
 
         # dropping the index
         frame = frame.reset_index()

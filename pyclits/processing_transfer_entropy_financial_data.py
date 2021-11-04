@@ -26,9 +26,9 @@ def load_processed_dataset(dataset, dataset_raw, new_columns_base_name="transfer
 
 
 if __name__ == "__main__":
-    dpi = 150
+    dpi = 300
     output = "png"
-    directories = ["financial_transfer_entropy_1"]
+    directories = ["financial_transfer_entropy_3", "financial_transfer_entropy_2", "financial_transfer_entropy_1", "financial_transfer_entropy"]
 
     for directory in directories:
         name_of_title = "conditional_information_transfer"
@@ -36,9 +36,14 @@ if __name__ == "__main__":
         processed_raw_dataset = directory + "/pivot_dataset_raw.bin"
         files = glob.glob(processed_dataset)
         if len(files) == 0:
-            TE, TE_column_names, TE_raw = process_datasets(processed_datasets=directory + "/Conditional_information_transfer-*.bin*",
-                                                           result_dataset=processed_dataset, result_raw_dataset=processed_raw_dataset,
-                                                           new_columns_base_name=name_of_title, converter_epsilon=lambda x: str(x))
+            TE, TE_column_names, TE_raw = process_datasets(
+                processed_datasets=directory + "/Conditional_information_transfer-*.bin*",
+                result_dataset=processed_dataset,
+                result_raw_dataset=processed_raw_dataset,
+                take_k_th_nearest_neighbor=5,
+                new_columns_base_name=name_of_title,
+                converter_epsilon=lambda x: str(x)
+            )
         else:
             TE, TE_column_names, TE_raw = load_processed_dataset(processed_dataset, processed_raw_dataset)
 
@@ -105,7 +110,7 @@ if __name__ == "__main__":
                 std_filename = directory + "/" + column_name + "_" + filename_direction[swapped_datasets] + ("_shuffled" if shuffled_calculation else "") + "_2d_std"
 
                 figures2d_TE_alpha(TE, item, latex_title, r"$\alpha$", label, standard_filename, output, dpi=dpi)
-                figures2d_TE_alpha(TE, tuple(item_error), r"$\alpha$", latex_title_std, label, std_filename, output, dpi=dpi)
+                figures2d_TE_alpha(TE, tuple(item_error), latex_title_std, r"$\alpha$", label, std_filename, output, dpi=dpi)
                 figures2d_TE_alpha_errorbar(TE, item, tuple(item_error), latex_title, r"$\alpha$", label, errorbar_filename, output, dpi=dpi)
             except Exception as exc:
                 print(f"Problem {exc} {item}")

@@ -24,10 +24,19 @@ def load_processed_dataset(dataset, dataset_raw, new_columns_base_name="transfer
 if __name__ == "__main__":
     dpi = 150
     output = "png"
-    # "conditional_information_transfer", "conditional_information_transfer_Dh=1", "conditional_information_transfer_Dh=2", "conditional_information_transfer_Dh=n",
-    #                       "conditional_information_transfer_full_Dh=1", "conditional_information_transfer_full_Dh=2", "conditional_information_transfer_full_Dh=n",
-    #                    "conditional_information_transfer_GARCH_single", "roessler_oscilator/conditional_information_transfer_X_3_Y_3", "roessler_oscilator/conditional_information_transfer_X_3_Y_1", "roessler_oscilator/conditional_information_transfer_X_1_Y_3", "roessler_oscilator/conditional_information_transfer_X_2_Y_2"
-    directories = ["conditional_information_transfer"]
+    #"roessler_oscilator/conditional_information_transfer_Dh=1",
+    #"roessler_oscilator/conditional_information_transfer_Dh=2",
+    #"roessler_oscilator/conditional_information_transfer_Dh=n",
+    #"roessler_oscilator/conditional_information_transfer_full_Dh=1",
+    #"roessler_oscilator/conditional_information_transfer_full_Dh=2",
+    #"roessler_oscilator/conditional_information_transfer_full_Dh=n",
+    #"conditional_information_transfer_GARCH_single",
+    #"roessler_oscilator/conditional_information_transfer_X_3_Y_3",
+    #"roessler_oscilator/conditional_information_transfer_X_3_Y_1",
+    #"roessler_oscilator/conditional_information_transfer_X_1_Y_3",
+
+    directories = [
+        "roessler_oscilator/conditional_information_transfer_X_2_Y_2"]
     #directory = "transfer_entropy"
 
     for directory in directories:
@@ -102,13 +111,15 @@ if __name__ == "__main__":
                 plot_2D_filename_implot_std = directory + "/" + column_name + "_" + filename_direction[swapped_datasets] + ("_shuffled" if shuffled_calculation else "") + "_implot_std"
                 std_filename = directory + "/" + column_name + "_" + filename_direction[swapped_datasets] + ("_shuffled" if shuffled_calculation else "") + "_2d_std"
 
-                figures2d_imshow(TE, item, latex_title, label, plot_2D_filename_implot, output, cmap="rainbow", dpi=dpi)
-                figures2d_imshow(TE, tuple(item_error), latex_title, label, plot_2D_filename_implot_std, output, cmap="rainbow", dpi=dpi)
-                figures3d_surface_TE(TE, item, latex_title, label, plot_3D_surf_filename, output, cmap="rainbow", dpi=dpi)
-                figures2d_TE_errorbar(TE, item, tuple(item_error), latex_title, label, errorbar_filename, output, dpi=dpi)
-                figures2d_TE(TE, item, latex_title, r"$\varepsilon$", label, standard_filename, output, dpi=dpi)
-                figures3d_TE(TE, item, latex_title, label, plot_3D_filename, output, dpi=dpi)
-                figures2d_TE(TE, tuple(item_error), r"$\varepsilon$", latex_title_std, label, std_filename, output, dpi=dpi)
+                latex_epsilon_label = r"$\varepsilon$"
+
+                figures2d_imshow(TE, item, latex_title, label, plot_2D_filename_implot, suffix=output, cmap="rainbow", dpi=dpi)
+                figures2d_imshow(TE, tuple(item_error), latex_title, label, plot_2D_filename_implot_std, suffix=output, cmap="rainbow", dpi=dpi)
+                figures3d_surface_TE(TE, item, latex_title, label, plot_3D_surf_filename, suffix=output, cmap="rainbow", dpi=dpi)
+                figures2d_TE_errorbar(TE, item, tuple(item_error), latex_title, latex_epsilon_label, label, errorbar_filename, suffix=output, dpi=dpi)
+                figures2d_TE(TE, item, latex_title, latex_epsilon_label, label, standard_filename, suffix=output, dpi=dpi)
+                figures3d_TE(TE, item, latex_title, label, plot_3D_filename, suffix=output, dpi=dpi)
+                figures2d_TE(TE, tuple(item_error), latex_epsilon_label, latex_title_std, label, std_filename, suffix=output, dpi=dpi)
             except Exception as exc:
                 print(f"Problem {exc} {item}")
                 traceback.print_exc()
