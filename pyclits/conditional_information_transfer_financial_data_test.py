@@ -12,7 +12,7 @@ import numpy as np
 
 from cli_helpers import process_CLI_arguments
 from finance_data_plugin import load_datasets, select_dataset_with_code, prepare_dataset, time_join_dataset
-from mutual_inf import renyi_conditional_information_transfer
+from transfer_entropy import renyi_conditional_information_transfer
 from sample_generator import preparation_dataset_for_transfer_entropy
 
 if __name__ == "__main__":

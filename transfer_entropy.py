@@ -5,9 +5,12 @@ import os
 import datetime
 import time
 import mpmath
+import logging
 import collections
 import numpy as np
+import numpy.random as random
 from sklearn.neighbors import KDTree
+from scipy.spatial import cKDTree
 import scipy.special as scipyspecial
 
 
@@ -58,8 +61,10 @@ def renyi_entropy_Lavicka(dataset_x: np.matrix, alpha=1, leaf_size=15, metric="c
     length_of_data = shape_of_data[0]
     dimension_of_data = shape_of_data[1]
 
-    distances = graph_calculation_preparation(dataset_x, **locals())
+    kdtree = graph_calculation_preparation(dataset_x, **locals())
     entropy = 0
+
+    distances = kdtree.query(dataset_x, k=kwargs["maximal_index"], return_distance=True, dualtree=dualtree, breadth_first=True)
 
     for index_of_distances, use_index in enumerate(indices_to_use):
         selected_distances = distances[:, index_of_distances]
@@ -228,7 +233,7 @@ def entropy_sum_Shannon_LeonenkoProzanto(dataset_x: np.matrix, distances, **kwar
     indices_to_use = kwargs["indices_to_use"]
     dimension_of_data = kwargs["dimension_of_data"]
 
-    if kwargs["arbitrary_precision"]:
+    if "arbitrary_precision" in kwargs and kwargs["arbitrary_precision"]:
         entropy = [mpmath.mpf("0.0") for index in range(len(indices_to_use))]
     else:
         entropy = np.zeros(len(indices_to_use))
@@ -313,16 +318,19 @@ def renyi_entropy_Paly(dataset_x: np.matrix, alpha=0.75, leaf_size = 15, metric=
 
 def renyi_entropy(*args, **kwargs):
     # preparation of logarithm
-    if kwargs["arbitrary_precision"]:
-        if "base_of_logarithm" in kwargs:
-            kwargs["logarithm"] = lambda x: mpmath.log(x, kwargs["base_of_logarithm"])
-        else:
-            kwargs["logarithm"] = lambda x: mpmath.log(x)
+    if "arbitrary_precision" not in kwargs:
+        raise BaseException("arbitrary_precision missing in kwargs")
     else:
-        if "base_of_logarithm" in kwargs:
-            kwargs["logarithm"] = lambda x: np.log(x, kwargs["base_of_logarithm"])
+        if kwargs[ "arbitrary_precision"]:
+            if "base_of_logarithm" in kwargs:
+                kwargs["logarithm"] = lambda x: mpmath.log(x, kwargs["base_of_logarithm"])
+            else:
+                kwargs["logarithm"] = lambda x: mpmath.log(x)
         else:
-            kwargs["logarithm"] = lambda x: np.log(x)
+            if "base_of_logarithm" in kwargs:
+                kwargs["logarithm"] = lambda x: np.log(x, kwargs["base_of_logarithm"])
+            else:
+                kwargs["logarithm"] = lambda x: np.log(x)
 
     if "method" in kwargs:
         if kwargs["method"] == "Paly" or kwargs["method"] == "GeneralizedNearestNeighbor":
@@ -471,13 +479,13 @@ if __name__ == "__main__":
     sample_array = np.array([[1], [2], [3], [4], [5], [6], [7], [8], [9]], dtype=float)
     input_sample = np.ndarray(shape=sample_array.shape, buffer=sample_array)
     #print(input_sample)
-    print(renyi_entropy(np.array([[1], [2], [3], [4], [5], [6], [7], [8], [9]]), method="LeonenkoProzanto"))
-    print(renyi_entropy(input_sample, method="LeonenkoProzanto"))
+    print(renyi_entropy(np.array([[1], [2], [3], [4], [5], [6], [7], [8], [9]]), method="LeonenkoProzanto", arbitrary_precision=False))
+    print(renyi_entropy(input_sample, method="LeonenkoProzanto", arbitrary_precision=False))
 
     mu = 0
     sigma = 10
     number_samples = 100
 
     samples = np.random.normal(mu, sigma, (number_samples, 1))
-    print(renyi_entropy(samples, method="Lavicka"))
+    print(renyi_entropy(samples, method="LeonenkoProzanto", maximal_index=20, arbitrary_precision=False))
 

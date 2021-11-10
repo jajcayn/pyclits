@@ -12,7 +12,7 @@ import numpy as np
 
 from cli_helpers import process_CLI_arguments
 from data_plugin import load_static_dataset, prepare_dataset
-from mutual_inf import renyi_transfer_entropy
+from transfer_entropy import renyi_transfer_entropy
 from sample_generator import preparation_dataset_for_transfer_entropy
 
 if __name__ == "__main__":
