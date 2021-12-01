@@ -84,7 +84,7 @@ def renyi_entropy_Lavicka(dataset_x: np.matrix, alpha=1, leaf_size=15, metric="c
             actual_probability = previous_probability + float(counter[distance]) / divisor
 
             addition_to_entropy = (special(use_index, alpha, dimension_of_data, divisor, previous_probability, actual_probability, actual_probability, previous_distance, actual_distance)
-                       - special(use_index, alpha, dimension_of_data, divisor, previous_probability, actual_probability, previous_probability, previous_distance, actual_distance))
+                - special(use_index, alpha, dimension_of_data, divisor, previous_probability, actual_probability, previous_probability, previous_distance, actual_distance))
             entropy += addition_to_entropy
 
             previous_distance = actual_distance

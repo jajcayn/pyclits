@@ -59,11 +59,14 @@ if __name__ == "__main__":
                         shift = value
                         break
 
-                item_error = list(item)
+                complete_column_name = list(item)
                 column_name = item[0]
+                column_name = column_name.replace("conditional_information_transfer", "transfer_entropy")
+                shift = shift - 1
                 shuffled_calculation = item[3]
-                swapped_datasets = item_error[4]
-                item_error[1] = "std"
+                swapped_datasets = complete_column_name[4]
+                complete_column_name_std = complete_column_name.copy()
+                complete_column_name_std[1] = "std"
 
                 history_first_TS = column_name.split("_")[shift]
                 history_second_TS = column_name.split("_")[shift+1]
@@ -72,34 +75,39 @@ if __name__ == "__main__":
                 except IndexError as err:
                     future_first_TS = None
 
-                name_of_title = column_name.split("r_")[0]+"r"
+                name_of_title = column_name.split("y_")[0]+"y"
                 balance = "balance" in name_of_title
-                latex_title = r"{\Large{" + name_of_title.capitalize().replace("_", " ") + r"}}"
-                latex_title_std = latex_title + r"$\large\rm{\ -\ std}$"
+                if balance:
+                    name_of_title = "Balance of" + name_of_title.split("balance")[1]
+                pure_title = name_of_title.capitalize().replace("_", " ")
+                latex_title = r"\Huge{" + pure_title + r"}"
+                latex_title_std = f"""\Huge{{Standard deviation of {pure_title.lower()} }}"""
 
-                title_graph = {"transfer_entropy": r"$\Large\rm{Transfer\ entropy}$",
-                               "conditional_information_transfer": r"$\Large\rm{Conditional\ information\ transfer}$", }
+                title_graph = {"transfer_entropy": r"$\Huge\rm{Transfer\ entropy}$",
+                               "conditional_information_transfer": r"$\Huge\rm{Conditional\ information\ transfer}$", }
                 filename_direction = {True: "Y->X", False: "X->Y"}
                 title_map = {(False, False): r"{\alpha: X\rightarrow Y}", (True, False): r"{\alpha: X_{shuffled}\rightarrow Y}",
                              (False, True): r"{\alpha: Y\rightarrow X}", (True, True): r"{\alpha: Y_{shuffled}\rightarrow X}"}
 
                 if future_first_TS is not None:
                     if balance:
-                        label = "$T^{}_{} ([{}],[{}],[{}])$".format("{(R, eff)}" if "effective" in column_name else "{(R)}",
-                                                                    title_map[(shuffled_calculation, swapped_datasets)], history_first_TS,
-                                                                    history_second_TS, future_first_TS) + "-" + \
-                                "$T^{}_{} ([{}],[{}],[{}])$".format("{(R, eff)}" if "effective" in column_name else "{(R)}",
-                                                                    title_map[(shuffled_calculation, not swapped_datasets)], history_first_TS,
-                                                                    history_second_TS, future_first_TS)
+                        label = """T^{}_{} (\\{{{}\\}},\\{{{}\\}},\\{{{}\\}})""".format(
+                            "{(R, effective, balance)}" if "effective" in column_name else "{(R, balance)}",
+                            title_map[(shuffled_calculation, swapped_datasets)],
+                            history_first_TS,
+                            history_second_TS, future_first_TS)
+                            #+ "-" + "$T^{}_{} ([{}],[{}],[{}])$".format("{(R, eff)}" if "effective" in column_name else "{(R)}", title_map[(shuffled_calculation, not swapped_datasets)], history_first_TS, history_second_TS, future_first_TS)
                     else:
-                        label = "$T^{}_{} ([{}],[{}],[{}])$".format("{(R, eff)}" if "effective" in column_name else "{(R)}",
-                                                                    title_map[(shuffled_calculation, swapped_datasets)],
-                                                                    history_first_TS, history_second_TS, future_first_TS)
+                        label = """T^{}_{} (\\{{{}\\}},\\{{{}\\}},\\{{{}\\}})""".format(
+                            "{(R, eff)}" if "effective" in column_name else "{(R)}",
+                            title_map[(shuffled_calculation, swapped_datasets)],
+                            history_first_TS, history_second_TS, future_first_TS)
                 else:
-                    label = "$T^{}_{} ([{}],[{}])$".format("{(R, eff)}" if "effective" in column_name else "{(R)}",
+                    label = "T^{}_{} ([{}],[{}])".format("{(R, eff)}" if "effective" in column_name else "{(R)}",
                                                            title_map[(shuffled_calculation, swapped_datasets)], history_first_TS, history_second_TS)
-
-                print(column_name, label)
+                label_std = f"""$\\sigma_{{{label}}}$"""
+                label = f"${label}$"
+                print(column_name, label, label_std)
 
                 errorbar_filename = directory + "/" + column_name + "_" + filename_direction[swapped_datasets] + ("_shuffled" if shuffled_calculation else "") + "_2d_bars"
                 standard_filename = directory + "/" + column_name + "_" + filename_direction[swapped_datasets] + ("_shuffled" if shuffled_calculation else "") + "_2d"
@@ -110,8 +118,8 @@ if __name__ == "__main__":
                 std_filename = directory + "/" + column_name + "_" + filename_direction[swapped_datasets] + ("_shuffled" if shuffled_calculation else "") + "_2d_std"
 
                 figures2d_TE_alpha(TE, item, latex_title, r"$\alpha$", label, standard_filename, output, dpi=dpi)
-                figures2d_TE_alpha(TE, tuple(item_error), latex_title_std, r"$\alpha$", label, std_filename, output, dpi=dpi)
-                figures2d_TE_alpha_errorbar(TE, item, tuple(item_error), latex_title, r"$\alpha$", label, errorbar_filename, output, dpi=dpi)
+                figures2d_TE_alpha(TE, tuple(complete_column_name_std), latex_title_std, r"$\alpha$", label_std, std_filename, output, dpi=dpi)
+                figures2d_TE_alpha_errorbar(TE, item, tuple(complete_column_name_std), latex_title, r"$\alpha$", label, errorbar_filename, output, dpi=dpi)
             except Exception as exc:
                 print(f"Problem {exc} {item}")
                 traceback.print_exc()
