@@ -28,6 +28,8 @@ def load_processed_dataset(dataset, dataset_raw, new_columns_base_name="transfer
 if __name__ == "__main__":
     dpi = 300
     output = "png"
+    latex_title_size = "\\Huge"
+    latex_label_size = "\\huge"
     directories = ["financial_transfer_entropy_3", "financial_transfer_entropy_2", "financial_transfer_entropy_1", "financial_transfer_entropy"]
 
     for directory in directories:
@@ -80,8 +82,8 @@ if __name__ == "__main__":
                 if balance:
                     name_of_title = "Balance of" + name_of_title.split("balance")[1]
                 pure_title = name_of_title.capitalize().replace("_", " ")
-                latex_title = r"\Huge{" + pure_title + r"}"
-                latex_title_std = f"""\Huge{{Standard deviation of {pure_title.lower()} }}"""
+                latex_title = latex_title_size + f"""{{{pure_title}}}"""
+                latex_title_std = latex_title_size +  f"""{{Standard deviation of {pure_title.lower()} }}"""
 
                 title_graph = {"transfer_entropy": r"$\Huge\rm{Transfer\ entropy}$",
                                "conditional_information_transfer": r"$\Huge\rm{Conditional\ information\ transfer}$", }
@@ -105,9 +107,10 @@ if __name__ == "__main__":
                 else:
                     label = "T^{}_{} ([{}],[{}])".format("{(R, eff)}" if "effective" in column_name else "{(R)}",
                                                            title_map[(shuffled_calculation, swapped_datasets)], history_first_TS, history_second_TS)
-                label_std = f"""$\\sigma_{{{label}}}$"""
-                label = f"${label}$"
-                print(column_name, label, label_std)
+                label_latex_std = latex_label_size + f"""$\\sigma_{{{label}}}$"""
+                label = latex_label_size + f"${label}$"
+                latex_alpha_label = latex_label_size + r"$\alpha$"
+                print(column_name, label, label_latex_std)
 
                 errorbar_filename = directory + "/" + column_name + "_" + filename_direction[swapped_datasets] + ("_shuffled" if shuffled_calculation else "") + "_2d_bars"
                 standard_filename = directory + "/" + column_name + "_" + filename_direction[swapped_datasets] + ("_shuffled" if shuffled_calculation else "") + "_2d"
@@ -117,9 +120,9 @@ if __name__ == "__main__":
                 plot_2D_filename_implot_std = directory + "/" + column_name + "_" + filename_direction[swapped_datasets] + ("_shuffled" if shuffled_calculation else "") + "_implot_std"
                 std_filename = directory + "/" + column_name + "_" + filename_direction[swapped_datasets] + ("_shuffled" if shuffled_calculation else "") + "_2d_std"
 
-                figures2d_TE_alpha(TE, item, latex_title, r"$\alpha$", label, standard_filename, output, dpi=dpi)
-                figures2d_TE_alpha(TE, tuple(complete_column_name_std), latex_title_std, r"$\alpha$", label_std, std_filename, output, dpi=dpi)
-                figures2d_TE_alpha_errorbar(TE, item, tuple(complete_column_name_std), latex_title, r"$\alpha$", label, errorbar_filename, output, dpi=dpi)
+                figures2d_TE_alpha(TE, item, latex_title, latex_alpha_label, label, standard_filename, output, dpi=dpi)
+                figures2d_TE_alpha(TE, tuple(complete_column_name_std), latex_title_std, latex_alpha_label, label_latex_std, std_filename, output, dpi=dpi)
+                figures2d_TE_alpha_errorbar(TE, item, tuple(complete_column_name_std), latex_title, latex_alpha_label, label, errorbar_filename, output, dpi=dpi)
             except Exception as exc:
                 print(f"Problem {exc} {item}")
                 traceback.print_exc()

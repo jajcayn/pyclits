@@ -8,20 +8,17 @@ import matplotlib.pyplot as plt
 from scipy.interpolate import griddata
 
 
-def figures3d_TE(dataset, selector, title, zlabel, filename, suffix, view=(50, -20), dpi=300):
+def figures3d_TE(dataset, selector, title, xlabel, ylabel, zlabel, filename, suffix, view=(50, -20), dpi=300):
     fig = plt.figure(figsize=(13, 8))
-    #ax = Axes3D(fig)
     ax = fig.add_subplot(1, 1, 1, projection='3d')
 
     colors = ["r", "g", "b", "c", "m", "y", "k", "orange", "pink"]
     markers = ['b', '^']
 
     ax.set_title(title)
-    ax.set_xlabel(r"$\alpha$")
-    ax.set_ylabel(r"$\varepsilon$")
+    ax.set_xlabel(xlabel)
+    ax.set_ylabel(ylabel)
     ax.set_zlabel(zlabel)
-    # ax.set_yticks([1, 2, 3, 4, 5], ["10", "100", "1000", "10000", "100000"])
-    # plt.yticks((1.0, 2.0, 3.0, 4.0, 5.0), ("10", "100", "1000", "10000", "100000"))
 
     row_size = len(dataset['epsilon'].unique())
     xs = dataset[['alpha']]
@@ -39,14 +36,14 @@ def figures3d_TE(dataset, selector, title, zlabel, filename, suffix, view=(50, -
     plt.legend(loc=1)
     ax.view_init(view[0], view[1])
 
-    plt.savefig(filename + "." + suffix, dpi=dpi)
+    plt.savefig(filename + "." + suffix, dpi=dpi, bbox_inches="tight")
     # plt.draw()
     #plt.show()
     plt.close()
     del fig
 
 
-def figures3d_surface_TE(dataset, selector, title, zlabel, filename, suffix, cmap="magma", view=(50, -20), dpi=300):
+def figures3d_surface_TE(dataset, selector, title, xlabel, ylabel, zlabel, filename, suffix, cmap="magma", view=(50, -20), dpi=300):
     fig = plt.figure(figsize=(13, 8))
     #ax = Axes3D(fig)
     ax = fig.add_subplot(1, 1, 1, projection='3d')
@@ -55,8 +52,8 @@ def figures3d_surface_TE(dataset, selector, title, zlabel, filename, suffix, cma
     markers = ['b', '^']
 
     ax.set_title(title)
-    ax.set_xlabel(r"$\alpha$")
-    ax.set_ylabel(r"$\varepsilon$")
+    ax.set_xlabel(xlabel)
+    ax.set_ylabel(ylabel)
     ax.set_zlabel(zlabel)
 
     row_size = len(dataset['epsilon'].unique())
@@ -81,7 +78,7 @@ def figures3d_surface_TE(dataset, selector, title, zlabel, filename, suffix, cma
     plt.legend(loc=1)
     ax.view_init(view[0], view[1])
 
-    plt.savefig(filename + "." + suffix, dpi=dpi)
+    plt.savefig(filename + "." + suffix, dpi=dpi, bbox_inches="tight")
     # plt.draw()
     #plt.show()
     plt.close()
@@ -95,14 +92,14 @@ def minimal_difference(target):
     return min(epsilon_differences)
 
 
-def figures2d_imshow(dataset, selector, title, ylabel, filename, suffix, cmap="magma",  dpi=300):
+def figures2d_imshow(dataset, selector, title, xlabel, ylabel, filename, suffix, cmap="magma",  dpi=300):
     color_map = matplotlib.cm.get_cmap(cmap)
 
     fig, ax = plt.subplots(1, 1, figsize=(13, 8))
 
     ax.set(title=title)
-    ax.set(xlabel=r"$\varepsilon$")
-    ax.set(ylabel=r"$\alpha$")
+    ax.set(xlabel=xlabel)
+    ax.set(ylabel=ylabel)
     ax.grid(True)
 
     epsilons = dataset['epsilon'].unique()
@@ -130,7 +127,7 @@ def figures2d_imshow(dataset, selector, title, ylabel, filename, suffix, cmap="m
     ims = ax.imshow(sampled_data.reshape((len(alphas), len(changed_epsilons))), origin="lower", interpolation='nearest', extent=extent, cmap=color_map, aspect='auto')
 
     fig.colorbar(ims)
-    plt.savefig(filename + "." + suffix, dpi=dpi)
+    plt.savefig(filename + "." + suffix, dpi=dpi, bbox_inches="tight")
     #plt.show()
     plt.close()
     del fig
@@ -186,7 +183,7 @@ def figures2d_TE_alpha(dataset, selector, title, xlabel, ylabel, filename, suffi
 
     plt.legend(loc=0, ncol=2)
 
-    plt.savefig(filename + "." + suffix, dpi=dpi)
+    plt.savefig(filename + "." + suffix, dpi=dpi, bbox_inches="tight")
     plt.close()
     del fig
 
@@ -245,7 +242,7 @@ def figures2d_TE_alpha_errorbar(dataset, selector, error_selector, title, xlabel
 
     plt.legend(loc=0, ncol=2)
 
-    plt.savefig(filename + "." + suffix, dpi=dpi)
+    plt.savefig(filename + "." + suffix, dpi=dpi, bbox_inches="tight")
     plt.close()
     del fig
 
@@ -261,7 +258,7 @@ def figures2d_TE(dataset, selector, title, xlabel, ylabel, filename, suffix, cma
     markers = ['b', '^']
 
     ax.set_title(title)
-    ax.set_xlabel(xlabel) # r"$\varepsilon$"
+    ax.set_xlabel(xlabel)
     ax.set_ylabel(ylabel)
 
     alphas = dataset['alpha'].unique()
@@ -286,7 +283,7 @@ def figures2d_TE(dataset, selector, title, xlabel, ylabel, filename, suffix, cma
 
     plt.legend(loc=0, ncol=3)
 
-    plt.savefig(filename + "." + suffix, dpi=dpi)
+    plt.savefig(filename + "." + suffix, dpi=dpi, bbox_inches="tight")
     plt.close()
     del fig
 
@@ -338,7 +335,7 @@ def figures2d_TE_errorbar(dataset, selector, error_selector, title, xlabel, ylab
     # fig.colorbar(surf, shrink=0.5, aspect=5)
     plt.legend(loc=0, ncol=3)
 
-    plt.savefig(filename + "." + suffix, dpi=dpi)
+    plt.savefig(filename + "." + suffix, dpi=dpi, bbox_inches="tight")
     plt.close()
     del fig
 
@@ -391,7 +388,7 @@ def figures2d_samples_TE(dataset, selector, title, ylabel, filename, suffix, vie
         # fig.colorbar(surf, shrink=0.5, aspect=5)
         plt.legend(loc=4)
 
-        plt.savefig(filename.format(sample) + "." + suffix, dpi=dpi)
+        plt.savefig(filename.format(sample) + "." + suffix, dpi=dpi, bbox_inches="tight")
         # plt.draw()
         # plt.show()
         plt.close()
