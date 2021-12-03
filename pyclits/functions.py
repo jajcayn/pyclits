@@ -1,161 +1,99 @@
 """
-created on Sep 22, 2017
+Various helper functions.
 
-@author: Nikola Jajcay, jajcay(at)cs.cas.cz
+(c) Nikola Jajcay
 """
 
 import numpy as np
+from scipy import linalg, stats
+from sklearn.neighbors import KernelDensity
 
 
 def cross_correlation(a, b, max_lag):
     """
-    Cross correlation with lag.
-    When computing cross-correlation, the first parameter, a, is
-    in 'future' with positive lag and in 'past' with negative lag.
+    Compute cross-correlation with lag. The first argument is with positive lag,
+    the second with negative.
+
+    :param a: first 1D argument to correlate
+    :type a: np.ndarray
+    :param b: second 1D argument to correlate
+    :type b: np.ndarray
+    :param max_lag: maximum lag to consider
+    :type max_lag: int
+    :return: lagged cross-correlation between two vectors
+    """
+    assert a.ndim == 1
+    assert b.ndim == 1
+    a = (a - np.mean(a)) / (np.std(a, ddof=1) * (len(a) - 1))
+    b = (b - np.mean(b)) / np.std(b, ddof=1)
+    cor = np.correlate(a, b, "full")
+
+    return cor[len(cor) // 2 - max_lag : len(cor) // 2 + max_lag + 1]
+
+
+def kdensity_estimate(a, kernel="gaussian", bandwidth=1.0, n_points=100):
+    """
+    Perform kernel density estimation.
+
+    :param a: 1D time series to estimate its kernel density
+    :type a: np.ndarray
+    :param kernel: kernel to use, use on of the: 'gaussian', 'tophat',
+        'epanechnikov', 'exponential', 'linear', 'cosine'
+    :type kernel: str
+    :param bandwidth: bandwith for the estimation
+    :type bandwidth: float
+    :param n_points: how many points on the x-axis
+    :type n_points: int
+    :return: x values and estimated kernel density
+    :rtype: np.ndarray, np.ndarray
     """
 
-    a = (a - np.mean(a)) / (np.std(a, ddof = 1) * (len(a) - 1))
-    b = (b - np.mean(b)) / np.std(b, ddof = 1)
-    cor = np.correlate(a, b, 'full')
-
-    return cor[len(cor)//2 - max_lag : len(cor)//2 + max_lag+1]
-
-
-
-def kdensity_estimate(a, kernel = 'gaussian', bandwidth = 1.0):
-    """
-    Estimates kernel density. Uses sklearn.
-    kernels: 'gaussian', 'tophat', 'epanechnikov', 'exponential', 'linear', 'cosine'
-    """
-
-    from sklearn.neighbors import KernelDensity
-    a = a[:, None]
-    x = np.linspace(a.min(), a.max(), 100)[:, None]
-    kde = KernelDensity(kernel = kernel, bandwidth = bandwidth).fit(a)
+    a = a[:, np.newaxis]
+    x = np.linspace(a.min(), a.max(), n_points)[:, np.newaxis]
+    kde = KernelDensity(kernel=kernel, bandwidth=bandwidth).fit(a)
     logkde = kde.score_samples(x)
 
     return np.squeeze(x), np.exp(logkde)
 
 
-
-def detrend_with_return(arr, axis = 0):
-    """
-    Removes the linear trend along the axis, ignoring Nans.
-    """
-    a = arr.copy()
-    rnk = len(a.shape)
-    # determine axis
-    if axis < 0:
-        axis += rnk # axis -1 means along last dimension
-    
-    # reshape that axis is 1. dimension and other dimensions are enrolled into 2. dimensions
-    newdims = np.r_[axis, 0:axis, axis + 1:rnk]
-    newdata = np.reshape(np.transpose(a, tuple(newdims)), (a.shape[axis], np.prod(a.shape, axis = 0) // a.shape[axis]))
-    newdata = newdata.copy()
-    
-    # compute linear fit as least squared residuals
-    x = np.arange(0, a.shape[axis], 1)
-    A = np.vstack([x, np.ones(len(x))]).T
-    m, c = np.linalg.lstsq(A, newdata)[0]
-    
-    # remove the trend from the data along 1. axis
-    for i in range(a.shape[axis]):
-        newdata[i, ...] = newdata[i, ...] - (m*x[i] + c)
-    
-    # reshape back to original shape
-    tdshape = np.take(a.shape, newdims, 0)
-    ret = np.reshape(newdata, tuple(tdshape))
-    vals = list(range(1,rnk))
-    olddims = vals[:axis] + [0] + vals[axis:]
-    ret = np.transpose(ret, tuple(olddims))
-    
-    # return detrended data and linear coefficient
-    
-    return ret, m, c
-
-
 def partial_corr(a):
     """
-    Computes partial correlation of array a.
-    Array as dim x time; partial correlation is between first two dimensions, conditioned on others.
-    """
+    Computes partial correlation of the array `a`. Partial correlation is
+    between the first two dimensions, conditioned on others.
 
-    from scipy import linalg, stats
+    :param a: input array, (dim x time)
+    :type a: np.ndarray
+    :return: partial correlation between a[0, :] and a[1, :], conditioned on
+        a[2:, :], and its p-value
+    :rtype: float, float
+    """
     array = a.copy()
     D, T = array.shape
-    if np.isnan(array).sum() != 0:
-        raise ValueError("nans in the array!")
-    # Standardize
+    if np.isnan(array).any():
+        raise ValueError("NaNs in the array!")
+    # standardise
     array -= array.mean(axis=1).reshape(D, 1)
     array /= array.std(axis=1).reshape(D, 1)
-    if np.isnan(array).sum() != 0:
-        raise ValueError("nans after standardizing, "
-                         "possibly constant array!")
+    if np.isnan(array).any():
+        raise ValueError("NaNs after standardising")
     x = array[0, :]
     y = array[1, :]
     if len(array) > 2:
         confounds = array[2:, :]
         ortho_confounds = linalg.qr(
-            np.fastCopyAndTranspose(confounds), mode='economic')[0].T
+            np.fastCopyAndTranspose(confounds), mode="economic"
+        )[0].T
         x -= np.dot(np.dot(ortho_confounds, x), ortho_confounds)
         y -= np.dot(np.dot(ortho_confounds, y), ortho_confounds)
 
-    val, pvalwrong = stats.pearsonr(x, y)
+    val, _ = stats.pearsonr(x, y)
     df = float(T - D)
     if df < 1:
         pval = np.nan
         raise ValueError("D > T: Not enough degrees of freedom!")
     else:
         # Two-sided p-value accouting for degrees of freedom
-        trafo_val = val*np.sqrt(df/(1. - np.array([val])**2))
-        pval = stats.t.sf(np.abs(trafo_val), df)*2
+        trafo_val = val * np.sqrt(df / (1.0 - np.array([val]) ** 2))
+        pval = stats.t.sf(np.abs(trafo_val), df) * 2
 
-    return val, pval
-
-
-def get_haar_flucs(ts, min_dt = 2, run_backwards = True, spacings = [2, 4, 8, 16], rms = True):
-    """
-    Computes Haar fluctuations of the data -- scaling.
-    if run_backwards is True, the function runs twice, the second time with reversed time seres,
-      this is used for better statistics
-    spacings either None for linear even sampling [takes too long]
-        or sequence as e.g. [2, 4, 8, 16] where first 1/n time series will be spaced with 2 steps,
-        next 1/n with 4 steps and so on..
-    rms boolean whether to run RMS Haar or absolute Haar
-    """
-    min_dt = min_dt
-    max_dt = ts.shape[0]
-    if spacings is None:
-        dts = np.arange(min_dt, max_dt, 2) # only even as we are dividing the interval into two
-    else:
-        dts = np.concatenate([np.arange(i*int(np.ceil(max_dt//len(spacings) / 2) * 2), (i+1)*int(np.ceil(max_dt//len(spacings) / 2) * 2), sp) for sp, i in zip(spacings, range(len(spacings)))])
-        dts = dts[1:] # dts starts with index 0, we need to start with 2
-    runs = 2 if run_backwards else 1
-    haar = np.zeros((dts.shape[0], runs), dtype = np.float32)
-    for run in range(runs):
-        if run == 1:
-            ts = ts[::-1]
-        for i in range(dts.shape[0]):
-            # split index every dt
-            split_ndx = list(np.arange(dts[i], max_dt, dts[i]))
-            # split array, result is array with shape [x,dt]
-            if ts.shape[0] % dts[i] == 0:
-                splitted = np.array(np.split(ts, split_ndx))
-            else:
-                # if last window is shorter, just omit it
-                splitted = np.array(np.split(ts, split_ndx)[:-1])
-            # split into two equal parts for averaging -- dt/2, shape is [x, dt/2, 2]
-            splitted = splitted.reshape((splitted.shape[0], dts[i]//2, 2), order = "F")
-            # average parts over second axis [the dt/2 one]
-            means = np.mean(splitted, axis = 1)
-            # compute Haar squared with C = 2
-            haars = (2*means[:, 1] - 2*means[:, 0])
-            if rms:
-                haars = haars**2
-            else:
-                haars = np.abs(haars)
-            haar[i, run] = np.mean(haars)
-    if rms:
-        return dts, np.mean(np.sqrt(haar), axis = 1)
-    else:
-        return dts, np.mean(haar, axis = 1)
+    return val, float(pval)
