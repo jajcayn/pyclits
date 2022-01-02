@@ -88,7 +88,7 @@ if __name__ == "__main__":
                     name_of_title = "Balance of" + name_of_title.split("balance")[1]
                 pure_title = name_of_title.capitalize().replace("_", " ")
                 latex_title = latex_title_size + f"""{{{pure_title}}}"""
-                latex_title_std = latex_title_size +  f"""{{Standard deviation of {pure_title.lower()} }}"""
+                latex_title_std = latex_title_size + f"""{{Standard deviation of {pure_title.lower()} }}"""
 
                 title_graph = {"transfer_entropy": r"$\Huge\rm{Transfer\ entropy}$",
                                "conditional_information_transfer": r"$\Huge\rm{Conditional\ information\ transfer}$", }

@@ -1,3 +1,6 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+
 import glob
 import sys
 import numpy as np
@@ -45,7 +48,6 @@ def figures3d_TE(dataset, selector, title, xlabel, ylabel, zlabel, filename, suf
 
 def figures3d_surface_TE(dataset, selector, title, xlabel, ylabel, zlabel, filename, suffix, cmap="magma", view=(50, -20), dpi=300):
     fig = plt.figure(figsize=(13, 8))
-    #ax = Axes3D(fig)
     ax = fig.add_subplot(1, 1, 1, projection='3d')
 
     colors = ["r", "g", "b", "c", "m", "y", "k", "orange", "pink"]
@@ -340,14 +342,10 @@ def figures2d_TE_errorbar(dataset, selector, error_selector, title, xlabel, ylab
     del fig
 
 
-def figures2d_samples_TE(dataset, selector, title, ylabel, filename, suffix, view=(70, 120), cmap="rainbow", dpi=300):
+def figures2d_samples_TE(dataset, selector, title, ylabel, filename, suffix, cmap="rainbow", dpi=300):
     matplotlib.style.use("seaborn")
 
     color_map = matplotlib.cm.get_cmap(cmap)
-
-    # ax.set_yticks([1, 2, 3, 4, 5], ["10", "100", "1000", "10000", "100000"])
-    # plt.yticks((1.0, 2.0, 3.0, 4.0, 5.0), ("10", "100", "1000", "10000", "100000"))
-
     alphas = dataset['alpha'].unique()
     epsilons = dataset['epsilon'].unique()
     subselection = dataset.loc[dataset["alpha"] == alphas[0]]
@@ -392,6 +390,84 @@ def figures2d_samples_TE(dataset, selector, title, ylabel, filename, suffix, vie
         # plt.draw()
         # plt.show()
         plt.close()
+
+
+def escort_distribution(datasets, columns, title, xlabel, ylabel, filename, suffix, cmap="rainbow", dpi=300):
+    matplotlib.style.use("seaborn")
+
+    color_map = matplotlib.cm.get_cmap(cmap)
+
+    fig = plt.figure(figsize=(13, 8))
+    markers = ['b', '^']
+    fig.suptitle(title)
+
+    for index_dataset, dataset in enumerate(datasets):
+        ax = fig.add_subplot(1, len(datasets), index_dataset+1)
+        if index_dataset == 0:
+            ax.set_ylabel(ylabel)
+        ax.set_xlabel(xlabel)
+
+        for index_column, column in enumerate(columns):
+            subselection_x = dataset[["x"]]
+            subselection_y = dataset[[str(column)]]
+
+            try:
+                color = color_map(index_column/(len(columns)-1))
+                ax.set_yscale("log")
+                if index_dataset == 1:
+                    ax.set_xlim(-0.45, 0.2)
+                    ax.set_ylim(0.0000000000001, 0.08)
+                else:
+                    ax.set_xlim(-15, 15)
+                    ax.set_ylim(0.00000001, 2)
+                ax.plot(subselection_x.values, subselection_y.values, color=color, linewidth=2, label=r'$\alpha={}$'.format(round(column, 3)))
+            except Exception as exc:
+                print(f"{exc}: Problem D=")
+        if index_dataset == 0:
+            ax.legend(loc=1)
+
+    plt.savefig(filename + "." + suffix, dpi=dpi, bbox_inches="tight")
+    plt.close()
+
+
+def granger_function_plot(dataset, title, xlabel, ylabel, zlabel, filename, suffix, cmap="rainbow", view=(50, -20), dpi=300):
+    fig = plt.figure(figsize=(13, 8))
+    ax = fig.add_subplot(1, 1, 1, projection='3d')
+
+    ax.set_title(title)
+    ax.set_xlabel(xlabel)
+    ax.set_ylabel(ylabel)
+    ax.set_zlabel(zlabel)
+    #ax.set_zscale("log")
+
+    row_size = len(dataset['k'].unique())
+    xs = dataset['alpha']
+    ys = dataset['k']
+    zs = dataset['granger']
+    Xs = np.reshape(xs.values, (row_size, -1))
+    Ys = np.reshape(ys.values, (row_size, -1))
+    Zs = np.reshape(zs.values, (row_size, -1))
+
+    try:
+        surf = ax.plot_surface(
+            Xs,
+            Ys,
+            Zs,
+            rstride=1,
+            cstride=1,
+            cmap=cmap,
+            linewidth=0,
+            antialiased=False)
+        fig.colorbar(surf, shrink=0.5, aspect=10)
+    except Exception as exc:
+        print(f"{exc}: Problem D=")
+
+    #plt.legend(loc=1)
+    ax.view_init(view[0], view[1])
+
+    plt.savefig(filename + "." + suffix, dpi=dpi, bbox_inches="tight")
+    plt.close()
+    del fig
 
 
 def process_datasets(processed_datasets, result_dataset, result_raw_dataset, new_columns_base_name="transfer_entropy", take_k_th_nearest_neighbor=5, converter_epsilon=lambda x: float(x)):
