@@ -6,6 +6,9 @@ def readme():
         return f.read()
 
 
+with open("requirements.txt") as f:
+    requirements = f.read().splitlines()
+
 setup(
     name="pyclits",
     version="0.2",
@@ -24,14 +27,7 @@ setup(
     author_email="jajcay@cs.cas.cz",
     license="MIT",
     packages=["pyclits"],
-    install_requires=[
-        "numpy",
-        "scipy",
-        "scikit-learn",
-        "matplotlib",
-        "netCDF4",
-        "pathos",
-    ],
+    install_requires=requirements,
     include_package_data=True,
     zip_safe=False,
 )

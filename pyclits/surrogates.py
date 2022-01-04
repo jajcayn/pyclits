@@ -5,6 +5,7 @@ import logging
 from copy import deepcopy
 
 import numpy as np
+import pandas as pd
 import pywt
 import xarray as xr
 from statsmodels.stats.multitest import multipletests, multitest_methods_names
@@ -460,8 +461,30 @@ class SurrogateField(DataField):
         :param inplace: whether to make operation in-place or return
         :type inplace: bool
         """
+        inferred_freq = pd.infer_freq(self.time)
+        if inferred_freq in ["M", "SM", "BM", "MS", "SMS", "BMS"]:
+            # monthly data
+            groupby = self.data.time.dt.month
+        elif inferred_freq in ["C", "B", "D"]:
+            # daily data
+            groupby = self.data.time.dt.dayofyear
+        else:
+            raise ValueError(
+                "Anomalise supported only for daily or monthly data"
+            )
+        if isinstance(var, xr.DataArray):
+            added = self.data.groupby(groupby) * var
+        else:
+            added = self.data * var
+        if isinstance(mean, xr.DataArray):
+            added = added.groupby(groupby) + mean
+        else:
+            added = added + mean
+        if isinstance(trend, xr.DataArray):
+            added = added.groupby(groupby) + trend
+        else:
+            added = added + trend
 
-        added = ((self.data * var) + mean) + trend
         add_steps = ["add seasonality"]
         if inplace:
             self.data = added
