@@ -891,7 +891,7 @@ class DataField:
         """
         i, s0, wavelet, k0, data = args
         wave, _, _, _ = continous_wavelet(
-            data, dt=1.0, pad=True, wavelet=wavelet, dj=0, s0=s0, j1=0, k0=k0
+            data, dt=1.0, pad=True, wavelet=wavelet, s0=s0, j1=0, k0=k0
         )
         return i, wave
 
