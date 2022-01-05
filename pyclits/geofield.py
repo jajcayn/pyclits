@@ -189,6 +189,12 @@ class DataField:
         )
         return shifted
 
+    def __str__(self):
+        return self.data.__str__()
+
+    def __repr__(self):
+        return self.data.__repr__()
+
     @property
     def time(self):
         return self.data.time.values
