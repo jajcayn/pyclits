@@ -32,7 +32,7 @@ def granger_function(alpha, k, l):
 
 if __name__ == "__main__":
     data = []
-    for k in numpy.arange(1, 11, 0.1):
+    for k in numpy.arange(1, 11, 0.01):
         number_of_added_rows = 0
         n = 500. + 1
         limit_alpha = 0.989
@@ -56,8 +56,8 @@ if __name__ == "__main__":
     processing_datasets.granger_function_plot(
         df,
         "",
-        """\\huge $\\alpha$""",
-        """\\huge $k$""",
-        """\\huge $I_\\alpha (Z_\\alpha^{1,1} : Z_\\alpha^{1,l} \\vert Z_\\alpha^{1,k})$""",
-        "granger", "png", view=(20, 120)
+        """\\LARGE $\\alpha$""",
+        """""", #"""\\Large $k$""",
+        """""", #"""\\LARGE $I_\\alpha (Z_\\alpha^{1,1} : Z_\\alpha^{1,l} \\vert Z_\\alpha^{1,k})$""",
+        "granger", "png", view=(20, 100)
     )

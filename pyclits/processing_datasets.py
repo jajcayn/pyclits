@@ -438,6 +438,8 @@ def granger_function_plot(dataset, title, xlabel, ylabel, zlabel, filename, suff
     ax.set_xlabel(xlabel)
     ax.set_ylabel(ylabel)
     ax.set_zlabel(zlabel)
+    ax.set_zlim(-5, 0)
+    ax.set_ylim(1, 10)
     #ax.set_zscale("log")
 
     row_size = len(dataset['k'].unique())
