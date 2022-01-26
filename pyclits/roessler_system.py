@@ -297,11 +297,20 @@ if __name__ == "__main__":
                          (1, 2): {"xlabel": r"$y_2$", "ylabel": r"$y_3$", "xdata_index": 4, "ydata_index": 5},
                          (2, 2): {"xlabel": r"$y_3$", "ylabel": r"$y_1$", "xdata_index": 5, "ydata_index": 3},
                          }
-        for epsilon in np.arange(0.0, 0.25, 0.005):
+        for epsilon in np.arange(0.5, 0.51, 0.005): # np.arange(0.0, 0.241, 0.005)
             print(f"Calculation of epsilon {epsilon}")
             configuration_of_integration = {"method": "LSODA", "tInc": 0.01, "tStop": 10000, "cache": True, "epsilon": epsilon, "cache": True}
             sol = roessler_oscillator(**configuration_of_integration)
             roessler_3d_plot(sol.y, configuration, fr"\Large Evolution of Rössler oscilator $\varepsilon= {epsilon}$", f"roessler-{epsilon}", "png")
+
+            fragments = 10
+            fragment_size = float(configuration_of_integration["tStop"]) / fragments
+            for fragment in range(fragments):
+                startT = fragment_size * fragment
+                endT = fragment_size * (fragment + 1)
+                selection = np.vectorize(lambda x: startT <= x <= endT)(sol.t)
+                solution = sol.y[:, selection]
+                roessler_3d_plot(solution, configuration, fr"\Large Evolution of Rössler oscilator $\varepsilon= {epsilon}$", f"roessler-{epsilon}_{fragment}", "png")
 
         print(sol)
         # print(sol.y)
