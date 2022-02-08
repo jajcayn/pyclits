@@ -40,7 +40,7 @@ jobs:
           python -m pip install --upgrade pip
           pip install cython flake8 codecov pytest-cov wheel setuptools
           pip install shapely --no-binary shapely
-          pip install "cartopy<=0.20.1" --no-binary "cartopy<=0.20.1"
+          pip install "cartopy<0.20" --no-binary "cartopy<0.20"
           if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
           pip install .
       - name: Lint with flake8
