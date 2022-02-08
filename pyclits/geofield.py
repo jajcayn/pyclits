@@ -14,6 +14,7 @@ import xarray as xr
 from pathos.multiprocessing import Pool
 from scipy.signal import detrend
 from sklearn.decomposition import PCA
+from sklearn.linear_model import LinearRegression
 
 from .wavelet_analysis import MorletWavelet, continous_wavelet
 
@@ -578,7 +579,13 @@ class DataField:
             if np.any(np.isnan(x)):
                 return x
             else:
-                return detrend(x, axis=0, type="linear")
+                dummy_time = np.arange(x.shape[0])
+                # fit regression with the intercept
+                regression = LinearRegression(fit_intercept=True).fit(
+                    dummy_time[:, np.newaxis], x[:, np.newaxis]
+                )
+                # return original time series minus trend (slope)
+                return x - (float(regression.coef_) * dummy_time)
 
         add_steps = []
         if detrend_data:
@@ -587,6 +594,7 @@ class DataField:
                 self.data,
                 input_core_dims=[["time"]],
                 output_core_dims=[["time"]],
+                vectorize=True,
             ).transpose(*(["time"] + self.dims_not_time))
             trend = self.data - detrended
             add_steps += ["detrended"]
