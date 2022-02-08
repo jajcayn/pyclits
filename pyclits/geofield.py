@@ -608,7 +608,7 @@ class DataField:
             detrended = self.data
             trend = 0.0
 
-        base_data = self.data.sel(time=slice(base_period[0], base_period[1]))
+        base_data = detrended.sel(time=slice(base_period[0], base_period[1]))
         # compute climatologies
         climatology_mean = base_data.groupby(groupby).mean("time")
         if standardise:
