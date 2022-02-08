@@ -573,21 +573,7 @@ class DataField:
         :return: seasonal mean, seasonal std, trend
         :rtype: xr.DataArray, xr.DataArray, xr.DataArray
         """
-        inferred_freq = pd.infer_freq(self.time)
-        if base_period is None:
-            base_period = [None, None]
-
-        if inferred_freq in ["M", "SM", "BM", "MS", "SMS", "BMS"]:
-            # monthly data
-            groupby = base_data.time.dt.month
-        elif inferred_freq in ["C", "B", "D"]:
-            # daily data
-            groupby = base_data.time.dt.dayofyear
-        else:
-            raise ValueError(
-                "Anomalise supported only for daily or monthly data"
-            )
-
+        # optional detrend
         def _detrend(x):
             if np.any(np.isnan(x)):
                 return x
@@ -608,7 +594,23 @@ class DataField:
             detrended = self.data
             trend = 0.0
 
+        inferred_freq = pd.infer_freq(self.time)
+        if base_period is None:
+            base_period = [None, None]
+
         base_data = detrended.sel(time=slice(base_period[0], base_period[1]))
+
+        if inferred_freq in ["M", "SM", "BM", "MS", "SMS", "BMS"]:
+            # monthly data
+            groupby = base_data.time.dt.month
+        elif inferred_freq in ["C", "B", "D"]:
+            # daily data
+            groupby = base_data.time.dt.dayofyear
+        else:
+            raise ValueError(
+                "Anomalise supported only for daily or monthly data"
+            )
+
         # compute climatologies
         climatology_mean = base_data.groupby(groupby).mean("time")
         if standardise:
