@@ -577,8 +577,6 @@ class DataField:
         if base_period is None:
             base_period = [None, None]
 
-        base_data = self.data.sel(time=slice(base_period[0], base_period[1]))
-
         if inferred_freq in ["M", "SM", "BM", "MS", "SMS", "BMS"]:
             # monthly data
             groupby = base_data.time.dt.month
@@ -610,6 +608,7 @@ class DataField:
             detrended = self.data
             trend = 0.0
 
+        base_data = self.data.sel(time=slice(base_period[0], base_period[1]))
         # compute climatologies
         climatology_mean = base_data.groupby(groupby).mean("time")
         if standardise:
