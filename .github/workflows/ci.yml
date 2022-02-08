@@ -31,16 +31,19 @@ jobs:
         run: |
           sudo apt-get install -y libgeos++-dev libgeos-3.8.0 libgeos-c1v5 libgeos-dev libgeos-doc
           sudo apt-get install -y proj-bin libproj-dev
+          python -m pip install --upgrade pip
+          pip install shapely --no-binary shapely
+          pip install "cartopy==0.19.0.post1" --no-binary "cartopy==0.19.0.post1"
       - name: Install macOS dependencies
         if: ${{ matrix.os  == 'macos-latest'}}
         run: |
           brew install geos proj
-      - name: Install dependencies
-        run: |
           python -m pip install --upgrade pip
-          pip install cython flake8 codecov pytest-cov wheel setuptools
           pip install shapely --no-binary shapely
           pip install cartopy --no-binary cartopy
+      - name: Install dependencies
+        run: |
+          pip install cython flake8 codecov pytest-cov wheel setuptools
           if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
           pip install .
       - name: Lint with flake8
