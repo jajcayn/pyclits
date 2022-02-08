@@ -196,6 +196,10 @@ class DataField:
         return self.data.__repr__()
 
     @property
+    def values(self):
+        return self.data.values.squeeze()
+
+    @property
     def time(self):
         return self.data.time.values
 
@@ -586,13 +590,6 @@ class DataField:
                 "Anomalise supported only for daily or monthly data"
             )
 
-        # compute climatologies
-        climatology_mean = base_data.groupby(groupby).mean("time")
-        if standardise:
-            climatology_std = base_data.groupby(groupby).std("time")
-        else:
-            climatology_std = 1.0
-
         def _detrend(x):
             if np.any(np.isnan(x)):
                 return x
@@ -612,6 +609,13 @@ class DataField:
         else:
             detrended = self.data
             trend = 0.0
+
+        # compute climatologies
+        climatology_mean = base_data.groupby(groupby).mean("time")
+        if standardise:
+            climatology_std = base_data.groupby(groupby).std("time")
+        else:
+            climatology_std = 1.0
 
         stand_anomalies = xr.apply_ufunc(
             lambda x, mean, std: (x - mean) / std,
