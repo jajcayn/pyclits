@@ -469,6 +469,38 @@ def granger_function_plot(dataset, title, xlabel, ylabel, zlabel, filename, suff
 
     plt.savefig(filename + "." + suffix, dpi=dpi, bbox_inches="tight")
     plt.close()
+
+    del fig
+
+
+def lyapunov_exponent_plot(dataset, title, xlabel, ylabels, labels, filename, suffix, cmap="rainbow", dpi=300):
+    matplotlib.style.use("seaborn")
+
+    color_map = matplotlib.cm.get_cmap(cmap)
+    fig = plt.figure(figsize=(13, 8))
+
+    x = dataset[[0]].values.flatten().tolist()
+    ys = [dataset[[i]].values.flatten().tolist() for i in [1, 5, 4]]
+    y0 = [0.0] * len(x)
+    ys.insert(1, y0)
+    #fig.set_title(title)
+    ax = fig.add_subplot(1, 1, 1)
+
+    ax.set_title(title)
+    ax.set_xlabel(xlabel)
+    ax.set_ylabel(ylabels)
+    ax.set_xlim(0, 0.25)
+    ax.set_ylim(-0.13, 0.135)
+
+    for index, y in enumerate(ys):
+        color = color_map(index / (len(ys) - 1))
+        ax.plot(x, y, linewidth=3, color=color, label=labels[index])
+
+    #plt.legend(loc=3)
+    ax.set_xticklabels([0.0, 0.05, 0.1, 0.15, 0.2, 0.25], fontsize=16)
+    ax.set_yticklabels([-0.1, -0.05, 0, 0.05, 0.15, 0.2], fontsize=16)
+    plt.savefig(filename + "." + suffix, dpi=dpi, bbox_inches="tight")
+    plt.close()
     del fig
 
 
@@ -529,7 +561,7 @@ def process_datasets(processed_datasets, result_dataset, result_raw_dataset, new
                             - np.array(row[item[0], item[1], item[2], not item[3], item[4]][take_k_th_nearest_neighbor:])
                         )),
                     axis=1,
-                    raw=True)
+                    raw=False)
                 frame[std_column_name, "std", "", False, item[4]] = frame.apply(
                     lambda row: float(
                         np.std(
@@ -537,7 +569,7 @@ def process_datasets(processed_datasets, result_dataset, result_raw_dataset, new
                             - np.array(row[item[0], item[1], item[2], not item[3], item[4]][take_k_th_nearest_neighbor:])
                         )),
                     axis=1,
-                    raw=True)
+                    raw=False)
                 #lambda row: float(
                 #        np.std(row[item][take_k_th_nearest_neighbor:])
                 #        + np.std(row[item[0], item[1], item[2], not item[3], item[4]][take_k_th_nearest_neighbor:]))
@@ -549,7 +581,7 @@ def process_datasets(processed_datasets, result_dataset, result_raw_dataset, new
                             - np.array(row[item[0], item[1], item[2], item[3], not item[4]][take_k_th_nearest_neighbor:])
                         )),
                     axis=1,
-                    raw=True)
+                    raw=False)
                 frame[std_column_name, "std", "", False, item[4]] = frame.apply(
                     lambda row: float(
                         np.std(
@@ -557,7 +589,7 @@ def process_datasets(processed_datasets, result_dataset, result_raw_dataset, new
                             - np.array(row[item[0], item[1], item[2], item[3], not item[4]][take_k_th_nearest_neighbor:])
                         )),
                     axis=1,
-                    raw=True)
+                    raw=False)
 
         # balance of entropy
         balance_names = [item for item in frame.columns.tolist() if not bool(item[4]) and "information" not in str(item[0]) and "epsilon" not in str(item[0])]
@@ -572,7 +604,7 @@ def process_datasets(processed_datasets, result_dataset, result_raw_dataset, new
                         - np.array(row[item[0], item[1], item[2], item[3], not item[4]][take_k_th_nearest_neighbor:])
                     )),
                 axis=1,
-                raw=True)
+                raw=False)
             frame[std_column_name, "std", "", item[3], False] = frame.apply(
                 lambda row: float(
                     np.std(
@@ -580,7 +612,7 @@ def process_datasets(processed_datasets, result_dataset, result_raw_dataset, new
                         - np.array(row[item[0], item[1], item[2], item[3], not item[4]][take_k_th_nearest_neighbor:])
                     )),
                 axis=1,
-                raw=True)
+                raw=False)
 
         # balance of effective entropy
         balance_names = [item for item in frame.columns.tolist() if not bool(item[4]) and not bool(item[3]) and "information" not in str(item[0]) and "epsilon" not in str(item[0])]
@@ -597,7 +629,7 @@ def process_datasets(processed_datasets, result_dataset, result_raw_dataset, new
                         + np.array(row[item[0], item[1], item[2], not item[3], not item[4]][take_k_th_nearest_neighbor:])
                     )),
                 axis=1,
-                raw=True)
+                raw=False)
             frame[std_column_name, "std", "", item[3], False] = frame.apply(
                 lambda row: float(
                     np.std(
@@ -607,7 +639,7 @@ def process_datasets(processed_datasets, result_dataset, result_raw_dataset, new
                         + np.array(row[item[0], item[1], item[2], not item[3], not item[4]][take_k_th_nearest_neighbor:])
                     )),
                 axis=1,
-                raw=True)
+                raw=False)
 
         # dropping the index
         frame = frame.reset_index()

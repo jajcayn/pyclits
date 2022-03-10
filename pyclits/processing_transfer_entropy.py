@@ -37,11 +37,12 @@ if __name__ == "__main__":
     #"roessler_oscilator/conditional_information_transfer_X_3_Y_3",
     #"roessler_oscilator/conditional_information_transfer_X_3_Y_1",
     #"roessler_oscilator/conditional_information_transfer_X_1_Y_3",
+    #"roessler_oscilator/conditional_information_transfer_full_Dh=n",
+    #"conditional_information_transfer_GARCH_single",
+    #"roessler_oscilator/conditional_information_transfer_full_Dh=2",
 
     directories = [
-        "roessler_oscilator/conditional_information_transfer_full_Dh=2",
-        "roessler_oscilator/conditional_information_transfer_full_Dh=n",
-        "conditional_information_transfer_GARCH_single",
+        "roessler_oscilator/addition",
     ]
     #directory = "transfer_entropy"
 
@@ -127,6 +128,9 @@ if __name__ == "__main__":
                 plot_2D_filename_implot = directory + "/" + column_name + "_" + filename_direction[swapped_datasets] + ("_shuffled" if shuffled_calculation else "") + "_implot"
                 plot_2D_filename_implot_std = directory + "/" + column_name + "_" + filename_direction[swapped_datasets] + ("_shuffled" if shuffled_calculation else "") + "_implot_std"
                 std_filename = directory + "/" + column_name + "_" + filename_direction[swapped_datasets] + ("_shuffled" if shuffled_calculation else "") + "_2d_std"
+
+                #TE = TE[TE["alpha"] >= 0.8]
+                #TE = TE[TE["alpha"] <= 1.1]
 
                 figures2d_imshow(TE, item, latex_title, latex_epsilon_label, latex_alpha_label, plot_2D_filename_implot, suffix=output, cmap="rainbow", dpi=dpi)
                 figures2d_imshow(TE, tuple(complete_column_name_std), latex_title_std, latex_epsilon_label, latex_alpha_label, plot_2D_filename_implot_std, suffix=output, cmap="rainbow", dpi=dpi)
