@@ -40,9 +40,21 @@ if __name__ == "__main__":
     #"roessler_oscilator/conditional_information_transfer_full_Dh=n",
     #"conditional_information_transfer_GARCH_single",
     #"roessler_oscilator/conditional_information_transfer_full_Dh=2",
+    #"roessler_oscilator/conditional_information_transfer_X_3_Y_3"
 
     directories = [
-        "roessler_oscilator/addition",
+    "roessler_oscilator/addition2"
+    #"roessler_oscilator/conditional_information_transfer_Dh=1",
+    #"roessler_oscilator/conditional_information_transfer_Dh=2",
+    #"roessler_oscilator/conditional_information_transfer_Dh=n",
+    #"roessler_oscilator/conditional_information_transfer_full_Dh=1",
+    #"roessler_oscilator/conditional_information_transfer_full_Dh=2",
+    #"roessler_oscilator/conditional_information_transfer_full_Dh=n",
+    #"conditional_information_transfer_GARCH_single",
+    #"roessler_oscilator/conditional_information_transfer_X_2_Y_2",
+    #"roessler_oscilator/conditional_information_transfer_X_3_Y_3",
+    #"roessler_oscilator/conditional_information_transfer_X_3_Y_1",
+    #"roessler_oscilator/conditional_information_transfer_X_1_Y_3",
     ]
     #directory = "transfer_entropy"
 
@@ -129,6 +141,7 @@ if __name__ == "__main__":
                 plot_2D_filename_implot_std = directory + "/" + column_name + "_" + filename_direction[swapped_datasets] + ("_shuffled" if shuffled_calculation else "") + "_implot_std"
                 std_filename = directory + "/" + column_name + "_" + filename_direction[swapped_datasets] + ("_shuffled" if shuffled_calculation else "") + "_2d_std"
 
+                TE = TE[TE["epsilon"] >= 0.01]
                 #TE = TE[TE["alpha"] >= 0.8]
                 #TE = TE[TE["alpha"] <= 1.1]
 
