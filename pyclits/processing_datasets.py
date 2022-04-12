@@ -581,9 +581,9 @@ def process_datasets(processed_datasets, result_dataset, result_raw_dataset, new
 						)),
 					axis=1,
 					raw=False)
-				# lambda row: float(
-				#        np.std(row[item][take_k_th_nearest_neighbor:])
-				#        + np.std(row[item[0], item[1], item[2], not item[3], item[4]][take_k_th_nearest_neighbor:]))
+			# lambda row: float(
+			#        np.std(row[item][take_k_th_nearest_neighbor:])
+			#        + np.std(row[item[0], item[1], item[2], not item[3], item[4]][take_k_th_nearest_neighbor:]))
 			else:
 				frame[mean_column_name, "mean", "", False, item[4]] = frame.apply(
 					lambda row: float(
