@@ -11,7 +11,7 @@ from pathlib import Path
 import numpy as np
 
 from cli_helpers import process_CLI_arguments
-from data_plugin import load_static_dataset, prepare_dataset
+from Roessler_oscilator_data_plugin import load_static_dataset, prepare_dataset
 from transfer_entropy import renyi_transfer_entropy
 from sample_generator import preparation_dataset_for_transfer_entropy
 

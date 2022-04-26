@@ -308,7 +308,7 @@ def roessler_3d_multocolor_plot(
 if __name__ == "__main__":
     dataset = False
     if dataset:
-        from data_plugin import load_static_dataset
+        from Roessler_oscilator_data_plugin import load_static_dataset
 
         args = Namespace(dataset_range="0-100")
         datasets, epsilons = load_static_dataset(args)

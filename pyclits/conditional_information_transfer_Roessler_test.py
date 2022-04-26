@@ -11,19 +11,34 @@ from pathlib import Path
 import numpy as np
 
 from cli_helpers import process_CLI_arguments
-from GARCH_data_plugin import load_static_dataset, prepare_dataset
+from Roessler_oscilator_data_plugin import load_static_dataset, prepare_dataset
 from transfer_entropy import renyi_conditional_information_transfer
 from sample_generator import preparation_dataset_for_transfer_entropy
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
-        description="Calculates conditional information transfer for GARCH dataset."
+        description="Calculates conditional information transfer for coupled Rössler systems with strength of coupling epsilon."
     )
     parser.add_argument(
         "--directory",
         type=str,
         default="conditional_information_transfer",
         help="Folder to export results",
+    )
+    parser.add_argument(
+        "--epsilon", metavar="XXX", type=float, nargs="+", help="Epsilons"
+    )
+    parser.add_argument(
+        "--t_stop", metavar="XXX", type=float, default=10000.0, help="T stop"
+    )
+    parser.add_argument(
+        "--t_inc", metavar="XXX", type=float, default=0.01, help="T increment"
+    )
+    parser.add_argument(
+        "--no_cache",
+        action="store_true",
+        help="Skips cached results of the Rössler system",
+        default=False,
     )
     parser.add_argument(
         "--skip",
@@ -38,6 +53,18 @@ if __name__ == "__main__":
         type=int,
         default=0,
         help="Blockwise calculation of distances to prevent excessive memory usage",
+    )
+    parser.add_argument(
+        "--skip_real_t",
+        action="store_true",
+        help="Indicates skip in time",
+        default=False,
+    )
+    parser.add_argument(
+        "--full_system",
+        action="store_true",
+        help="Switches full 6D system and 2D system",
+        default=False,
     )
     parser.add_argument(
         "--history_first",
@@ -61,6 +88,13 @@ if __name__ == "__main__":
         help="History to take into account",
     )
     parser.add_argument(
+        "--method",
+        metavar="XXX",
+        type=str,
+        default="LSODA",
+        help="Method of integration",
+    )
+    parser.add_argument(
         "--maximal_neighborhood",
         metavar="XXX",
         type=int,
@@ -80,10 +114,32 @@ if __name__ == "__main__":
         help="Sets number saved in arbitrary precision arithmetic",
     )
     parser.add_argument(
-        "--dataset", action="store_true", help="Use dataset", default=False
+        "--interpolate",
+        action="store_true",
+        help="Switch on intepolation",
+        default=False,
+    )
+    parser.add_argument(
+        "--interpolate_samples_per_unit_time",
+        metavar="XXX",
+        type=int,
+        default=10,
+        help="Number of samples generated per unit time",
+    )
+    parser.add_argument(
+        "--dataset",
+        action="store_true",
+        help="Use dataset provided by dr. Paluš",
+        default=False,
     )
     parser.add_argument(
         "--dataset_range", metavar="XXX-YYY", type=str, help="Dataset with range"
+    )
+    parser.add_argument(
+        "--dimension_x", metavar="X", type=int, default=0, help="Dimension of system X"
+    )
+    parser.add_argument(
+        "--dimension_y", metavar="Y", type=int, default=0, help="Dimension of system Y"
     )
     parser.add_argument(
         "--alpha_params",
@@ -92,9 +148,26 @@ if __name__ == "__main__":
         nargs="+",
         help="Calculation for alphas, min, max, number between",
     )
-
     args = parser.parse_args()
-    # print(args.epsilon, flush=True)
+
+    if args.epsilon:
+        epsilons = args.epsilon
+    else:
+        epsilons = [
+            0.01,
+            0.02,
+            0.03,
+            0.04,
+            0.05,
+            0.06,
+            0.07,
+            0.08,
+            0.09,
+            0.1,
+            0.11,
+            0.12,
+            0.13,
+        ]
 
     if args.history_first:
         histories_firsts = process_CLI_arguments(args.history_first)
@@ -130,9 +203,6 @@ if __name__ == "__main__":
     )
     print(f"PID:{os.getpid()} {datetime.datetime.now().isoformat()} Alphas: {alphas}")
 
-    # create alphas that are been calculated
-    alphas = np.round(np.linspace(0.1, 1.9, 37, endpoint=True), 3)
-
     arbitrary_precision = args.arbitrary_precision
     arbitrary_precision_decimal_numbers = args.arbitrary_precision_decimal_numbers
 
@@ -156,6 +226,9 @@ if __name__ == "__main__":
             # loop over shuffling
             for shuffle_dataset in [True, False]:
                 configuration_of_integration = {
+                    "method": args.method,
+                    "tInc": args.t_inc,
+                    "tStop": args.t_stop,
                     "cache": True,
                     "epsilon": epsilon,
                     "arbitrary_precision": arbitrary_precision,

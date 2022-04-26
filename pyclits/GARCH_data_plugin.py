@@ -7,7 +7,7 @@ from pathlib import Path
 
 import numpy as np
 import scipy.interpolate
-import data_plugin
+import Roessler_oscilator_data_plugin
 
 from sample_generator import shuffle_sample
 
