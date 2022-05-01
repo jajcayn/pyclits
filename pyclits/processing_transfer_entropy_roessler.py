@@ -50,7 +50,9 @@ if __name__ == "__main__":
         # "roessler_oscilator/addition2"
         # "roessler_oscilator/full_Dh=n_addition",
         # "roessler_oscilator/full_Dh=n_addition_6_2",
-        "roessler_oscilator/full_Dh=n_addition_2_2"
+        #"roessler_oscilator/full_Dh=n_addition_2_2"
+        #"TE_selector_PS_3_3",
+        "TE_selector_PS_3_3c",
         # "roessler_oscilator/conditional_information_transfer_Dh=1",
         # "roessler_oscilator/conditional_information_transfer_Dh=2",
         # "roessler_oscilator/conditional_information_transfer_Dh=n",
@@ -232,7 +234,7 @@ if __name__ == "__main__":
                     + "_2d_std"
                 )
 
-                TE = TE[TE["epsilon"] >= 0.01]
+                #TE = TE[TE["epsilon"] >= 0.01]
                 # TE = TE[TE["alpha"] >= 0.8]
                 # TE = TE[TE["alpha"] <= 1.1]
 

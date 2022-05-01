@@ -226,13 +226,21 @@ def figures2d_TE_alpha(
                 label = code.replace("_", "-")
                 if swap:
                     label_split = label.split("-")
-                    label = label_split[1] + "-" + label_split[0]
+                    if len(label_split) >= 2:
+                        label = label_split[1] + "-" + label_split[0]
+                    else:
+                        label = f"$N={label}, YX$"
+                else:
+                    label = f"$N={label}, X->Y$"
 
                 ys = subselection[["alpha"]]
                 zs = subselection[[selector]]
 
                 try:
-                    map_position = order_of_dataset / number_of_datasets
+                    if number_of_datasets != 0.0:
+                        map_position = order_of_dataset / number_of_datasets
+                    else:
+                        map_position = 0
                     color = color_map(map_position)
                     ax.plot(ys.values, zs.values, linewidth=3, label=label, color=color)
                 except Exception as exc:
