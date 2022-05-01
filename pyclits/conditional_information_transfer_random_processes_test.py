@@ -88,7 +88,7 @@ if __name__ == "__main__":
     )
     args = parser.parse_args()
 
-    size_of_dataset = args.size
+    size_of_dataset = int(args.size)
 
     if args.history_first:
         histories_firsts = process_CLI_arguments(args.history_first)
@@ -136,9 +136,9 @@ if __name__ == "__main__":
         for shuffle_dataset in [True, False]:
             # prepare dataset that is been processed
             marginal_solution_1, marginal_solution_2 = prepare_dataset(
-                args,
+                size_of_dataset,
                 swap_datasets=swap_datasets,
-                shuffle_dataset=shuffle_dataset
+                shuffle_dataset=shuffle_dataset,
             )
 
             for future_first in future_firsts:
@@ -178,9 +178,7 @@ if __name__ == "__main__":
                         )
 
                         # create range of indices that will be used for calculation
-                        indices_to_use = list(
-                            range(1, args.maximal_neighborhood + 1)
-                        )
+                        indices_to_use = list(range(1, args.maximal_neighborhood + 1))
                         configuration = {
                             "transpose": True,
                             "axis_to_join": 0,
@@ -232,7 +230,9 @@ if __name__ == "__main__":
                         )
 
     # save result structure to the file
-    path = Path(f"{args.directory}/Conditional_information_transfer-{size_of_dataset}.bin")
+    path = Path(
+        f"{args.directory}/Conditional_information_transfer-{size_of_dataset}.bin"
+    )
     print(
         f"PID:{os.getpid()} {datetime.datetime.now().isoformat()} Save to file {path}",
         flush=True,

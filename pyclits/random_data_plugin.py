@@ -13,13 +13,16 @@ import random_samples
 
 
 def prepare_dataset(
-    args,
+    size,
     swap_datasets=False,
     shuffle_dataset=False,
 ):
     # provide random numbers
     t0 = time.process_time()
-    sol = random_samples.sample_normal_distribution(np.identity(2), args.size)
+    sigma = np.array([[1, 0], [0, 1]])
+    sol = random_samples.sample_normal_distribution(sigma, size)
+    sol = sol.T + np.array([np.sin(0.01* np.linspace(0, 10*np.pi, size)), np.sin(0.01* np.linspace(0.1, 10*np.pi, size))])
+    sol = sol.T
     t1 = time.process_time()
     duration = t1 - t0
     print(
