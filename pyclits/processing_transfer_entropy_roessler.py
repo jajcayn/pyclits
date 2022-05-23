@@ -52,7 +52,8 @@ if __name__ == "__main__":
         # "roessler_oscilator/full_Dh=n_addition_6_2",
         #"roessler_oscilator/full_Dh=n_addition_2_2"
         #"TE_selector_PS_3_3",
-        "TE_selector_PS_3_3c",
+        #"roessler_oscilator/hybrid_3_3_vector/TE_selector_PS_3_3",
+        "roessler_oscilator/x1_x2",
         # "roessler_oscilator/conditional_information_transfer_Dh=1",
         # "roessler_oscilator/conditional_information_transfer_Dh=2",
         # "roessler_oscilator/conditional_information_transfer_Dh=n",
@@ -91,6 +92,8 @@ if __name__ == "__main__":
             "effective_conditional_information_transfer": 4,
             "conditional_information_transfer": 3,
         }
+        symbol_of_X = "x_1"
+        symbol_of_Y = "y_1"
         for item in TE_column_names:
             try:
                 shift = 0
@@ -132,12 +135,12 @@ if __name__ == "__main__":
                     "transfer_entropy": r"$\Huge\rm{Transfer\ entropy}$",
                     "conditional_information_transfer": r"$\Huge\rm{Conditional\ information\ transfer}$",
                 }
-                filename_direction = {True: "Y->X", False: "X->Y"}
+                filename_direction = {True: f"{symbol_of_Y}->{symbol_of_X}", False: f"{symbol_of_X}->{symbol_of_Y}"}
                 title_map = {
-                    (False, False): r"{\alpha: X\rightarrow Y}",
-                    (True, False): r"{\alpha: X_{shuffled}\rightarrow Y}",
-                    (False, True): r"{\alpha: Y\rightarrow X}",
-                    (True, True): r"{\alpha: Y_{shuffled}\rightarrow X}",
+                    (False, False): r"{\alpha: {" + symbol_of_X + r"}\rightarrow {" + symbol_of_Y + r"}}",
+                    (True, False): r"{\alpha: {" + symbol_of_X + r"}_{shuffled}\rightarrow {" + symbol_of_Y + r"}}",
+                    (False, True): r"{\alpha: {" + symbol_of_Y + r"}\rightarrow {" + symbol_of_X + r"}}",
+                    (True, True): r"{\alpha: {" + symbol_of_Y + r"}_{shuffled}\rightarrow {" + symbol_of_X + r"}}",
                 }
 
                 if future_first_TS is not None:
@@ -237,6 +240,27 @@ if __name__ == "__main__":
                 #TE = TE[TE["epsilon"] >= 0.01]
                 # TE = TE[TE["alpha"] >= 0.8]
                 # TE = TE[TE["alpha"] <= 1.1]
+
+                figures2d_fixed_epsilon(
+                    TE,
+                    tuple(complete_column_name_std),
+                    latex_title_std,
+                    latex_epsilon_label,
+                    label_latex_std,
+                    standard_filename,
+                    suffix=output,
+                    dpi=dpi,
+                )
+                figures2d_fixed_epsilon(
+                    TE,
+                    item,
+                    latex_title,
+                    latex_epsilon_label,
+                    label,
+                    standard_filename,
+                    suffix=output,
+                    dpi=dpi,
+                )
 
                 figures2d_imshow(
                     TE,

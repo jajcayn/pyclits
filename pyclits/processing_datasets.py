@@ -137,6 +137,9 @@ def figures2d_imshow(
     ax.set(xlabel=xlabel)
     ax.set(ylabel=ylabel)
     ax.grid(True)
+    #ax.set_ylim([0.85, 1.5])
+
+    #dataset = dataset.loc[ dataset["alpha"].between(0.85, 1.5) ]
 
     epsilons = dataset["epsilon"].unique()
     alphas = dataset["alpha"].unique()
@@ -363,6 +366,7 @@ def figures2d_TE(
     ax.set_title(title)
     ax.set_xlabel(xlabel)
     ax.set_ylabel(ylabel)
+    # ax.set_ylim([-0.1, 1])
 
     alphas = dataset["alpha"].unique()
     mean = int(len(alphas) / 2)
@@ -371,7 +375,7 @@ def figures2d_TE(
     subselected_alphas = [
         alpha
         for number, alpha in enumerate(alphas)
-        if (0.70 <= alpha <= 2 and number % 2 == 0)
+        if (0.85 <= alpha <= 1.5 and number % 2 == 0)
     ]
 
     for alpha in subselected_alphas:
@@ -430,13 +434,10 @@ def figures2d_TE_errorbar(
     ax.set_title(title)
     ax.set_xlabel(xlabel, fontsize=fontsize)
     ax.set_ylabel(ylabel, fontsize=fontsize)
-    # ax.set_yticks([1, 2, 3, 4, 5], ["10", "100", "1000", "10000", "100000"])
-    # plt.yticks((1.0, 2.0, 3.0, 4.0, 5.0), ("10", "100", "1000", "10000", "100000"))
 
     alphas = dataset["alpha"].unique()
     mean = int(len(alphas) / 2)
     neghborhood = 5
-    # subselected_alphas = alphas[mean - neghborhood:  mean + neghborhood]
     subselected_alphas = [
         alpha
         for number, alpha in enumerate(alphas)
@@ -540,9 +541,72 @@ def figures2d_samples_TE(
         plt.savefig(
             filename.format(sample) + "." + suffix, dpi=dpi, bbox_inches="tight"
         )
-        # plt.draw()
-        # plt.show()
         plt.close()
+        del fig
+
+
+def figures2d_fixed_epsilon(
+    dataset,
+    selector,
+    title,
+    xlabel,
+    ylabel,
+    filename,
+    suffix,
+    cmap="rainbow",
+    dpi=300,
+    fontsize=15,
+):
+    matplotlib.style.use("seaborn")
+
+    color_map = matplotlib.cm.get_cmap(cmap)
+
+    alphas = dataset["alpha"].unique()
+    fixed_epsilon = 0.07
+
+    fig = plt.figure(figsize=(13, 8))
+    ax = fig.add_subplot(1, 1, 1)
+
+    ax.set_title(title)
+    ax.set_xlabel(xlabel)
+    ax.set_ylabel(ylabel)
+
+    subselected_alphas = [
+        alpha
+        for number, alpha in enumerate(alphas)
+        if (0.70 <= alpha <= 2 and number % 2 == 0)
+    ]
+
+    for alpha in subselected_alphas:
+        subselection = dataset.loc[dataset["alpha"] == alpha]
+        print(subselection)
+        constant = subselection.loc[dataset["epsilon"] == fixed_epsilon][[selector]].values[0][0]
+
+        ys = subselection[["epsilon"]].values
+        zs = [[constant] for item in ys]
+
+        trasform = lambda alpha: (alpha - min(alphas)) / (
+            max(alphas) - min(alphas)
+        )
+        color = color_map(trasform(alpha))
+        try:
+            ax.plot(
+                ys,
+                zs,
+                color=color,
+                linewidth=3,
+                label=r"$\varepsilon={}$".format(round(alpha, 3)),
+            )
+        except Exception as exc:
+            print(f"{exc}: Problem D=")
+
+    plt.legend(ncol=3, fontsize=fontsize)
+    plt.xticks(fontsize=fontsize)
+    plt.yticks(fontsize=fontsize)
+
+    plt.savefig(filename+ "_f" +"." + suffix, dpi=dpi, bbox_inches="tight")
+    plt.close()
+    del fig
 
 
 def escort_distribution(
@@ -589,6 +653,7 @@ def escort_distribution(
 
     plt.savefig(filename + "." + suffix, dpi=dpi, bbox_inches="tight")
     plt.close()
+    del fig
 
 
 def granger_function_plot(
@@ -750,7 +815,7 @@ def process_datasets(
     result_raw_dataset,
     new_columns_base_name="transfer_entropy",
     take_k_th_nearest_neighbor=5,
-    converter_epsilon=lambda x: float(x),
+    converter_epsilon=lambda file: float("-"+file.split("--")[1].split(".b")[0] if "--" in file else file.split("-")[1].split(".b")[0]),
 ):
     # taking only some nn data to assure that it converge in theory
     files = glob.glob(processed_datasets)
@@ -758,7 +823,7 @@ def process_datasets(
     frames = []
     frames_raw = []
     for file in files:
-        epsilon = converter_epsilon(file.split("-")[1].split(".b")[0])
+        epsilon = converter_epsilon(file)
         path = Path(file)
 
         table = pd.read_pickle(path)
